@@ -8,13 +8,11 @@ package e2e
 
 import (
 	"bytes"
-	"context"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/json"
 	"encoding/pem"
-	"fmt"
 	"net"
 	"net/http"
 	"os"
@@ -375,6 +373,3 @@ func freePort(t *testing.T) string {
 	require.NoError(t, err)
 	return port
 }
-
-var _ = context.Background
-var _ = fmt.Sprintf
