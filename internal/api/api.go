@@ -40,13 +40,6 @@ type BlobStore interface {
 	Open(ctx context.Context, a *model.Artifact) (io.ReadCloser, error)
 }
 
-// CacheLister is an optional store capability. store.Caches has no
-// list-entries method, so the cache page falls back to reconstructing entries
-// from the event log and SAYS SO in the response.
-type CacheLister interface {
-	ListCacheEntries(ctx context.Context, repoID int64) ([]*model.CacheEntry, error)
-}
-
 // SubsystemState is the health of one named part of the control plane.
 type SubsystemState string
 

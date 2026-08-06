@@ -75,6 +75,29 @@ func (s *Store) GetCache(ctx context.Context, id int64) (*model.CacheEntry, erro
 	return e, nil
 }
 
+// ListCacheEntries returns a repository's finalized entries, newest first.
+func (s *Store) ListCacheEntries(ctx context.Context, repoID int64) ([]*model.CacheEntry, error) {
+	rows, err := s.pool.Query(ctx,
+		`SELECT `+cacheCols+` FROM cache_entries WHERE repo_id = $1 AND finalized
+ORDER BY created_at DESC, id DESC`, repoID)
+	if err != nil {
+		return nil, mapErr("pg: ListCacheEntries", err)
+	}
+	defer rows.Close()
+	var out []*model.CacheEntry
+	for rows.Next() {
+		e, err := scanCache(rows)
+		if err != nil {
+			return nil, mapErr("pg: ListCacheEntries", err)
+		}
+		out = append(out, e)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, mapErr("pg: ListCacheEntries", err)
+	}
+	return out, nil
+}
+
 func (s *Store) TouchCache(ctx context.Context, id int64, at time.Time) error {
 	tag, err := s.pool.Exec(ctx,
 		`UPDATE cache_entries SET last_accessed = $2 WHERE id = $1`, id, utc(at))

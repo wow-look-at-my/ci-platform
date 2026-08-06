@@ -102,6 +102,7 @@ func RunSuite(t *testing.T, newStore func(t *testing.T) store.Store) {
 		{"DeepCopyOnReadAndWrite", testDeepCopy},
 		{"EnqueueIsIdempotent", testEnqueueIdempotent},
 		{"EnqueueRejectsAnAttemptMismatch", testEnqueueAttemptMismatch},
+		{"FreshCacheEntryIsNotEvictedFirst", testFreshCacheEntryIsNotEvictedFirst},
 		{"ConcurrentDequeue", testConcurrentDequeue},
 		{"LabelMatching", testLabelMatching},
 		{"NotBeforeIsHonoured", testNotBefore},
@@ -719,6 +720,35 @@ func testEnqueueAttemptMismatch(t *testing.T, f *fixture) {
 	stats, err = f.s.QueueStats(f.ctx, nowUTC())
 	require.NoError(t, err)
 	require.Equal(t, 1, stats.Depth)
+}
+
+// A never-read entry must sort by its creation time, not by a zero
+// last_accessed. Otherwise a just-committed entry is the oldest thing in the
+// repo and evicts itself on the very commit that created it.
+func testFreshCacheEntryIsNotEvictedFirst(t *testing.T, f *fixture) {
+	repo := f.repo(126, "acme", "widget")
+	base := nowUTC()
+
+	old := &model.CacheEntry{RepoID: repo.ID, Key: "old", Version: "v1", SizeBytes: 100,
+		StorageKey: "k-old", CreatedAt: base.Add(-time.Hour), Finalized: true}
+	require.NoError(t, f.s.ReserveCache(f.ctx, old))
+	require.NoError(t, f.s.FinalizeCache(f.ctx, old.ID, 100))
+
+	// Deliberately left with a zero LastAccessed: never read since creation.
+	fresh := &model.CacheEntry{RepoID: repo.ID, Key: "fresh", Version: "v1", SizeBytes: 100,
+		StorageKey: "k-fresh", CreatedAt: base, Finalized: true}
+	require.NoError(t, f.s.ReserveCache(f.ctx, fresh))
+	require.NoError(t, f.s.FinalizeCache(f.ctx, fresh.ID, 100))
+
+	evicted, err := f.s.EvictCaches(f.ctx, repo.ID, 100, base)
+	require.NoError(t, err)
+	require.Len(t, evicted, 1, "one entry over quota")
+	require.Equal(t, "old", evicted[0].Key, "the fresh entry must not evict itself")
+
+	entries, err := f.s.ListCacheEntries(f.ctx, repo.ID)
+	require.NoError(t, err)
+	require.Len(t, entries, 1)
+	require.Equal(t, "fresh", entries[0].Key)
 }
 
 func testConcurrentDequeue(t *testing.T, f *fixture) {

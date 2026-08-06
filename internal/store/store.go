@@ -196,6 +196,9 @@ type Artifacts interface {
 	GetArtifact(ctx context.Context, id int64) (*model.Artifact, error)
 	FindArtifact(ctx context.Context, runID int64, name string) (*model.Artifact, error)
 	ListArtifacts(ctx context.Context, runID int64) ([]*model.Artifact, error)
+	// ArtifactUsage totals a repository's finalized artifact bytes, so the
+	// quota check is a query rather than something the caller has to track.
+	ArtifactUsage(ctx context.Context, repoID int64) (int64, error)
 	DeleteExpiredArtifacts(ctx context.Context, now time.Time) ([]*model.Artifact, error)
 }
 
@@ -207,6 +210,10 @@ type Caches interface {
 	// prefix in order, newest match wins. matchedOn names which key hit.
 	LookupCache(ctx context.Context, repoID int64, key string, restoreKeys []string, version, ref string) (*model.CacheEntry, string, error)
 	GetCache(ctx context.Context, id int64) (*model.CacheEntry, error)
+	// ListCacheEntries returns a repository's finalized entries, newest first.
+	// Without it the cache page can only reconstruct state from the event log,
+	// which is approximate and has to say so.
+	ListCacheEntries(ctx context.Context, repoID int64) ([]*model.CacheEntry, error)
 	TouchCache(ctx context.Context, id int64, at time.Time) error
 	RecordCacheEvent(ctx context.Context, e model.CacheEvent) error
 	ListCacheEvents(ctx context.Context, repoID int64, limit int) ([]model.CacheEvent, error)

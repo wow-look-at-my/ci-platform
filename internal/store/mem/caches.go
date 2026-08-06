@@ -61,6 +61,25 @@ func (s *Store) GetCache(_ context.Context, id int64) (*model.CacheEntry, error)
 	return cloneCacheEntry(e), nil
 }
 
+// ListCacheEntries returns a repository's finalized entries, newest first.
+func (s *Store) ListCacheEntries(_ context.Context, repoID int64) ([]*model.CacheEntry, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	var out []*model.CacheEntry
+	for _, e := range s.caches {
+		if e.RepoID == repoID && e.Finalized {
+			out = append(out, cloneCacheEntry(e))
+		}
+	}
+	sort.Slice(out, func(i, j int) bool {
+		if !out[i].CreatedAt.Equal(out[j].CreatedAt) {
+			return out[i].CreatedAt.After(out[j].CreatedAt)
+		}
+		return out[i].ID > out[j].ID
+	})
+	return out, nil
+}
+
 func (s *Store) TouchCache(_ context.Context, id int64, at time.Time) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()

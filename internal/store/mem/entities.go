@@ -613,3 +613,19 @@ func (s *Store) ListEvents(_ context.Context, runID, jobID int64) ([]store.Event
 	}
 	return out, nil
 }
+
+// ArtifactUsage totals a repository's finalized artifact bytes.
+func (s *Store) ArtifactUsage(_ context.Context, repoID int64) (int64, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	var total int64
+	for _, a := range s.artifacts {
+		if !a.Finalized {
+			continue
+		}
+		if run, ok := s.runs[a.RunID]; ok && run.RepoID == repoID {
+			total += a.SizeBytes
+		}
+	}
+	return total, nil
+}

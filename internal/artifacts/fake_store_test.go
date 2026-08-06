@@ -84,6 +84,20 @@ func (f *fakeStore) FindArtifact(_ context.Context, runID int64, name string) (*
 	return nil, store.ErrNotFound
 }
 
+// ArtifactUsage totals finalized bytes. The fake has no run-to-repo mapping,
+// so it sums every finalized artifact, which is what the quota tests need.
+func (f *fakeStore) ArtifactUsage(_ context.Context, repoID int64) (int64, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	var total int64
+	for _, a := range f.artifacts {
+		if a.Finalized {
+			total += a.SizeBytes
+		}
+	}
+	return total, nil
+}
+
 func (f *fakeStore) ListArtifacts(_ context.Context, runID int64) ([]*model.Artifact, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()

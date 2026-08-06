@@ -20,7 +20,8 @@ var errUnused = errors.New("fake store: method not used by the API")
 // handler. Methods the API never calls return errUnused so a future handler
 // silently depending on one fails loudly instead of seeing a zero value.
 type fakeStore struct {
-	mu sync.Mutex
+	cacheEntries []*model.CacheEntry
+	mu           sync.Mutex
 
 	durable  bool
 	listErr  error // ListRepos failure, for the /healthz down path
@@ -265,6 +266,12 @@ func (f *fakeStore) FinalizeCache(context.Context, int64, int64) error     { ret
 func (f *fakeStore) LookupCache(context.Context, int64, string, []string, string, string) (*model.CacheEntry, string, error) {
 	return nil, "", errUnused
 }
+func (f *fakeStore) ArtifactUsage(context.Context, int64) (int64, error) { return 0, nil }
+
+func (f *fakeStore) ListCacheEntries(context.Context, int64) ([]*model.CacheEntry, error) {
+	return f.cacheEntries, nil
+}
+
 func (f *fakeStore) GetCache(context.Context, int64) (*model.CacheEntry, error) {
 	return nil, errUnused
 }

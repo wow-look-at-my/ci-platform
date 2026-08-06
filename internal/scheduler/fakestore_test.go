@@ -293,6 +293,12 @@ func (f *fakeStore) DeleteExpiredArtifacts(context.Context, time.Time) ([]*model
 }
 func (f *fakeStore) ReserveCache(context.Context, *model.CacheEntry) error { return errUnused }
 func (f *fakeStore) FinalizeCache(context.Context, int64, int64) error     { return errUnused }
+func (f *fakeStore) ArtifactUsage(context.Context, int64) (int64, error)   { return 0, nil }
+
+func (f *fakeStore) ListCacheEntries(context.Context, int64) ([]*model.CacheEntry, error) {
+	return nil, nil
+}
+
 func (f *fakeStore) GetCache(context.Context, int64) (*model.CacheEntry, error) {
 	return nil, errUnused
 }

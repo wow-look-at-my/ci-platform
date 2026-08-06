@@ -49,20 +49,13 @@ type CacheEntryDTO struct {
 
 // CacheDTO is the per-repo cache page.
 type CacheDTO struct {
-	Repository string          `json:"repository"`
-	UsageBytes int64           `json:"usage_bytes"`
-	TotalCount int             `json:"total_count"`
-	Entries    []CacheEntryDTO `json:"entries"`
-	// EntriesSource is "store" when the store enumerated live entries, or
-	// "cache_events" when they were reconstructed from the event log. The
-	// reconstruction is incomplete by construction, and saying so beats
-	// rendering a short list as if it were the whole cache.
-	EntriesSource   string             `json:"entries_source"`
-	EntriesComplete bool               `json:"entries_complete"`
-	Warning         string             `json:"warning,omitempty"`
-	Stats           CacheStats         `json:"stats"`
-	ByKey           []CacheKeyStats    `json:"by_key"`
-	Events          []model.CacheEvent `json:"events"`
+	Repository string             `json:"repository"`
+	UsageBytes int64              `json:"usage_bytes"`
+	TotalCount int                `json:"total_count"`
+	Entries    []CacheEntryDTO    `json:"entries"`
+	Stats      CacheStats         `json:"stats"`
+	ByKey      []CacheKeyStats    `json:"by_key"`
+	Events     []model.CacheEvent `json:"events"`
 }
 
 func (s *Server) getRepoCache(w http.ResponseWriter, r *http.Request) {
@@ -98,25 +91,17 @@ func (s *Server) getRepoCache(w http.ResponseWriter, r *http.Request) {
 	}
 	out.Stats, out.ByKey = summariseCacheEvents(events)
 
-	if lister, ok := s.cfg.Store.(CacheLister); ok {
-		entries, err := lister.ListCacheEntries(r.Context(), repo.ID)
-		if err != nil {
-			storeErr(w, "list cache entries", err)
-			return
-		}
-		out.EntriesSource, out.EntriesComplete = "store", true
-		out.Entries = make([]CacheEntryDTO, 0, len(entries))
-		for _, e := range entries {
-			out.Entries = append(out.Entries, CacheEntryDTO{
-				ID: e.ID, Key: e.Key, Version: e.Version, Ref: e.Ref, SizeBytes: e.SizeBytes,
-				CreatedAt: e.CreatedAt, LastAccessed: e.LastAccessed, Finalized: e.Finalized,
-			})
-		}
-	} else {
-		out.EntriesSource, out.EntriesComplete = "cache_events", false
-		out.Warning = "the store has no cache-entry listing, so these entries were reconstructed from the last " +
-			itoa(int64(cacheEventLimit)) + " cache events: entries older than that window are missing"
-		out.Entries = entriesFromEvents(events)
+	entries, err := s.cfg.Store.ListCacheEntries(r.Context(), repo.ID)
+	if err != nil {
+		storeErr(w, "list cache entries", err)
+		return
+	}
+	out.Entries = make([]CacheEntryDTO, 0, len(entries))
+	for _, e := range entries {
+		out.Entries = append(out.Entries, CacheEntryDTO{
+			ID: e.ID, Key: e.Key, Version: e.Version, Ref: e.Ref, SizeBytes: e.SizeBytes,
+			CreatedAt: e.CreatedAt, LastAccessed: e.LastAccessed, Finalized: e.Finalized,
+		})
 	}
 	out.TotalCount = len(out.Entries)
 	writeJSON(w, http.StatusOK, out)
@@ -168,31 +153,4 @@ func summariseCacheEvents(events []model.CacheEvent) (CacheStats, []CacheKeyStat
 		return out[i].Key < out[j].Key
 	})
 	return st, out
-}
-
-// entriesFromEvents reconstructs the live set from store/evict events: newest
-// store per key wins, an eviction removes it.
-func entriesFromEvents(events []model.CacheEvent) []CacheEntryDTO {
-	live := map[string]CacheEntryDTO{}
-	ordered := append([]model.CacheEvent(nil), events...)
-	sort.Slice(ordered, func(i, j int) bool { return ordered[i].At.Before(ordered[j].At) })
-	for _, e := range ordered {
-		switch e.Kind {
-		case "store":
-			live[e.Key] = CacheEntryDTO{Key: e.Key, SizeBytes: e.SizeBytes, CreatedAt: e.At, LastAccessed: e.At, Finalized: true}
-		case "hit":
-			if v, ok := live[e.Key]; ok {
-				v.LastAccessed = e.At
-				live[e.Key] = v
-			}
-		case "evict":
-			delete(live, e.Key)
-		}
-	}
-	out := make([]CacheEntryDTO, 0, len(live))
-	for _, v := range live {
-		out = append(out, v)
-	}
-	sort.Slice(out, func(i, j int) bool { return out[i].Key < out[j].Key })
-	return out
 }

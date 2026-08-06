@@ -104,6 +104,20 @@ func (f *fakeStore) LookupCache(_ context.Context, repoID int64, key string, res
 	return nil, "", store.ErrNotFound
 }
 
+func (f *fakeStore) ListCacheEntries(_ context.Context, repoID int64) ([]*model.CacheEntry, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	var out []*model.CacheEntry
+	for _, e := range f.entries {
+		if e.RepoID == repoID && e.Finalized {
+			copied := *e
+			out = append(out, &copied)
+		}
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].CreatedAt.After(out[j].CreatedAt) })
+	return out, nil
+}
+
 func (f *fakeStore) GetCache(_ context.Context, id int64) (*model.CacheEntry, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()

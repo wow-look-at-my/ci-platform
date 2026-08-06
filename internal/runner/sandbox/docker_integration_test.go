@@ -79,15 +79,18 @@ func TestDockerSandboxEndToEnd(t *testing.T) {
 	assert.Equal(t, 0, res.ExitCode)
 	assert.Equal(t, "from-the-sandbox\n", out.String())
 
-	// The footgun this design exists for: a file copied in can be bind-mounted
-	// by the INNER daemon, which a file bind-mounted from the host cannot.
+	// The footgun this design exists for: a file placed with docker cp lives in
+	// the container's own filesystem, so the INNER daemon can bind-mount it
+	// into a container it spawns. A file bind-mounted in from the host cannot
+	// be, because the inner daemon resolves the source against the host.
+	//
+	// The image is built from the sandbox's own filesystem rather than pulled,
+	// so this holds with no registry access.
 	var mounted strings.Builder
 	res, err = c.Run(ctx, exec.RunRequest{
-		Argv: []string{
-			"docker", "run", "--rm",
-			"-v", "/home/runner/work/_temp/nested/deep/step.sh:/mnt/step.sh",
-			image, "sh", "/mnt/step.sh",
-		},
+		Argv: []string{"sh", "-c",
+			"tar -cf - -C / bin lib usr etc 2>/dev/null | docker import - innertest:latest >/dev/null && " +
+				"docker run --rm -v /home/runner/work/_temp/nested/deep/step.sh:/mnt/step.sh innertest:latest /bin/sh /mnt/step.sh"},
 		Stdout: &mounted,
 		Stderr: &mounted,
 	})

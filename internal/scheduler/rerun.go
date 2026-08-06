@@ -12,6 +12,14 @@ import (
 
 // RerunFailed re-runs everything in a run that did not succeed, plus everything
 // downstream of it. A job that succeeded keeps its result and its logs.
+// Rerun re-runs every job of a run, whatever it concluded.
+//
+// This is distinct from RerunFailed: mapping "re-run all" onto "re-run failed"
+// would quietly do less than the operator asked for.
+func (s *Scheduler) Rerun(ctx context.Context, runID int64, actor string) error {
+	return s.rerun(ctx, runID, actor, time.Now(), func(*model.Job) bool { return true })
+}
+
 func (s *Scheduler) RerunFailed(ctx context.Context, runID int64, actor string) error {
 	return s.rerun(ctx, runID, actor, time.Now(), func(j *model.Job) bool {
 		return j.Conclusion != model.ConclusionSuccess

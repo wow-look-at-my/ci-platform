@@ -117,3 +117,15 @@ func (s *Store) queryArtifacts(ctx context.Context, op, q string, args ...any) (
 	}
 	return out, mapErr(op, rows.Err())
 }
+
+// ArtifactUsage totals a repository's finalized artifact bytes.
+func (s *Store) ArtifactUsage(ctx context.Context, repoID int64) (int64, error) {
+	var total int64
+	err := s.pool.QueryRow(ctx, `SELECT COALESCE(SUM(a.size_bytes), 0) FROM artifacts a
+JOIN runs r ON r.id = a.run_id
+WHERE r.repo_id = $1 AND a.finalized`, repoID).Scan(&total)
+	if err != nil {
+		return 0, mapErr("pg: ArtifactUsage", err)
+	}
+	return total, nil
+}

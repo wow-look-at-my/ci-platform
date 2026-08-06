@@ -82,32 +82,32 @@ type Job struct {
 	// MaxAttempts comes from the resolved retry policy.
 	MaxAttempts int `json:"max_attempts"`
 
-	Status     Status     `json:"status"`
-	Conclusion Conclusion `json:"conclusion,omitempty"`
-	Class      FailureClass
+	Status     Status        `json:"status"`
+	Conclusion Conclusion    `json:"conclusion,omitempty"`
+	Class      FailureClass  `json:"failure_class,omitempty"`
 	Cancel     *CancelReason `json:"cancel,omitempty"`
 
 	// ConcurrencyGroup, when set, admits at most one job at a time.
-	ConcurrencyGroup  string `json:"concurrency_group,omitempty"`
-	CancelInProgress  bool   `json:"cancel_in_progress,omitempty"`
-	ContinueOnError   bool   `json:"continue_on_error,omitempty"`
-	TimeoutMinutes    int    `json:"timeout_minutes,omitempty"`
-	CheckRunID        int64  `json:"check_run_id,omitempty"`
-	RunnerID          string `json:"runner_id,omitempty"`
-	Environment       string `json:"environment,omitempty"`
-	AwaitingApproval  bool   `json:"awaiting_approval,omitempty"`
-	Outputs           map[string]string
-	FailureExplained  string     `json:"failure_explanation,omitempty"`
-	CreatedAt         time.Time  `json:"created_at"`
-	QueuedAt          *time.Time `json:"queued_at,omitempty"`
-	StartedAt         *time.Time `json:"started_at,omitempty"`
-	SetupCompletedAt  *time.Time `json:"setup_completed_at,omitempty"`
-	CompletedAt       *time.Time `json:"completed_at,omitempty"`
-	LeaseExpiresAt    *time.Time `json:"lease_expires_at,omitempty"`
-	LastHeartbeatAt   *time.Time `json:"last_heartbeat_at,omitempty"`
-	RequeueCount      int        `json:"requeue_count"`
-	InfraRetryCount   int        `json:"infra_retry_count"`
-	ClassificationLog []string   `json:"classification_log,omitempty"`
+	ConcurrencyGroup  string            `json:"concurrency_group,omitempty"`
+	CancelInProgress  bool              `json:"cancel_in_progress,omitempty"`
+	ContinueOnError   bool              `json:"continue_on_error,omitempty"`
+	TimeoutMinutes    int               `json:"timeout_minutes,omitempty"`
+	CheckRunID        int64             `json:"check_run_id,omitempty"`
+	RunnerID          string            `json:"runner_id,omitempty"`
+	Environment       string            `json:"environment,omitempty"`
+	AwaitingApproval  bool              `json:"awaiting_approval,omitempty"`
+	Outputs           map[string]string `json:"outputs,omitempty"`
+	FailureExplained  string            `json:"failure_explanation,omitempty"`
+	CreatedAt         time.Time         `json:"created_at"`
+	QueuedAt          *time.Time        `json:"queued_at,omitempty"`
+	StartedAt         *time.Time        `json:"started_at,omitempty"`
+	SetupCompletedAt  *time.Time        `json:"setup_completed_at,omitempty"`
+	CompletedAt       *time.Time        `json:"completed_at,omitempty"`
+	LeaseExpiresAt    *time.Time        `json:"lease_expires_at,omitempty"`
+	LastHeartbeatAt   *time.Time        `json:"last_heartbeat_at,omitempty"`
+	RequeueCount      int               `json:"requeue_count"`
+	InfraRetryCount   int               `json:"infra_retry_count"`
+	ClassificationLog []string          `json:"classification_log,omitempty"`
 }
 
 // Timing is the queued/setup/execute breakdown surfaced on every job page. The
@@ -157,12 +157,12 @@ type Step struct {
 	JobID  int64 `json:"job_id"`
 	Number int   `json:"number"`
 
-	Name       string     `json:"name"`
-	StepID     string     `json:"step_id,omitempty"`
-	Status     Status     `json:"status"`
-	Conclusion Conclusion `json:"conclusion,omitempty"`
-	Class      FailureClass
-	ExitCode   int `json:"exit_code"`
+	Name       string       `json:"name"`
+	StepID     string       `json:"step_id,omitempty"`
+	Status     Status       `json:"status"`
+	Conclusion Conclusion   `json:"conclusion,omitempty"`
+	Class      FailureClass `json:"failure_class,omitempty"`
+	ExitCode   int          `json:"exit_code"`
 
 	ContinueOnError bool              `json:"continue_on_error,omitempty"`
 	Outputs         map[string]string `json:"outputs,omitempty"`

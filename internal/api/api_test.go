@@ -1,7 +1,6 @@
 package api
 
 import (
-	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -106,6 +105,13 @@ func fixture() *fakeStore {
 		{ID: 4, RepoID: 7, Key: "npm", Kind: "miss", At: base.Add(3 * time.Minute)},
 		{ID: 5, RepoID: 7, Key: "stale", Kind: "store", SizeBytes: 10, At: base},
 		{ID: 6, RepoID: 7, Key: "stale", Kind: "evict", Reason: "quota", At: base.Add(4 * time.Minute)},
+	}
+
+	// The store lists live entries directly; the evicted "stale" key is simply
+	// absent rather than something the reader reconciles against the events.
+	f.cacheEntries = []*model.CacheEntry{
+		{ID: 1, RepoID: 7, Key: "go-mod", Version: "v1", SizeBytes: 2048,
+			CreatedAt: base, LastAccessed: base.Add(2 * time.Minute), Finalized: true},
 	}
 
 	f.qstats = &store.QueueStats{
@@ -503,10 +509,8 @@ func TestRepoCache(t *testing.T) {
 	assert.Equal(t, 1, got.Stats.Evictions)
 	assert.InDelta(t, 2.0/3.0, got.Stats.HitRate, 0.0001)
 
-	// The store cannot list entries, so the response says where they came from.
-	assert.Equal(t, "cache_events", got.EntriesSource)
-	assert.False(t, got.EntriesComplete)
-	assert.NotEmpty(t, got.Warning)
+	// Entries come from the store, so an evicted key is simply gone rather
+	// than something the reader has to reconcile against the event log.
 	require.Len(t, got.Entries, 1, "the evicted key must not appear as live")
 	assert.Equal(t, "go-mod", got.Entries[0].Key)
 
@@ -519,33 +523,6 @@ func TestRepoCache(t *testing.T) {
 
 	w = h.do(t, "GET", "/api/v1/repos/nobody/nothing/cache", "")
 	assert.Equal(t, http.StatusNotFound, w.Code)
-}
-
-// cacheListingStore adds the entry listing the base fake lacks.
-type cacheListingStore struct {
-	*fakeStore
-	entries []*model.CacheEntry
-}
-
-func (c *cacheListingStore) ListCacheEntries(context.Context, int64) ([]*model.CacheEntry, error) {
-	return c.entries, nil
-}
-
-func TestRepoCacheUsesStoreListingWhenAvailable(t *testing.T) {
-	base := fixture()
-	st := &cacheListingStore{fakeStore: base, entries: []*model.CacheEntry{
-		{ID: 1, RepoID: 7, Key: "go-mod", SizeBytes: 2048, Finalized: true},
-		{ID: 2, RepoID: 7, Key: "npm", SizeBytes: 512, Finalized: true},
-	}}
-	srv := New(Config{Store: st, Now: func() time.Time { return testNow }})
-	w := httptest.NewRecorder()
-	srv.ServeHTTP(w, httptest.NewRequest("GET", "/api/v1/repos/wow-look-at-my/ci-platform/cache", nil))
-	require.Equal(t, http.StatusOK, w.Code)
-	got := decode[CacheDTO](t, w)
-	assert.Equal(t, "store", got.EntriesSource)
-	assert.True(t, got.EntriesComplete)
-	assert.Empty(t, got.Warning)
-	assert.Len(t, got.Entries, 2)
 }
 
 func TestUnknownRouteIs404(t *testing.T) {
