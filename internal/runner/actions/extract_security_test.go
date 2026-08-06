@@ -110,3 +110,24 @@ func TestExtractRefusesUnsupportedEntryTypes(t *testing.T) {
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "unsupported type")
 }
+
+// The link checks above are lexical: they read the tarball's own entries. This
+// covers the link they cannot see -- one already on disk when extraction
+// reaches that name, planted by another process or left by an earlier run. The
+// open refuses to follow it, so the file outside keeps its contents.
+func TestExtractRefusesToWriteThroughAPlantedSymlink(t *testing.T) {
+	dest := t.TempDir()
+	outside := filepath.Join(t.TempDir(), "hostfile")
+	require.NoError(t, os.WriteFile(outside, []byte("original"), 0o600))
+	require.NoError(t, os.Symlink(outside, filepath.Join(dest, "config.json")))
+
+	raw := tarball(t,
+		[]*tar.Header{{Name: "repo-sha/config.json", Typeflag: tar.TypeReg, Mode: 0o644}},
+		[]string{"owned"},
+	)
+	require.Error(t, extractTarGz(bytes.NewReader(raw), dest))
+
+	body, err := os.ReadFile(outside)
+	require.NoError(t, err)
+	assert.Equal(t, "original", string(body), "the write must not have gone through the link")
+}

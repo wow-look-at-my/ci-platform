@@ -12,7 +12,6 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
-	"syscall"
 	"time"
 )
 
@@ -188,10 +187,7 @@ func extractTarGz(r io.Reader, dest string) error {
 			if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
 				return err
 			}
-			// O_NOFOLLOW: an earlier entry may have created a symlink at this
-			// path, and following it would write wherever that link points.
-			f, err := os.OpenFile(target,
-				os.O_CREATE|os.O_TRUNC|os.O_WRONLY|syscall.O_NOFOLLOW, os.FileMode(h.Mode)&0o777|0o600)
+			f, err := createNoFollow(target, os.FileMode(h.Mode)&0o777|0o600)
 			if err != nil {
 				return fmt.Errorf("action tarball: entry %q: %w", h.Name, err)
 			}
