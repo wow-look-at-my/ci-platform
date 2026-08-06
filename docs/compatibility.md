@@ -125,6 +125,18 @@ Absent, the default applies: infra failures retry three times with exponential
 backoff, user failures never retry, and config errors never retry because
 retrying cannot help.
 
+## Known gap: this platform cannot yet run its own CI
+
+Our own `.github/workflows/ci.yml` uses service containers for Postgres, and
+service containers are Phase 2. Running it here today fails the run with
+`unsupported: jobs.e2e.services.postgres service containers is not
+implemented (postgres:16)`.
+
+That is stated rather than smoothed over because it is the obvious question to
+ask of a CI platform, and `test/conformance` pins it: the test asserts the
+refusal names the exact job and key, and fails the day the workflow becomes
+supported so this note gets revisited.
+
 ## Known behavioural differences
 
 Beyond the unsupported list, the deliberate differences — the `infra_failure`

@@ -1,0 +1,29 @@
+name: DAG
+
+on:
+  push:
+  pull_request:
+    types: [opened, synchronize]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - run: make lint
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - run: make build
+    outputs:
+      version: ${{ steps.v.outputs.version }}
+  test:
+    runs-on: ubuntu-latest
+    needs: [build]
+    steps:
+      - run: make test
+  report:
+    runs-on: ubuntu-latest
+    needs: [lint, test]
+    if: always()
+    steps:
+      - run: make report
