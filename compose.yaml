@@ -38,6 +38,9 @@ services:
       # Distinct from the signing key above, and checked at startup: this one
       # is stored on every runner host.
       CIPLATFORM_RUNNER_TOKEN: ${CI_RUNNER_TOKEN:?set CI_RUNNER_TOKEN in .env}
+      # Sign-in for the UI and the REST API. Job containers can reach this
+      # server, so the API is closed without it.
+      CIPLATFORM_OPERATOR_TOKEN: ${CIPLATFORM_OPERATOR_TOKEN:?set CIPLATFORM_OPERATOR_TOKEN in .env}
       CIPLATFORM_BLOB_ROOT: /var/lib/ciplatform/blobs
       CIPLATFORM_OIDC_KEY_PATH: /var/lib/ciplatform/oidc
     ports:

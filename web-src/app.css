@@ -936,6 +936,24 @@ tr[class*="tone-"] td:first-child {
 	background: transparent;
 }
 
+/* Sign-in gate. Buttons, inputs and labels are already styled by element. */
+.signin-panel {
+	max-width: 34rem;
+	margin: 10vh auto;
+}
+
+.signin {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	margin-top: var(--gap);
+	align-items: flex-start;
+}
+
+.signin input {
+	width: 100%;
+}
+
 @media (max-width: 720px) {
 	.page-head {
 		flex-direction: column;

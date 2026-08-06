@@ -145,6 +145,49 @@ func TestChunkedUploadStagedPath(t *testing.T) {
 	assert.ErrorIs(t, err, blob.ErrNotFound)
 }
 
+// The size a client declares and the bytes it sends are separate claims. A cap
+// checked only against the declared size lets a client that lies fill the disk.
+func TestChunkedUploadEnforcesItsLimitOnBytesNotClaims(t *testing.T) {
+	for _, tc := range []struct {
+		name  string
+		store func(t *testing.T) blob.Store
+	}{
+		{"direct", func(t *testing.T) blob.Store { return newDiskStore(t) }},
+		{"staged", func(t *testing.T) blob.Store { return &noPutAtStore{Store: newDiskStore(t)} }},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := context.Background()
+			u, err := blob.NewChunkedUpload(tc.store(t), "up/limited")
+			require.NoError(t, err)
+			u.LimitBytes(8)
+
+			require.NoError(t, u.WriteRange(ctx, 0, strings.NewReader("12345")))
+
+			// The second chunk crosses the limit. It is refused as it lands,
+			// not at commit, and not on the strength of a declared size.
+			err = u.WriteRange(ctx, 5, strings.NewReader("6789abcdef"))
+			require.ErrorIs(t, err, blob.ErrTooLarge)
+			assert.Contains(t, err.Error(), "limit of 8")
+
+			require.NoError(t, u.Abort(ctx))
+		})
+	}
+}
+
+func TestChunkedUploadWithinItsLimitIsUnaffected(t *testing.T) {
+	ctx := context.Background()
+	s := newDiskStore(t)
+	u, err := blob.NewChunkedUpload(s, "up/under")
+	require.NoError(t, err)
+	u.LimitBytes(10)
+
+	require.NoError(t, u.WriteRange(ctx, 0, strings.NewReader("hello")))
+	require.NoError(t, u.WriteRange(ctx, 5, strings.NewReader("world")))
+	size, _, err := u.Commit(ctx, 10)
+	require.NoError(t, err)
+	assert.Equal(t, int64(10), size)
+}
+
 func TestChunkedUploadRejectsGapsAndOverlaps(t *testing.T) {
 	ctx := context.Background()
 	t.Run("gap", func(t *testing.T) {

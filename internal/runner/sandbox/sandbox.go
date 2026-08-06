@@ -1,6 +1,3 @@
-// Package sandbox builds one Docker-in-Docker container per job: a privileged
-// container running its own dockerd, with its own image store and network, so
-// nothing a job builds or pulls is visible to the next one.
 package sandbox
 
 import (

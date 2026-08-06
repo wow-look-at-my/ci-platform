@@ -19,6 +19,7 @@ func complete() map[string]string {
 		"CIPLATFORM_APP_PRIVATE_KEY":  "-----BEGIN RSA PRIVATE KEY-----\n",
 		"CIPLATFORM_JOB_TOKEN_SECRET": "job-secret",
 		"CIPLATFORM_RUNNER_TOKEN":     "runner-secret",
+		"CIPLATFORM_OPERATOR_TOKEN":   "operator-secret-long-enough",
 	}
 }
 
@@ -51,6 +52,28 @@ func TestLoad_RejectsAReusedSigningKey(t *testing.T) {
 	assert.Contains(t, err.Error(), "must differ from CIPLATFORM_JOB_TOKEN_SECRET")
 }
 
+// Every job container can route to the control plane, so the operator API's
+// credential must not be one a job or a runner already holds, and must not be
+// short enough to guess.
+func TestLoad_OperatorTokenConstraints(t *testing.T) {
+	tests := []struct {
+		name, val, want string
+	}{
+		{"reused runner token", "runner-secret", "must differ from CIPLATFORM_RUNNER_TOKEN"},
+		{"reused signing key", "job-secret", "must differ from CIPLATFORM_JOB_TOKEN_SECRET"},
+		{"too short", "hunter2", "at least 16 are required"},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			m := complete()
+			m["CIPLATFORM_OPERATOR_TOKEN"] = tc.val
+			_, err := LoadFrom(env(m))
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), tc.want)
+		})
+	}
+}
+
 // One restart per missing variable is a waste of an operator's afternoon, so
 // every problem is reported at once.
 func TestLoad_ReportsEveryMissingValueAtOnce(t *testing.T) {
@@ -65,6 +88,7 @@ func TestLoad_ReportsEveryMissingValueAtOnce(t *testing.T) {
 	for _, name := range []string{
 		"CIPLATFORM_PUBLIC_URL", "CIPLATFORM_DATABASE_URL", "CIPLATFORM_WEBHOOK_SECRET",
 		"CIPLATFORM_APP_ID", "CIPLATFORM_JOB_TOKEN_SECRET", "CIPLATFORM_RUNNER_TOKEN",
+		"CIPLATFORM_OPERATOR_TOKEN",
 	} {
 		assert.Contains(t, msg, name)
 	}

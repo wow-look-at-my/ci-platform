@@ -49,8 +49,21 @@ func (a *app) jobTokenLookup(runID, jobID int64, attempt int) (jobtoken.Job, err
 		Repo:      repo.FullName(),
 		Ref:       refOf(run),
 		Scopes:    scopes,
-		ExpiresAt: time.Now().Add(a.cfg.RunTimeout),
+		ExpiresAt: time.Now().Add(a.jobTokenTTL(job)),
 	}, nil
+}
+
+// jobTokenTTL bounds a job token by the job's own timeout rather than by the
+// run's. A five-minute job holding a six-hour credential is six hours of
+// artifact and cache writes available to anything that captured the token,
+// long after the container that held it is gone. The signer adds its own
+// clock-skew grace on top of this.
+func (a *app) jobTokenTTL(job *model.Job) time.Duration {
+	ttl := time.Duration(job.TimeoutMinutes) * time.Minute
+	if ttl <= 0 {
+		ttl = a.cfg.RunTimeout
+	}
+	return min(ttl, a.cfg.RunTimeout)
 }
 
 // oidcLookup builds the claim set for an ID token. Nothing is defaulted: a

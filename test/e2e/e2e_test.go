@@ -32,6 +32,10 @@ import (
 
 const dbEnv = "CIPLATFORM_TEST_DATABASE_URL"
 
+// operatorToken is what the suite signs its API reads with. The control plane
+// refuses to start without one.
+const operatorToken = "e2e-operator-token-0123456789"
+
 // controlPlane is a running instance under test.
 type controlPlane struct {
 	URL    string
@@ -80,6 +84,7 @@ func start(t *testing.T, workflows map[string]string) *controlPlane {
 		// Deliberately different from the signing key: the control plane
 		// refuses to start if they match.
 		"CIPLATFORM_RUNNER_TOKEN=fedcba9876543210fedcba9876543210",
+		"CIPLATFORM_OPERATOR_TOKEN="+operatorToken,
 		"CIPLATFORM_BLOB_ROOT="+filepath.Join(dir, "blobs"),
 		"CIPLATFORM_OIDC_KEY_PATH="+filepath.Join(dir, "oidc"),
 	)
@@ -159,11 +164,22 @@ func (c *controlPlane) push(t *testing.T, ref, sha string, changed []string) {
 	require.Less(t, resp.StatusCode, 300, "webhook rejected: %s", c.out.String())
 }
 
+// get reads an operator endpoint with the credential, the way a gh-alike
+// client or the signed-in UI would.
+func (c *controlPlane) get(t *testing.T, path string) *http.Response {
+	t.Helper()
+	req, err := http.NewRequest(http.MethodGet, c.URL+path, nil)
+	require.NoError(t, err)
+	req.Header.Set("Authorization", "Bearer "+operatorToken)
+	resp, err := http.DefaultClient.Do(req)
+	require.NoError(t, err)
+	return resp
+}
+
 // runs reads the API the way a gh-alike client would.
 func (c *controlPlane) runs(t *testing.T) []map[string]any {
 	t.Helper()
-	resp, err := http.Get(c.URL + "/api/v1/runs?repo=acme/" + c.repoName)
-	require.NoError(t, err)
+	resp := c.get(t, "/api/v1/runs?repo=acme/"+c.repoName)
 	defer resp.Body.Close()
 	require.Equal(t, http.StatusOK, resp.StatusCode)
 
@@ -283,8 +299,7 @@ func TestHealthEndpoints(t *testing.T) {
 	resp.Body.Close()
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 
-	hz, err := http.Get(cp.URL + "/healthz")
-	require.NoError(t, err)
+	hz := cp.get(t, "/healthz")
 	defer hz.Body.Close()
 	var health struct {
 		Status       string `json:"status"`
@@ -341,6 +356,62 @@ func TestRunnerEndpointRequiresAToken(t *testing.T) {
 	require.NoError(t, err)
 	defer resp.Body.Close()
 	assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
+}
+
+// Every job container can reach this listener -- it has to, to upload an
+// artifact -- so an ungated operator API would let any workflow, a fork PR's
+// included, read every repository's logs and cancel every run. The credential
+// is the boundary; these are the requests a job could make.
+func TestOperatorAPIRefusesAnUncredentialedCaller(t *testing.T) {
+	cp := start(t, map[string]string{".github/workflows/ci.yml": ciWorkflow})
+
+	for _, probe := range []struct{ method, path string }{
+		{http.MethodGet, "/api/v1/runs"},
+		{http.MethodGet, "/api/v1/jobs/1/logs/raw"},
+		{http.MethodGet, "/api/v1/jobs/1/logs/stream"},
+		{http.MethodGet, "/api/v1/artifacts/1/download"},
+		{http.MethodGet, "/api/v1/runners"},
+		{http.MethodGet, "/healthz"},
+		{http.MethodPost, "/api/v1/runs/1/cancel"},
+		{http.MethodPost, "/api/v1/runs/1/rerun"},
+		{http.MethodPost, "/api/v1/jobs/1/cancel"},
+	} {
+		t.Run(probe.method+" "+probe.path, func(t *testing.T) {
+			req, err := http.NewRequest(probe.method, cp.URL+probe.path, bytes.NewReader([]byte(`{"reason":"x"}`)))
+			require.NoError(t, err)
+			req.Header.Set("Content-Type", "application/json")
+
+			resp, err := http.DefaultClient.Do(req)
+			require.NoError(t, err)
+			defer resp.Body.Close()
+			assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
+		})
+	}
+
+	// Signing in with the credential yields a cookie that opens the same API,
+	// which is how the UI's log tail and download links authenticate: an
+	// EventSource cannot set a header.
+	resp, err := http.Post(cp.URL+"/auth/login", "application/json",
+		bytes.NewReader([]byte(`{"token":"`+operatorToken+`"}`)))
+	require.NoError(t, err)
+	defer resp.Body.Close()
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+	cookies := resp.Cookies()
+	require.NotEmpty(t, cookies)
+
+	req, err := http.NewRequest(http.MethodGet, cp.URL+"/api/v1/runs", nil)
+	require.NoError(t, err)
+	req.AddCookie(cookies[0])
+	authed, err := http.DefaultClient.Do(req)
+	require.NoError(t, err)
+	defer authed.Body.Close()
+	assert.Equal(t, http.StatusOK, authed.StatusCode)
+
+	// A wrong credential stays out.
+	bad, err := http.Post(cp.URL+"/auth/login", "application/json", bytes.NewReader([]byte(`{"token":"guess"}`)))
+	require.NoError(t, err)
+	defer bad.Body.Close()
+	assert.Equal(t, http.StatusUnauthorized, bad.StatusCode)
 }
 
 // nextID keeps repo identities distinct across tests in one process.

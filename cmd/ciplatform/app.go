@@ -22,6 +22,7 @@ import (
 	"github.com/wow-look-at-my/ci-platform/internal/logstore"
 	"github.com/wow-look-at-my/ci-platform/internal/model"
 	"github.com/wow-look-at-my/ci-platform/internal/oidc"
+	"github.com/wow-look-at-my/ci-platform/internal/operatorauth"
 	"github.com/wow-look-at-my/ci-platform/internal/plan"
 	"github.com/wow-look-at-my/ci-platform/internal/protocol"
 	"github.com/wow-look-at-my/ci-platform/internal/runnerapi"
@@ -191,10 +192,29 @@ func (a *app) mount(ctx context.Context, cfg *config.Config, st store.Store, sig
 		return fmt.Errorf("web ui: %w", err)
 	}
 
+	// Everything below this line is on the listener job containers reach, so
+	// the operator surface is gated rather than merely unpublished. The
+	// endpoints workflows legitimately call carry their own credentials: the
+	// webhook is HMAC-signed, the runner protocol takes the runner token, and
+	// artifacts, cache and OIDC take a per-job token.
+	operator, err := operatorauth.New(operatorauth.Options{
+		Token:  cfg.OperatorToken,
+		Secure: cfg.PublicURL.Scheme == "https",
+	})
+	if err != nil {
+		return err
+	}
+	gated := operator.Middleware(apiSrv.Handler())
+
 	a.mux.Handle("/webhook", hooks)
 	a.mux.Handle("/runner/v1/", runnerSrv.Handler())
-	a.mux.Handle("/api/v1/", apiSrv.Handler())
-	a.mux.Handle("/healthz", apiSrv.Handler())
+	a.mux.Handle("/auth/", operator.Handler())
+	a.mux.Handle("/api/v1/", gated)
+	a.mux.Handle("/healthz", gated)
+	// Left open deliberately: it answers a status code and the word "ok", so an
+	// orchestrator can probe liveness without holding a credential and without
+	// learning anything a job container did not already know. /healthz, which
+	// names each degraded subsystem, is gated with the rest of the API.
 	a.mux.Handle("/.well-known/docker-updater/health", apiSrv.Handler())
 	a.mux.Handle("/.well-known/jwks.json", idTokens.Handler())
 	a.mux.Handle("/.well-known/openid-configuration", idTokens.Handler())

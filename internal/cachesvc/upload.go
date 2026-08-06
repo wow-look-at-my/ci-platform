@@ -36,6 +36,15 @@ func splitKeys(raw string) []string {
 // handleList is the debug listing the client prints after a miss.
 func (s *Service) handleList(w http.ResponseWriter, r *http.Request) {
 	claims, _ := jobtoken.ClaimsFrom(r.Context())
+	// This lists the repository's cache keys, which is reading the cache even
+	// though it returns no bytes. A fork PR's token carries read scope, so it
+	// still sees the listing; one with neither scope must not.
+	if !claims.CanReadCache() {
+		writeErr(w, http.StatusForbidden, fmt.Sprintf(
+			"%s the job token for job %d carries no cache read scope (cache mode %s)",
+			ReadDeniedPrefix, claims.JobID, ModeForScopes(claims)))
+		return
+	}
 	key := r.URL.Query().Get("key")
 
 	events, err := s.store.ListCacheEvents(r.Context(), claims.RepoID, 100)
@@ -110,6 +119,10 @@ func (s *Service) handleReserve(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusInternalServerError, fmt.Sprintf("cachesvc: open upload for %q: %v", req.Key, err))
 		return
 	}
+	// The declared size checked above is a claim about the body, not the body.
+	// Without this the limit is advisory and a client that lies about its size
+	// writes whatever it likes.
+	upload.LimitBytes(s.maxSize)
 	s.mu.Lock()
 	s.uploads[entry.ID] = upload
 	s.mu.Unlock()

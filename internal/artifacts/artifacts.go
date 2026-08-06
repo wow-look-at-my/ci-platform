@@ -271,6 +271,20 @@ func checkBackendIDs(claims *jobtoken.Claims, runBackendID, jobBackendID string)
 	return nil
 }
 
+// denyWithoutScope answers PermissionDenied and reports true when the job
+// token does not carry the scope a call needs.
+//
+// Every artifact call goes through this: a scope the minter refuses to issue
+// but no handler checks is a permission that exists only in the documentation.
+func denyWithoutScope(w http.ResponseWriter, claims *jobtoken.Claims, scope jobtoken.Scope) bool {
+	if claims.Has(scope) {
+		return false
+	}
+	writeTwirpError(w, CodePermissionDenied, fmt.Sprintf(
+		"artifacts: the job token for job %d lacks the %s scope", claims.JobID, scope))
+	return true
+}
+
 // storageKey is where an artifact's bytes live. The artifact id is in the path
 // so two runs uploading the same name never collide.
 func storageKey(artifactID int64) string {
@@ -291,9 +305,7 @@ func (s *Service) createArtifact(w http.ResponseWriter, r *http.Request, claims 
 		writeTwirpError(w, CodePermissionDenied, *msg)
 		return
 	}
-	if !claims.Has(jobtoken.ScopeArtifactsWrite) {
-		writeTwirpError(w, CodePermissionDenied, fmt.Sprintf(
-			"artifacts: the job token for job %d lacks the %s scope", claims.JobID, jobtoken.ScopeArtifactsWrite))
+	if denyWithoutScope(w, claims, jobtoken.ScopeArtifactsWrite) {
 		return
 	}
 

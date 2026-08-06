@@ -31,6 +31,9 @@ func (s *Service) finalizeArtifact(w http.ResponseWriter, r *http.Request, claim
 		writeTwirpError(w, CodePermissionDenied, *msg)
 		return
 	}
+	if denyWithoutScope(w, claims, jobtoken.ScopeArtifactsWrite) {
+		return
+	}
 	declared, err := parseInt64(req.Size)
 	if err != nil {
 		writeTwirpError(w, CodeInvalidArgument, fmt.Sprintf("artifacts: size %q is not an integer", req.Size.String()))
@@ -96,6 +99,10 @@ func (s *Service) listArtifacts(w http.ResponseWriter, r *http.Request, claims *
 		return
 	}
 
+	if denyWithoutScope(w, claims, jobtoken.ScopeArtifactsRead) {
+		return
+	}
+
 	all, err := s.store.ListArtifacts(r.Context(), claims.RunID)
 	if err != nil {
 		writeTwirpError(w, CodeInternal, fmt.Sprintf("artifacts: list run %d: %v", claims.RunID, err))
@@ -144,6 +151,10 @@ func (s *Service) getSignedURL(w http.ResponseWriter, r *http.Request, claims *j
 		return
 	}
 
+	if denyWithoutScope(w, claims, jobtoken.ScopeArtifactsRead) {
+		return
+	}
+
 	a, err := s.store.FindArtifact(r.Context(), claims.RunID, req.Name)
 	if err != nil || a == nil {
 		writeTwirpError(w, CodeNotFound, fmt.Sprintf(
@@ -180,9 +191,7 @@ func (s *Service) deleteArtifact(w http.ResponseWriter, r *http.Request, claims 
 		writeTwirpError(w, CodePermissionDenied, *msg)
 		return
 	}
-	if !claims.Has(jobtoken.ScopeArtifactsWrite) {
-		writeTwirpError(w, CodePermissionDenied, fmt.Sprintf(
-			"artifacts: the job token for job %d lacks the %s scope", claims.JobID, jobtoken.ScopeArtifactsWrite))
+	if denyWithoutScope(w, claims, jobtoken.ScopeArtifactsWrite) {
 		return
 	}
 

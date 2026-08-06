@@ -1,6 +1,7 @@
 // Entry point: chrome, routing table, and per-page teardown.
 
-import { api } from "./api.js";
+import { api, onUnauthorized } from "./api.js";
+import { logout, renderSignIn, status } from "./auth.js";
 import { el, replace } from "./dom.js";
 import { notFound, route, start } from "./router.js";
 import { applyStoredTheme, themeToggle } from "./widgets.js";
@@ -36,12 +37,20 @@ const registerCleanup = (fn: () => void) => cleanups.push(fn);
 function chrome(): void {
 	const nav = el("nav", { class: "nav" }, ...NAV.map((n) => el("a", { href: n.href }, n.label)));
 	const health = el("span", { class: "health", title: "control plane health" }, "…");
+	const signOut = el("button", {
+		class: "ghost signout",
+		title: "forget this browser's operator session",
+		onclick: () => {
+			void logout().then(() => location.reload());
+		},
+	}, "Sign out");
 	const header = el("header", { class: "topbar" },
 		el("a", { class: "brand", href: "#/runs" }, "CI"),
 		nav,
 		el("div", { class: "spacer" }),
 		health,
 		themeToggle(),
+		signOut,
 	);
 	document.body.insertBefore(header, document.body.firstChild);
 
@@ -78,7 +87,33 @@ function routes(): void {
 	});
 }
 
+// The API is closed to an uncredentialed caller, so the session is checked
+// before anything is painted: without it every panel would render the same
+// unauthorized error, which reads as a broken control plane rather than as a
+// session that ended.
+function signIn(): void {
+	const view = document.getElementById("view")!;
+	for (const fn of cleanups) fn();
+	cleanups = [];
+	document.querySelector("header.topbar")?.remove();
+	renderSignIn(view, () => location.reload());
+}
+
 applyStoredTheme();
-chrome();
-routes();
-start();
+void status()
+	.then((authenticated) => {
+		if (!authenticated) {
+			signIn();
+			return;
+		}
+		onUnauthorized(signIn);
+		chrome();
+		routes();
+		start();
+	})
+	.catch((err: unknown) => {
+		replace(document.getElementById("view")!,
+			el("div", { class: "panel tone-failure", role: "alert" },
+				el("h1", {}, "Control plane unreachable"),
+				el("p", { class: "mono" }, err instanceof Error ? err.message : String(err))));
+	});

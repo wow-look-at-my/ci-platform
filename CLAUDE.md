@@ -40,6 +40,7 @@ conclusion and a sentence explaining itself. Read `docs/incidents.md` first -- t
   actions
   talk to.
 - `internal/api`, `internal/webui`, `web-src`, `cmd/buildweb` -- REST + SSE, and the embedded UI.
+- `internal/operatorauth` -- the gate in front of the REST API and the UI. Job containers can reach this listener, so it is credentialed.
 - `internal/runner`, `cmd/ci-runner` -- the agent, the DinD sandbox, the step executor.
 - - `migrations` -- forward-only numbered SQL, `go:embed`ed and applied by the runner in `internal/store/pg`; an edited applied file is a hard stop,
   not a
@@ -53,6 +54,7 @@ conclusion and a sentence explaining itself. Read `docs/incidents.md` first -- t
 - `docs/architecture.md` -- the two binaries, the request paths, the layering rule.
 - `docs/compatibility.md` -- the GHA compatibility matrix: supported, unsupported, deviating.
 - `docs/deviations.md` -- every deliberate difference from GHA, and the client-imposed constraints we verified rather than assumed.
+- `docs/security.md` -- what credential guards each route, and the boundaries this deliberately does not hold.
 - `docs/format-trajectory.md` -- why the parser targets an IR and what a native frontend would fix.
 
 ## Working here

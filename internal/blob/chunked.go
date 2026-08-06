@@ -23,12 +23,17 @@ type ChunkedUpload struct {
 	store Store
 	key   string
 
-	mu     sync.Mutex
-	ranges []byteRange
-	staged bool
-	probed bool
-	done   bool
+	mu      sync.Mutex
+	ranges  []byteRange
+	written int64
+	max     int64
+	staged  bool
+	probed  bool
+	done    bool
 }
+
+// ErrTooLarge is returned when an upload writes past its limit.
+var ErrTooLarge = errors.New("blob: upload exceeds its size limit")
 
 type byteRange struct{ off, length int64 }
 
@@ -38,6 +43,18 @@ func NewChunkedUpload(s Store, key string) (*ChunkedUpload, error) {
 		return nil, err
 	}
 	return &ChunkedUpload{store: s, key: key}, nil
+}
+
+// LimitBytes caps the bytes this upload will accept, counted as they land.
+// Zero, the default, is no cap.
+//
+// A cap checked only against a client-declared size is advisory: the size in
+// the request and the bytes in the body are separate claims, and only one of
+// them fills the disk.
+func (u *ChunkedUpload) LimitBytes(max int64) {
+	u.mu.Lock()
+	defer u.mu.Unlock()
+	u.max = max
 }
 
 // Staged reports whether chunks are being staged as separate blobs because the
@@ -67,13 +84,17 @@ func (u *ChunkedUpload) WriteRange(ctx context.Context, off int64, r io.Reader) 
 	if u.done {
 		return fmt.Errorf("blob: upload %s already committed", u.key)
 	}
+	// One byte past the budget is enough to prove the limit was exceeded, and
+	// stops a driver from storing the rest of an unbounded body first.
+	if u.max > 0 {
+		r = io.LimitReader(r, max(u.max-u.written, 0)+1)
+	}
 
 	if !u.probed {
 		u.probed = true
 		n, err := u.store.PutAt(ctx, u.key, off, r)
 		if err == nil {
-			u.ranges = append(u.ranges, byteRange{off, n})
-			return nil
+			return u.recorded(off, n)
 		}
 		if !errors.Is(err, ErrUnsupported) {
 			return fmt.Errorf("blob: write chunk at %d of %s: %w", off, u.key, err)
@@ -88,15 +109,24 @@ func (u *ChunkedUpload) WriteRange(ctx context.Context, off int64, r io.Reader) 
 		if err != nil {
 			return fmt.Errorf("blob: write chunk at %d of %s: %w", off, u.key, err)
 		}
-		u.ranges = append(u.ranges, byteRange{off, n})
-		return nil
+		return u.recorded(off, n)
 	}
 
 	n, _, err := u.store.Put(ctx, u.partKey(off), r)
 	if err != nil {
 		return fmt.Errorf("blob: stage chunk at %d of %s: %w", off, u.key, err)
 	}
+	return u.recorded(off, n)
+}
+
+// recorded books a written chunk and fails the upload if it went past the cap.
+// The range is recorded either way, so Abort still finds the bytes to remove.
+func (u *ChunkedUpload) recorded(off, n int64) error {
 	u.ranges = append(u.ranges, byteRange{off, n})
+	u.written += n
+	if u.max > 0 && u.written > u.max {
+		return fmt.Errorf("%w: %s reached %d bytes with a limit of %d", ErrTooLarge, u.key, u.written, u.max)
+	}
 	return nil
 }
 

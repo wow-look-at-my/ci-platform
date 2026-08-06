@@ -96,3 +96,8 @@ artifacts, cache, logs, and OIDC. Installation tokens never reach a job.
 Secrets are injected per job, masked by value in every log line before it leaves
 the runner process, and never written into the workspace. Fork PRs get no
 secrets and no OIDC, and need explicit approval — the same posture as GHA.
+
+That boundary runs both ways: because a job must be able to reach the control
+plane, the operator API and the UI sit behind `CIPLATFORM_OPERATOR_TOKEN`
+(`internal/operatorauth`) rather than relying on network position. Route by
+route, and what this does not defend against: [security.md](security.md).

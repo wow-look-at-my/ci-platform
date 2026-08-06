@@ -74,8 +74,10 @@ type Config struct {
 	// Now is injected so tests get deterministic timing output.
 	Now func() time.Time
 	// Actor names the principal performing a cancel or re-run. The default
-	// reads X-CI-Actor and falls back to "operator"; the lead replaces it with
-	// the authenticated identity once auth lands.
+	// reads X-CI-Actor and falls back to "operator". The header is a display
+	// name the caller chooses, not an identity: what authorises the request is
+	// the operator credential the gate in front of this server already
+	// checked, and every operator shares one.
 	Actor func(*http.Request) string
 	// SSEHeartbeat is how often an SSE stream emits a comment so proxies do
 	// not close an idle tail.

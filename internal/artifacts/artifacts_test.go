@@ -1,11 +1,9 @@
 package artifacts_test
 
 import (
-	"archive/zip"
 	"bytes"
 	"context"
 	"crypto/sha256"
-	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -84,12 +82,18 @@ func newHarness(t *testing.T, mutate func(*artifacts.Options)) *harness {
 // twirp posts a Results API request the way ArtifactServiceClientJSON does.
 func (h *harness) twirp(t *testing.T, method string, body any) *http.Response {
 	t.Helper()
+	return h.twirpAs(t, h.token, method, body)
+}
+
+// twirpAs is twirp with a caller-chosen token, for the scope checks.
+func (h *harness) twirpAs(t *testing.T, token, method string, body any) *http.Response {
+	t.Helper()
 	raw, err := json.Marshal(body)
 	require.NoError(t, err)
 	req, err := http.NewRequest(http.MethodPost, h.srv.URL+artifacts.TwirpPrefix+method, bytes.NewReader(raw))
 	require.NoError(t, err)
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", "Bearer "+h.token)
+	req.Header.Set("Authorization", "Bearer "+token)
 	resp, err := h.srv.Client().Do(req)
 	require.NoError(t, err)
 	t.Cleanup(func() { resp.Body.Close() })
@@ -150,56 +154,6 @@ func TestUploadArtifactV4EndToEnd(t *testing.T) {
 	assert.NotEmpty(t, h.store.eventsOfKind("artifact_finalized"))
 }
 
-// uploadBlocks replays BlockBlobClient.uploadStream: stage each chunk with
-// comp=block, then commit the ordered list with comp=blocklist.
-func uploadBlocks(t *testing.T, client *http.Client, uploadURL string, body []byte, chunk int) {
-	t.Helper()
-	var ids []string
-	for off := 0; off < len(body); off += chunk {
-		end := min(off+chunk, len(body))
-		id := base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("block-%08d", off)))
-		ids = append(ids, id)
-
-		req, err := http.NewRequest(http.MethodPut, uploadURL+"&comp=block&blockid="+id, bytes.NewReader(body[off:end]))
-		require.NoError(t, err)
-		req.Header.Set("x-ms-version", "2021-08-06")
-		resp, err := client.Do(req)
-		require.NoError(t, err)
-		require.Equal(t, http.StatusCreated, resp.StatusCode, "staging a block must return 201")
-		resp.Body.Close()
-	}
-
-	var list strings.Builder
-	list.WriteString(`<?xml version="1.0" encoding="utf-8"?><BlockList>`)
-	for _, id := range ids {
-		fmt.Fprintf(&list, "<Latest>%s</Latest>", id)
-	}
-	list.WriteString("</BlockList>")
-
-	req, err := http.NewRequest(http.MethodPut, uploadURL+"&comp=blocklist", strings.NewReader(list.String()))
-	require.NoError(t, err)
-	req.Header.Set("x-ms-blob-content-type", "application/zip")
-	resp, err := client.Do(req)
-	require.NoError(t, err)
-	defer resp.Body.Close()
-	require.Equal(t, http.StatusCreated, resp.StatusCode, "committing the block list must return 201")
-	assert.NotEmpty(t, resp.Header.Get("ETag"))
-}
-
-func zipBytes(t *testing.T, files map[string]string) []byte {
-	t.Helper()
-	var buf bytes.Buffer
-	zw := zip.NewWriter(&buf)
-	for name, body := range files {
-		w, err := zw.Create(name)
-		require.NoError(t, err)
-		_, err = w.Write([]byte(body))
-		require.NoError(t, err)
-	}
-	require.NoError(t, zw.Close())
-	return buf.Bytes()
-}
-
 // TestDownloadArtifactV4EndToEnd drives downloadArtifactInternal: ListArtifacts
 // with an id filter, GetSignedArtifactURL, then an unauthenticated GET.
 func TestDownloadArtifactV4EndToEnd(t *testing.T) {
@@ -241,33 +195,6 @@ func TestDownloadArtifactV4EndToEnd(t *testing.T) {
 	got, err := io.ReadAll(resp.Body)
 	require.NoError(t, err)
 	assert.Equal(t, payload, got)
-}
-
-// uploadOne runs the whole upload sequence and returns the stored bytes.
-func uploadOne(t *testing.T, h *harness, name string, files map[string]string) []byte {
-	t.Helper()
-	runBackend, jobBackend := backendIDs()
-	resp := h.twirp(t, "CreateArtifact", map[string]any{
-		"workflow_run_backend_id":     runBackend,
-		"workflow_job_run_backend_id": jobBackend,
-		"name":                        name,
-	})
-	require.Equal(t, http.StatusOK, resp.StatusCode)
-	created := decode[artifacts.CreateArtifactResponse](t, resp)
-
-	payload := zipBytes(t, files)
-	uploadBlocks(t, h.srv.Client(), created.SignedUploadURL, payload, 1<<20)
-
-	sum := sha256.Sum256(payload)
-	fin := h.twirp(t, "FinalizeArtifact", map[string]any{
-		"workflow_run_backend_id":     runBackend,
-		"workflow_job_run_backend_id": jobBackend,
-		"name":                        name,
-		"size":                        fmt.Sprintf("%d", len(payload)),
-		"hash":                        "sha256:" + hex.EncodeToString(sum[:]),
-	})
-	require.Equal(t, http.StatusOK, fin.StatusCode)
-	return payload
 }
 
 func TestSingleShotBlobUpload(t *testing.T) {

@@ -111,6 +111,15 @@ func TestCacheModeIsEnforcedServerSide(t *testing.T) {
 		assert.Equal(t, http.StatusForbidden,
 			h.postJSON(t, cachesvc.PathCaches, cachesvc.ReserveCacheRequest{Key: "k", Version: version}).StatusCode)
 	})
+
+	// The listing returns no bytes, which is exactly why it was missed: it
+	// still hands a caller with no cache scope this repository's cache keys.
+	t.Run("listing needs read scope too", func(t *testing.T) {
+		h := newHarness(t, []jobtoken.Scope{jobtoken.ScopeLogsWrite}, nil)
+		resp := h.do(t, http.MethodGet, cachesvc.PathCaches, nil, nil)
+		require.Equal(t, http.StatusForbidden, resp.StatusCode)
+		assert.Contains(t, decode[map[string]string](t, resp)["message"], "no cache read scope")
+	})
 }
 
 func TestModeForScopes(t *testing.T) {

@@ -41,9 +41,16 @@ POSTGRES_PASSWORD=$(openssl rand -hex 16)
 CIPLATFORM_WEBHOOK_SECRET=<the secret you invented>
 CIPLATFORM_APP_ID=<your app id>
 CIPLATFORM_JOB_TOKEN_SECRET=$(openssl rand -hex 32)
-CI_RUNNER_TOKEN=$(openssl rand -hex 32)   # must differ from the job token secret
+CI_RUNNER_TOKEN=$(openssl rand -hex 32)
+CIPLATFORM_OPERATOR_TOKEN=$(openssl rand -hex 32)
 CIPLATFORM_PUBLIC_URL=http://ci.localhost:8080
 ```
+
+Those three secrets must be three different values; the control plane refuses to
+start otherwise. `CIPLATFORM_OPERATOR_TOKEN` is what you sign into the web UI
+with, and what a script sends as `Authorization: Bearer`. The API is closed
+without it because every job container can reach this server —
+[docs/security.md](docs/security.md).
 
 The public URL's hostname must end in `.localhost` or `.ghe.com`. That is a
 constraint the official `actions/upload-artifact` imposes on any non-github.com
@@ -55,8 +62,9 @@ server, not a preference of ours — see [docs/deviations.md](docs/deviations.md
 docker compose up -d --build
 ```
 
-**4. Install the App** on a repository and push. The run appears at
-`http://ci.localhost:8080`, and the check runs appear on the commit.
+**4. Install the App** on a repository and push. Open
+`http://ci.localhost:8080`, sign in with the operator credential, and the run is
+there; the check runs appear on the commit.
 
 Add capacity with `docker compose up -d --scale runner=4`.
 
@@ -69,6 +77,8 @@ Add capacity with `docker compose up -d --scale runner=4`.
   supported, what is not, and what deviates.
 - [docs/deviations.md](docs/deviations.md) — every deliberate difference, and the
   client-imposed constraints we verified rather than assumed.
+- [docs/security.md](docs/security.md) — what guards each route, and what this
+  deliberately does not defend against.
 
 ## Scope
 

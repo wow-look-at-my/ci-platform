@@ -14,6 +14,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/wow-look-at-my/ci-platform/internal/operatorauth"
 )
 
 // Config is the control plane's resolved configuration.
@@ -39,6 +41,11 @@ type Config struct {
 	// the control plane, so reusing the signing key would put the key that
 	// mints every job's credentials on every runner host.
 	RunnerToken string
+	// OperatorToken gates the REST API and the UI. Every job container can
+	// route to this instance -- it has to, to upload artifacts -- so an
+	// ungated /api/v1 is reachable from inside any workflow, including a fork
+	// PR's.
+	OperatorToken string
 	// RequireForkApproval holds a fork PR's jobs until a maintainer approves.
 	// On by default: a fork PR is a stranger's code on your runners.
 	RequireForkApproval bool
@@ -87,6 +94,7 @@ func LoadFrom(env Getenv) (*Config, error) {
 		AllowEphemeralStore: l.bool("CIPLATFORM_ALLOW_EPHEMERAL_STORE", false),
 		WebhookSecret:       l.required("CIPLATFORM_WEBHOOK_SECRET", "the shared secret GitHub signs webhook deliveries with"),
 		RunnerToken:         l.required("CIPLATFORM_RUNNER_TOKEN", "the shared secret runner agents authenticate with; it must differ from the job token signing key"),
+		OperatorToken:       l.required("CIPLATFORM_OPERATOR_TOKEN", "the credential for the REST API and the web UI; without it every job container could read every repository's logs"),
 		RequireForkApproval: l.bool("CIPLATFORM_REQUIRE_FORK_APPROVAL", true),
 		BlobDriver:          l.enum("CIPLATFORM_BLOB_DRIVER", "disk", "disk", "s3"),
 		BlobRoot:            l.str("CIPLATFORM_BLOB_ROOT", "/var/lib/ciplatform/blobs"),
@@ -153,6 +161,25 @@ func (c *Config) Validate() error {
 		return errors.New("config: CIPLATFORM_RUNNER_TOKEN must differ from CIPLATFORM_JOB_TOKEN_SECRET; " +
 			"the runner token is stored on every runner host, and reusing the signing key there would let " +
 			"anyone holding it mint a job token for any repository")
+	}
+	// The operator token is typed into a browser and pasted into scripts. Each
+	// of the other two reaches somewhere it must not: the runner token is on
+	// every runner host, and the signing key mints every job's credentials.
+	if c.OperatorToken != "" {
+		for _, other := range []struct{ name, val string }{
+			{"CIPLATFORM_RUNNER_TOKEN", c.RunnerToken},
+			{"CIPLATFORM_JOB_TOKEN_SECRET", string(c.JobTokenSecret)},
+		} {
+			if c.OperatorToken == other.val {
+				return fmt.Errorf("config: CIPLATFORM_OPERATOR_TOKEN must differ from %s; "+
+					"sharing one value means anything holding either one holds both", other.name)
+			}
+		}
+		if len(c.OperatorToken) < operatorauth.MinTokenLen {
+			return fmt.Errorf("config: CIPLATFORM_OPERATOR_TOKEN is %d characters; at least %d are required, "+
+				"because it is the only thing protecting every repository's logs and artifacts",
+				len(c.OperatorToken), operatorauth.MinTokenLen)
+		}
 	}
 	if c.HeartbeatInterval >= c.LeaseTTL {
 		return fmt.Errorf("config: heartbeat interval %s must be shorter than lease TTL %s, "+
