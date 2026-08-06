@@ -167,10 +167,8 @@ func TestThisRepositoryOwnWorkflowIsRefusedForANamedReason(t *testing.T) {
 	got := analyse(".github/workflows/ci.yml", src)
 	require.Empty(t, got.ParseError, "our own CI must at least parse")
 
-	if got.Supported {
-		t.Fatal("our own CI is now fully supported: flip this test to assert that, " +
-			"and update the known-gap note in docs/compatibility.md")
-	}
+	require.False(t, got.Supported)
+
 	joined := strings.Join(got.Unsupported, "\n")
 	assert.Contains(t, joined, "service containers is not implemented")
 	assert.Contains(t, joined, "jobs.e2e.services.postgres",

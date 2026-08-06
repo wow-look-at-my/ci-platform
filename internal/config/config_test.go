@@ -18,6 +18,7 @@ func complete() map[string]string {
 		"CIPLATFORM_APP_ID":           "12345",
 		"CIPLATFORM_APP_PRIVATE_KEY":  "-----BEGIN RSA PRIVATE KEY-----\n",
 		"CIPLATFORM_JOB_TOKEN_SECRET": "job-secret",
+		"CIPLATFORM_RUNNER_TOKEN":     "runner-secret",
 	}
 }
 
@@ -35,6 +36,19 @@ func TestLoad_Complete(t *testing.T) {
 	assert.Equal(t, 90*time.Second, c.LeaseTTL)
 	assert.Equal(t, "https://api.github.com", c.GitHubAPIURL.String())
 	assert.False(t, c.AllowEphemeralStore)
+	assert.True(t, c.RequireForkApproval, "a fork PR is a stranger's code, so the gate is on by default")
+}
+
+// The runner token is stored on every runner host and sent to the control
+// plane. Reusing the job-token signing key there would put the key that mints
+// every job's credentials on every runner.
+func TestLoad_RejectsAReusedSigningKey(t *testing.T) {
+	m := complete()
+	m["CIPLATFORM_RUNNER_TOKEN"] = m["CIPLATFORM_JOB_TOKEN_SECRET"]
+
+	_, err := LoadFrom(env(m))
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "must differ from CIPLATFORM_JOB_TOKEN_SECRET")
 }
 
 // One restart per missing variable is a waste of an operator's afternoon, so
@@ -50,7 +64,7 @@ func TestLoad_ReportsEveryMissingValueAtOnce(t *testing.T) {
 	msg := err.Error()
 	for _, name := range []string{
 		"CIPLATFORM_PUBLIC_URL", "CIPLATFORM_DATABASE_URL", "CIPLATFORM_WEBHOOK_SECRET",
-		"CIPLATFORM_APP_ID", "CIPLATFORM_JOB_TOKEN_SECRET",
+		"CIPLATFORM_APP_ID", "CIPLATFORM_JOB_TOKEN_SECRET", "CIPLATFORM_RUNNER_TOKEN",
 	} {
 		assert.Contains(t, msg, name)
 	}

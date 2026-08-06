@@ -83,15 +83,16 @@ func newApp(ctx context.Context, cfg *config.Config, log *slog.Logger) (*app, er
 	}
 
 	a.sched = scheduler.New(st, scheduler.Options{
-		NewEval:           newEvaluator,
-		MintJobToken:      signer.Mint,
-		ServiceEnv:        a.serviceEnv,
-		Notify:            a.notify,
-		LeaseTTL:          cfg.LeaseTTL,
-		SetupTimeout:      cfg.SetupTimeout,
-		DefaultJobTimeout: 6 * time.Hour,
-		RunTimeout:        cfg.RunTimeout,
-		ServerURL:         cfg.PublicURL.String(),
+		NewEval:             newEvaluator,
+		MintJobToken:        signer.Mint,
+		ServiceEnv:          a.serviceEnv,
+		Notify:              a.notify,
+		LeaseTTL:            cfg.LeaseTTL,
+		SetupTimeout:        cfg.SetupTimeout,
+		DefaultJobTimeout:   6 * time.Hour,
+		RunTimeout:          cfg.RunTimeout,
+		ServerURL:           cfg.PublicURL.String(),
+		RequireForkApproval: cfg.RequireForkApproval,
 	})
 
 	if err := a.mount(ctx, cfg, st, signer, ghApp); err != nil {
@@ -154,7 +155,7 @@ func (a *app) mount(ctx context.Context, cfg *config.Config, st store.Store, sig
 
 	runnerSrv, err := runnerapi.New(runnerapi.Options{
 		Store: st, Scheduler: schedulerAdapter{a.sched}, Logs: a.logs,
-		Token:             string(cfg.JobTokenSecret),
+		Token:             cfg.RunnerToken,
 		LeaseTTL:          cfg.LeaseTTL,
 		HeartbeatInterval: cfg.HeartbeatInterval,
 		Logger:            a.log,

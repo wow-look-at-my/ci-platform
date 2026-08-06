@@ -130,7 +130,7 @@ type Claims struct {
 	Repository           string `json:"repository"`
 	RepositoryOwner      string `json:"repository_owner"`
 	RepositoryID         string `json:"repository_id"`
-	RepositoryOwnerID    string `json:"repository_owner_id"`
+	RepositoryOwnerID    string `json:"repository_owner_id,omitempty"`
 	RepositoryVisibility string `json:"repository_visibility"`
 
 	Ref     string `json:"ref"`
@@ -138,7 +138,7 @@ type Claims struct {
 	SHA     string `json:"sha"`
 
 	Actor   string `json:"actor"`
-	ActorID string `json:"actor_id"`
+	ActorID string `json:"actor_id,omitempty"`
 
 	Workflow       string `json:"workflow"`
 	WorkflowRef    string `json:"workflow_ref"`
@@ -230,6 +230,16 @@ func (s *Service) Handler() http.Handler {
 	return mux
 }
 
+// optionalID renders an id, or nothing when it is unknown. Emitting "0" would
+// be a claim that matches every job on the platform, which is worse than an
+// absent claim a relying party can reject.
+func optionalID(v int64) string {
+	if v == 0 {
+		return ""
+	}
+	return strconv.FormatInt(v, 10)
+}
+
 // SubjectFor builds the sub claim using GitHub's grammar. Environment wins
 // over event, and a pull_request has no ref form.
 func SubjectFor(sub *Subject) string {
@@ -264,13 +274,13 @@ func (s *Service) Issue(sub *Subject, audience string) (string, error) {
 		Repository:           sub.Repository,
 		RepositoryOwner:      sub.RepositoryOwner,
 		RepositoryID:         strconv.FormatInt(sub.RepositoryID, 10),
-		RepositoryOwnerID:    strconv.FormatInt(sub.RepositoryOwnerID, 10),
+		RepositoryOwnerID:    optionalID(sub.RepositoryOwnerID),
 		RepositoryVisibility: sub.RepositoryVisibility,
 		Ref:                  sub.Ref,
 		RefType:              sub.RefType,
 		SHA:                  sub.SHA,
 		Actor:                sub.Actor,
-		ActorID:              strconv.FormatInt(sub.ActorID, 10),
+		ActorID:              optionalID(sub.ActorID),
 		Workflow:             sub.Workflow,
 		WorkflowRef:          sub.WorkflowRef,
 		JobWorkflowRef:       sub.JobWorkflowRef,

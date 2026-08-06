@@ -34,6 +34,14 @@ type Config struct {
 	AppPrivateKey  []byte
 	WebhookSecret  string
 	JobTokenSecret []byte
+	// RunnerToken authenticates runner agents. It is deliberately NOT the job
+	// token signing key: the runner holds this value on disk and sends it to
+	// the control plane, so reusing the signing key would put the key that
+	// mints every job's credentials on every runner host.
+	RunnerToken string
+	// RequireForkApproval holds a fork PR's jobs until a maintainer approves.
+	// On by default: a fork PR is a stranger's code on your runners.
+	RequireForkApproval bool
 
 	BlobDriver string // disk | s3
 	BlobRoot   string
@@ -78,6 +86,8 @@ func LoadFrom(env Getenv) (*Config, error) {
 		DatabaseURL:         l.required("CIPLATFORM_DATABASE_URL", "the Postgres DSN holding runs, jobs, and the durable queue"),
 		AllowEphemeralStore: l.bool("CIPLATFORM_ALLOW_EPHEMERAL_STORE", false),
 		WebhookSecret:       l.required("CIPLATFORM_WEBHOOK_SECRET", "the shared secret GitHub signs webhook deliveries with"),
+		RunnerToken:         l.required("CIPLATFORM_RUNNER_TOKEN", "the shared secret runner agents authenticate with; it must differ from the job token signing key"),
+		RequireForkApproval: l.bool("CIPLATFORM_REQUIRE_FORK_APPROVAL", true),
 		BlobDriver:          l.enum("CIPLATFORM_BLOB_DRIVER", "disk", "disk", "s3"),
 		BlobRoot:            l.str("CIPLATFORM_BLOB_ROOT", "/var/lib/ciplatform/blobs"),
 		S3Endpoint:          l.str("CIPLATFORM_S3_ENDPOINT", ""),
@@ -137,6 +147,12 @@ func (c *Config) Validate() error {
 	if !ArtifactClientAccepts(c.PublicURL.Hostname()) {
 		return fmt.Errorf("%w: %q would make actions/upload-artifact@v4 throw GHESNotSupportedError "+
 			"before issuing a request (see docs/deviations.md)", ErrGHESHostname, c.PublicURL.Hostname())
+	}
+	// The runner token travels to every runner host; the signing key must not.
+	if c.RunnerToken != "" && c.RunnerToken == string(c.JobTokenSecret) {
+		return errors.New("config: CIPLATFORM_RUNNER_TOKEN must differ from CIPLATFORM_JOB_TOKEN_SECRET; " +
+			"the runner token is stored on every runner host, and reusing the signing key there would let " +
+			"anyone holding it mint a job token for any repository")
 	}
 	if c.HeartbeatInterval >= c.LeaseTTL {
 		return fmt.Errorf("config: heartbeat interval %s must be shorter than lease TTL %s, "+

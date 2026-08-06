@@ -270,31 +270,32 @@ func TestHeartbeat_ReportsALostLease(t *testing.T) {
 
 func TestLogsAppend(t *testing.T) {
 	h := newHarness(t)
+	_, _, job := seedLeasedJob(t, h.st)
 	var out map[string]int64
 	code := h.post(t, protocol.PathLogs, protocol.LogBatch{
-		JobID: 1, Attempt: 1,
+		RunnerID: "runner-a", JobID: job.ID, Attempt: 1,
 		Lines: []model.LogLine{{Seq: 1, Text: "hello"}, {Seq: 2, Text: "world"}},
 	}, &out)
 	require.Equal(t, http.StatusOK, code)
 	assert.Equal(t, int64(2), out["last_seq"])
 	assert.Len(t, h.logs.lines, 2)
 
-	code = h.post(t, protocol.PathLogs, protocol.LogBatch{JobID: 1, Attempt: 1}, &out)
+	code = h.post(t, protocol.PathLogs, protocol.LogBatch{RunnerID: "runner-a", JobID: job.ID, Attempt: 1}, &out)
 	assert.Equal(t, http.StatusOK, code, "an empty batch is a no-op")
 }
 
 func TestStepLifecycleRecordsTheClassification(t *testing.T) {
 	h := newHarness(t)
 	ctx := context.Background()
-	_, _, job := seedQueuedJob(t, h.st)
+	_, _, job := seedLeasedJob(t, h.st)
 
 	code := h.post(t, protocol.PathStepStart, protocol.StepStartRequest{
-		JobID: job.ID, Attempt: 1, Number: 1, Name: "build", LogStart: 0,
+		RunnerID: "runner-a", JobID: job.ID, Attempt: 1, Number: 1, Name: "build", LogStart: 0,
 	}, nil)
 	require.Equal(t, http.StatusOK, code)
 
 	code = h.post(t, protocol.PathStepEnd, protocol.StepEndRequest{
-		JobID: job.ID, Attempt: 1, Number: 1,
+		RunnerID: "runner-a", JobID: job.ID, Attempt: 1, Number: 1,
 		Conclusion:  model.ConclusionInfraFailure,
 		Class:       model.ClassInfra,
 		ClassReason: `classified infra via rule "cloudflare-524": the remote returned HTTP 524`,
@@ -325,14 +326,14 @@ func TestStepLifecycleRecordsTheClassification(t *testing.T) {
 func TestSetupPhaseIsRecordedWithItsBreakdown(t *testing.T) {
 	h := newHarness(t)
 	ctx := context.Background()
-	_, _, job := seedQueuedJob(t, h.st)
+	_, _, job := seedLeasedJob(t, h.st)
 
 	require.Equal(t, http.StatusOK, h.post(t, protocol.PathSetup, protocol.SetupRequest{
-		JobID: job.ID, Attempt: 1, Phase: "started",
+		RunnerID: "runner-a", JobID: job.ID, Attempt: 1, Phase: "started",
 	}, nil))
 
 	require.Equal(t, http.StatusOK, h.post(t, protocol.PathSetup, protocol.SetupRequest{
-		JobID: job.ID, Attempt: 1, Phase: "completed",
+		RunnerID: "runner-a", JobID: job.ID, Attempt: 1, Phase: "completed",
 		Breakdown: map[string]protocol.Duration{
 			"container_create": protocol.Duration(2 * time.Second),
 			"image_pull":       protocol.Duration(5 * time.Minute),
@@ -373,11 +374,11 @@ func TestComplete_RequiresAReasonWhenCancelled(t *testing.T) {
 
 func TestComplete_ForwardsTheClassification(t *testing.T) {
 	h := newHarness(t)
-	_, _, job := seedQueuedJob(t, h.st)
+	_, _, job := seedLeasedJob(t, h.st)
 
 	var out protocol.CompleteResponse
 	code := h.post(t, protocol.PathComplete, protocol.CompleteRequest{
-		JobID: job.ID, Attempt: 1,
+		RunnerID: "runner-a", JobID: job.ID, Attempt: 1,
 		Conclusion:        model.ConclusionInfraFailure,
 		Class:             model.ClassInfra,
 		ClassReason:       "registry responded 524",
@@ -412,10 +413,10 @@ func TestRelease_RequiresAReason(t *testing.T) {
 func TestAnnotate(t *testing.T) {
 	h := newHarness(t)
 	ctx := context.Background()
-	_, _, job := seedQueuedJob(t, h.st)
+	_, _, job := seedLeasedJob(t, h.st)
 
 	code := h.post(t, protocol.PathAnnotate, protocol.AnnotateRequest{
-		JobID: job.ID, Attempt: 1,
+		RunnerID: "runner-a", JobID: job.ID, Attempt: 1,
 		Annotations: []model.Annotation{{
 			Path: "main.go", StartLine: 3, EndLine: 3,
 			Level: model.AnnotationFailure, Message: "undefined: foo",
@@ -428,7 +429,7 @@ func TestAnnotate(t *testing.T) {
 	require.Len(t, as, 1)
 	assert.Equal(t, "main.go", as[0].Path)
 
-	code = h.post(t, protocol.PathAnnotate, protocol.AnnotateRequest{JobID: job.ID}, nil)
+	code = h.post(t, protocol.PathAnnotate, protocol.AnnotateRequest{RunnerID: "runner-a", JobID: job.ID, Attempt: 1}, nil)
 	assert.Equal(t, http.StatusOK, code, "an empty batch is a no-op")
 }
 
@@ -466,5 +467,15 @@ func seedQueuedJob(t *testing.T, st store.Store) (*model.Repo, *model.Run, *mode
 		JobID: job.ID, RunID: run.ID, Attempt: job.Attempt,
 		Labels: []string{"linux"}, QueuedAt: time.Now().UTC(),
 	}))
+	return repo, run, job
+}
+
+// seedLeasedJob seeds a job and gives runner-a the lease, which every
+// job-scoped write now requires.
+func seedLeasedJob(t *testing.T, st store.Store) (*model.Repo, *model.Run, *model.Job) {
+	t.Helper()
+	repo, run, job := seedQueuedJob(t, st)
+	_, err := st.Dequeue(context.Background(), "runner-a", []string{"linux"}, time.Minute)
+	require.NoError(t, err)
 	return repo, run, job
 }

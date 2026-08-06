@@ -35,6 +35,9 @@ services:
       CIPLATFORM_APP_ID: ${CIPLATFORM_APP_ID:?set CIPLATFORM_APP_ID in .env}
       CIPLATFORM_APP_PRIVATE_KEY_PATH: /run/secrets/app-private-key.pem
       CIPLATFORM_JOB_TOKEN_SECRET: ${CIPLATFORM_JOB_TOKEN_SECRET:?set CIPLATFORM_JOB_TOKEN_SECRET in .env}
+      # Distinct from the signing key above, and checked at startup: this one
+      # is stored on every runner host.
+      CIPLATFORM_RUNNER_TOKEN: ${CI_RUNNER_TOKEN:?set CI_RUNNER_TOKEN in .env}
       CIPLATFORM_BLOB_ROOT: /var/lib/ciplatform/blobs
       CIPLATFORM_OIDC_KEY_PATH: /var/lib/ciplatform/oidc
     ports:

@@ -21,7 +21,11 @@ import (
 // workflow. It is the smallest thing that can exercise the reliability layer
 // without a runner process.
 type rig struct {
-	t     *testing.T
+	t *testing.T
+	// base is wall-clock, not the fixed epoch: the store stamps leases from
+	// time.Now(), so a rig anchored to a fixed date drifts out of the run
+	// timeout as the day goes on and starts failing in the afternoon.
+	base  time.Time
 	st    store.Store
 	s     *scheduler.Scheduler
 	run   *model.Run
@@ -33,6 +37,7 @@ func newRig(t *testing.T, src string) *rig {
 	t.Helper()
 	ctx := context.Background()
 	st := mem.New()
+	base := time.Now().UTC()
 
 	repo := &model.Repo{ID: 7, Owner: "acme", Name: "widget", DefaultBranch: "main"}
 	require.NoError(t, st.UpsertRepo(ctx, repo))
@@ -42,14 +47,14 @@ func newRig(t *testing.T, src string) *rig {
 		WorkflowName: "CI", WorkflowPath: ".github/workflows/ci.yml",
 		RunNumber: 1, Attempt: 1, Event: "push",
 		HeadSHA: "deadbeef", HeadBranch: "main", Actor: "alex",
-		Status: model.StatusQueued, CreatedAt: epoch,
+		Status: model.StatusQueued, CreatedAt: base,
 	}
 	require.NoError(t, st.CreateRun(ctx, run))
 
 	w, err := workflow.Parse(".github/workflows/ci.yml", []byte(src))
 	require.NoError(t, err)
 
-	r := &rig{t: t, st: st, run: run}
+	r := &rig{t: t, base: base, st: st, run: run}
 	r.s = scheduler.New(st, scheduler.Options{
 		NewEval:      newEval,
 		MintJobToken: func(int64, int64, int) (string, error) { return "job-token", nil },
@@ -115,7 +120,7 @@ func TestIncident2_LostRunnerRequeuesRatherThanFailing(t *testing.T) {
 	ctx := context.Background()
 	r := newRig(t, oneJob)
 
-	require.NoError(t, r.s.Tick(ctx, epoch))
+	require.NoError(t, r.s.Tick(ctx, r.base))
 	job := r.job("build")
 	require.Equal(t, model.StatusQueued, job.Status)
 
@@ -128,7 +133,7 @@ func TestIncident2_LostRunnerRequeuesRatherThanFailing(t *testing.T) {
 	// Past the lease, the reaper puts the work back. The store stamps leases
 	// from the wall clock, so the tick that reaps them has to be wall-clock
 	// relative rather than relative to the test's fixed epoch.
-	require.NoError(t, r.s.Tick(ctx, time.Now().Add(5*time.Minute)))
+	require.NoError(t, r.s.Tick(ctx, r.base.Add(5*time.Minute)))
 
 	after := r.job("build")
 	assert.Equal(t, model.StatusQueued, after.Status,
@@ -160,7 +165,7 @@ func TestIncident2_LostRunnerRequeuesRatherThanFailing(t *testing.T) {
 func TestIncident3_CancellationRecordsItsReasonEverywhere(t *testing.T) {
 	ctx := context.Background()
 	r := newRig(t, oneJob)
-	require.NoError(t, r.s.Tick(ctx, epoch))
+	require.NoError(t, r.s.Tick(ctx, r.base))
 
 	reason := model.CancelReason{
 		Actor:       model.CancelActorUser,
@@ -197,7 +202,7 @@ func TestIncident3_CancellationRecordsItsReasonEverywhere(t *testing.T) {
 func TestCancellationWithoutAReasonIsRefused(t *testing.T) {
 	ctx := context.Background()
 	r := newRig(t, oneJob)
-	require.NoError(t, r.s.Tick(ctx, epoch))
+	require.NoError(t, r.s.Tick(ctx, r.base))
 
 	require.Error(t, r.s.Cancel(ctx, r.run.ID, model.CancelReason{Actor: model.CancelActorUser}),
 		"an actor with no sentence must be refused")
@@ -212,8 +217,24 @@ func TestCancellationWithoutAReasonIsRefused(t *testing.T) {
 // failure never does.
 func TestInfraFailureRetriesAndUserFailureDoesNot(t *testing.T) {
 	ctx := context.Background()
-	r := newRig(t, oneJob)
-	require.NoError(t, r.s.Tick(ctx, epoch))
+	// A short, explicit backoff so the test can prove the delay is honoured
+	// without waiting out the default five seconds.
+	r := newRig(t, `name: CI
+on: push
+jobs:
+  build:
+    runs-on: [linux]
+    retry:
+      attempts: 3
+      on: [infra]
+      backoff: fixed
+      initial: 150ms
+      max: 150ms
+      jitter: false
+    steps:
+      - run: make build
+`)
+	require.NoError(t, r.s.Tick(ctx, r.base))
 	id := r.job("build").ID
 
 	_, err := r.st.Dequeue(ctx, "runner-a", []string{"linux"}, time.Minute)
@@ -223,7 +244,9 @@ func TestInfraFailureRetriesAndUserFailureDoesNot(t *testing.T) {
 		Conclusion:  model.ConclusionInfraFailure,
 		Class:       model.ClassInfra,
 		ClassReason: `classified infra via rule "cloudflare-524": the remote returned HTTP 524`,
-	}, epoch.Add(time.Minute)))
+		// Completed at the rig's wall-clock base so the backoff it schedules is
+		// measured from now; the store dispatches on the real clock.
+	}, r.base))
 
 	retried := r.job("build")
 	assert.NotEqual(t, model.StatusCompleted, retried.Status, "an infra failure is retried, not concluded")
@@ -239,14 +262,21 @@ func TestInfraFailureRetriesAndUserFailureDoesNot(t *testing.T) {
 	}
 	assert.True(t, explained, "the classification decision must be recorded: %+v", r.events(id))
 
-	// A user failure on the next attempt concludes immediately.
-	require.NoError(t, r.s.Tick(ctx, time.Now().Add(10*time.Minute)))
+	// The backoff is real: until it elapses the job is not dispatchable. Before
+	// this was fixed the retry kept the previous attempt's leased queue row, so
+	// NotBefore was discarded and the retry ran instantly.
 	_, err = r.st.Dequeue(ctx, "runner-b", []string{"linux"}, time.Minute)
-	require.NoError(t, err)
+	require.ErrorIs(t, err, store.ErrNotFound, "the retry must wait out its backoff")
+
+	time.Sleep(200 * time.Millisecond)
+
+	// A user failure on the next attempt concludes immediately.
+	_, err = r.st.Dequeue(ctx, "runner-b", []string{"linux"}, time.Minute)
+	require.NoError(t, err, "once the backoff elapses the retry is dispatchable")
 	require.NoError(t, r.s.JobCompletedAt(ctx, id, scheduler.Result{
 		Conclusion: model.ConclusionFailure,
 		Class:      model.ClassUser,
-	}, epoch.Add(11*time.Minute)))
+	}, r.base.Add(time.Minute)))
 
 	done := r.job("build")
 	assert.Equal(t, model.StatusCompleted, done.Status)
@@ -259,7 +289,7 @@ func TestInfraFailureRetriesAndUserFailureDoesNot(t *testing.T) {
 func TestIncident5_DefaultBranchFailureFiresTheAlarm(t *testing.T) {
 	ctx := context.Background()
 	r := newRig(t, oneJob)
-	require.NoError(t, r.s.Tick(ctx, epoch))
+	require.NoError(t, r.s.Tick(ctx, r.base))
 	id := r.job("build").ID
 
 	_, err := r.st.Dequeue(ctx, "runner-a", []string{"linux"}, time.Minute)
@@ -267,8 +297,8 @@ func TestIncident5_DefaultBranchFailureFiresTheAlarm(t *testing.T) {
 	require.NoError(t, r.s.JobCompletedAt(ctx, id, scheduler.Result{
 		Conclusion: model.ConclusionFailure,
 		Class:      model.ClassUser,
-	}, epoch.Add(time.Minute)))
-	require.NoError(t, r.s.Tick(ctx, epoch.Add(2*time.Minute)))
+	}, r.base.Add(time.Minute)))
+	require.NoError(t, r.s.Tick(ctx, r.base.Add(2*time.Minute)))
 
 	require.NotEmpty(t, r.notes, "a failed run on the default branch must notify, not sit silently in a list")
 	n := r.notes[0]
@@ -289,7 +319,7 @@ jobs:
     steps:
       - run: make build
 `)
-	require.NoError(t, r.s.Tick(ctx, epoch))
+	require.NoError(t, r.s.Tick(ctx, r.base))
 
 	job := r.job("build")
 	require.Equal(t, model.ConclusionSkipped, job.Conclusion)

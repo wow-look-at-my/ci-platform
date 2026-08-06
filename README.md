@@ -41,7 +41,7 @@ POSTGRES_PASSWORD=$(openssl rand -hex 16)
 CIPLATFORM_WEBHOOK_SECRET=<the secret you invented>
 CIPLATFORM_APP_ID=<your app id>
 CIPLATFORM_JOB_TOKEN_SECRET=$(openssl rand -hex 32)
-CI_RUNNER_TOKEN=$(openssl rand -hex 32)
+CI_RUNNER_TOKEN=$(openssl rand -hex 32)   # must differ from the job token secret
 CIPLATFORM_PUBLIC_URL=http://ci.localhost:8080
 ```
 

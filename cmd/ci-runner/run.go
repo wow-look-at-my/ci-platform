@@ -21,18 +21,22 @@ import (
 
 // config is every setting the runner takes, from flags or environment.
 type config struct {
-	url            string
-	token          string
-	name           string
-	id             string
-	labels         string
-	group          string
-	capacity       int
-	stateDir       string
-	dockerHost     string
-	imageCacheVol  string
-	sandboxImage   string
-	actionsAPI     string
+	url           string
+	token         string
+	name          string
+	id            string
+	labels        string
+	group         string
+	capacity      int
+	stateDir      string
+	dockerHost    string
+	imageCacheVol string
+	sandboxImage  string
+	actionsAPI    string
+	// actionsToken is a separate credential from the control-plane token: it is
+	// sent to an external host on every uses: resolution, so reusing the
+	// control-plane token would hand that host our runner credential.
+	actionsToken   string
 	setupTimeout   time.Duration
 	pollWait       time.Duration
 	logFlush       time.Duration
@@ -62,6 +66,7 @@ func runCommand(ctx context.Context, fs *flag.FlagSet, args []string) error {
 	fs.StringVar(&c.imageCacheVol, "image-cache-volume", envOr("CI_RUNNER_IMAGE_CACHE_VOLUME", ""), "shared docker volume for the inner daemon's image store (env CI_RUNNER_IMAGE_CACHE_VOLUME)")
 	fs.StringVar(&c.sandboxImage, "sandbox-image", envOr("CI_RUNNER_SANDBOX_IMAGE", sandbox.DefaultImage), "Docker-in-Docker image (env CI_RUNNER_SANDBOX_IMAGE)")
 	fs.StringVar(&c.actionsAPI, "actions-api-url", envOr("CI_RUNNER_ACTIONS_API_URL", ""), "GitHub-compatible API root used to fetch actions (env CI_RUNNER_ACTIONS_API_URL)")
+	fs.StringVar(&c.actionsToken, "actions-token", envOr("CI_RUNNER_ACTIONS_TOKEN", ""), "credential for the actions API; never the control-plane token (env CI_RUNNER_ACTIONS_TOKEN)")
 	fs.DurationVar(&c.setupTimeout, "setup-timeout", envDuration("CI_RUNNER_SETUP_TIMEOUT", 5*time.Minute), "bound on sandbox setup before it fails as infra (env CI_RUNNER_SETUP_TIMEOUT)")
 	fs.DurationVar(&c.pollWait, "poll-wait", envDuration("CI_RUNNER_POLL_WAIT", 30*time.Second), "how long an acquire long-poll is held open (env CI_RUNNER_POLL_WAIT)")
 	fs.DurationVar(&c.logFlush, "log-flush-interval", envDuration("CI_RUNNER_LOG_FLUSH_INTERVAL", 2*time.Second), "log batching interval (env CI_RUNNER_LOG_FLUSH_INTERVAL)")
@@ -95,7 +100,7 @@ func runCommand(ctx context.Context, fs *flag.FlagSet, args []string) error {
 	var resolver exec.ActionResolver
 	if c.actionsAPI != "" {
 		resolver = actions.NewResolver(filepath.Join(c.stateDir, "actions"),
-			actions.NewHTTPFetcher(c.actionsAPI, c.token))
+			actions.NewHTTPFetcher(c.actionsAPI, c.actionsToken))
 	} else {
 		log.Warn("no -actions-api-url configured: a step using `uses:` will fail as a config error naming the reference")
 	}

@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 )
 
@@ -161,6 +162,7 @@ func extractTarGz(r io.Reader, dest string) error {
 	}
 	defer gz.Close()
 	tr := tar.NewReader(gz)
+	remaining := int64(maxExtractedBytes)
 	for {
 		h, err := tr.Next()
 		if err == io.EOF {
@@ -186,25 +188,55 @@ func extractTarGz(r io.Reader, dest string) error {
 			if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
 				return err
 			}
-			f, err := os.OpenFile(target, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, os.FileMode(h.Mode)&0o777|0o600)
+			// O_NOFOLLOW: an earlier entry may have created a symlink at this
+			// path, and following it would write wherever that link points.
+			f, err := os.OpenFile(target,
+				os.O_CREATE|os.O_TRUNC|os.O_WRONLY|syscall.O_NOFOLLOW, os.FileMode(h.Mode)&0o777|0o600)
 			if err != nil {
-				return err
+				return fmt.Errorf("action tarball: entry %q: %w", h.Name, err)
 			}
-			if _, err := io.Copy(f, tr); err != nil {
+			written, err := io.Copy(f, io.LimitReader(tr, remaining+1))
+			if err != nil {
 				f.Close()
 				return err
 			}
 			if err := f.Close(); err != nil {
 				return err
 			}
-		case tar.TypeSymlink:
+			remaining -= written
+			if remaining < 0 {
+				return fmt.Errorf("action tarball: expands past the %d byte limit", maxExtractedBytes)
+			}
+		case tar.TypeSymlink, tar.TypeLink:
+			// A link is only safe if it cannot reach outside the extraction
+			// directory. Without this check an entry linking to "/" followed by
+			// a file entry written through it is an arbitrary write on the
+			// runner host, from any workflow that names the action.
+			if err := checkLinkTarget(dest, target, h.Linkname); err != nil {
+				return err
+			}
 			if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
 				return err
 			}
 			_ = os.Remove(target)
+			if h.Typeflag == tar.TypeLink {
+				source, err := safeJoin(dest, stripLeading(h.Linkname))
+				if err != nil {
+					return err
+				}
+				if err := os.Link(source, target); err != nil {
+					return err
+				}
+				continue
+			}
 			if err := os.Symlink(h.Linkname, target); err != nil {
 				return err
 			}
+		default:
+			// Devices, FIFOs, and sockets have no business in an action
+			// tarball, and creating one is a way to surprise whatever reads
+			// the directory next.
+			return fmt.Errorf("action tarball: entry %q has unsupported type %q", h.Name, string(h.Typeflag))
 		}
 	}
 }
@@ -216,6 +248,30 @@ func stripLeading(name string) string {
 		return ""
 	}
 	return name[i+1:]
+}
+
+// maxExtractedBytes bounds a tarball's expansion. An action is source code; a
+// tarball that expands past this is a decompression bomb, not an action.
+const maxExtractedBytes = 512 << 20
+
+// checkLinkTarget refuses a link whose target escapes the extraction directory.
+// Relative targets are resolved against the link's own directory, which is how
+// the filesystem will resolve them.
+func checkLinkTarget(dest, linkPath, linkname string) error {
+	if linkname == "" {
+		return fmt.Errorf("action tarball: link %q has no target", linkPath)
+	}
+	resolved := linkname
+	if !filepath.IsAbs(resolved) {
+		resolved = filepath.Join(filepath.Dir(linkPath), filepath.FromSlash(linkname))
+	}
+	resolved = filepath.Clean(resolved)
+	root := filepath.Clean(dest)
+	if resolved != root && !strings.HasPrefix(resolved, root+string(os.PathSeparator)) {
+		return fmt.Errorf("action tarball: link %q points to %q, outside the extraction directory",
+			linkPath, linkname)
+	}
+	return nil
 }
 
 // safeJoin refuses an archive entry that would escape the destination.

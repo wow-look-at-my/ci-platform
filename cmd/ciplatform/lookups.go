@@ -76,17 +76,20 @@ func (a *app) oidcLookup(ctx context.Context, runID, jobID int64, attempt int) (
 	}
 	workflowRef := fmt.Sprintf("%s/%s@%s", repo.FullName(), run.WorkflowPath, ref)
 
+	// RepositoryOwnerID and ActorID are deliberately absent rather than
+	// guessed. A relying party keying on repository_owner_id would otherwise
+	// match every repository whose repo id happened to equal some org id, and
+	// an actor_id of 0 would match every job on the platform. An omitted claim
+	// fails a policy; a wrong one satisfies the wrong policy.
 	return &oidc.Subject{
 		Repository:           repo.FullName(),
 		RepositoryOwner:      repo.Owner,
 		RepositoryID:         repo.ID,
-		RepositoryOwnerID:    repo.ID,
 		RepositoryVisibility: visibility,
 		Ref:                  ref,
 		RefType:              refType,
 		SHA:                  run.HeadSHA,
 		Actor:                run.Actor,
-		ActorID:              0,
 		Workflow:             run.WorkflowName,
 		WorkflowRef:          workflowRef,
 		// Reusable workflows are not executed yet, so a job is always defined
@@ -123,12 +126,13 @@ func (a *app) resolve(ctx context.Context, runID, jobID int64) (*model.Run, *mod
 }
 
 // refOf reconstructs the full ref a run was triggered on.
+//
+// A branch name is always prefixed, never passed through: "refs/heads/main" is
+// a legal branch NAME, and honouring it as an already-qualified ref would let a
+// branch called refs/heads/main claim the default branch's cache scope.
 func refOf(run *model.Run) string {
 	if run.HeadBranch == "" {
 		return "refs/heads/"
-	}
-	if strings.HasPrefix(run.HeadBranch, "refs/") {
-		return run.HeadBranch
 	}
 	if run.Event == "pull_request" {
 		return fmt.Sprintf("refs/pull/%s/merge", run.HeadBranch)
