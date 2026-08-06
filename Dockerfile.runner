@@ -1,0 +1,31 @@
+# syntax=docker/dockerfile:1
+
+# The runner agent. It shells out to the docker CLI rather than linking the
+# docker SDK, so the CLI is the one real runtime dependency.
+#
+# This image needs access to a docker daemon to create each job's sandbox. It
+# does NOT hand that socket to the job: the job gets its own container running
+# its own dockerd, and nothing of the host's daemon reaches it.
+FROM golang:1.25-alpine AS build
+WORKDIR /src
+
+RUN --mount=type=cache,target=/go/pkg/mod \
+	--mount=type=bind,source=go.mod,target=go.mod \
+	--mount=type=bind,source=go.sum,target=go.sum \
+	go mod download
+
+COPY . .
+
+ARG VERSION=dev
+RUN --mount=type=cache,target=/go/pkg/mod \
+	--mount=type=cache,target=/root/.cache/go-build \
+	CGO_ENABLED=0 go build -trimpath \
+	-ldflags "-s -w -X main.version=${VERSION}" \
+	-o /out/ci-runner ./cmd/ci-runner
+
+FROM alpine:3.21 AS runner
+RUN apk add --no-cache ca-certificates tzdata docker-cli git \
+	&& mkdir -p /var/lib/ci-runner
+COPY --from=build /out/ci-runner /usr/local/bin/ci-runner
+VOLUME /var/lib/ci-runner
+ENTRYPOINT ["/usr/local/bin/ci-runner"]
