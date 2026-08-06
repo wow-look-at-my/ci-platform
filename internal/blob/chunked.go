@@ -2,6 +2,8 @@ package blob
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"io"
@@ -46,8 +48,13 @@ func (u *ChunkedUpload) Staged() bool {
 	return u.staged
 }
 
+// partKey names a staged chunk. Parts live in their own namespace keyed by the
+// hash of the destination: staging under the destination key itself would make
+// the final object's path a directory, and the assembled write would then have
+// nowhere to land.
 func (u *ChunkedUpload) partKey(off int64) string {
-	return fmt.Sprintf("%s/.part/%020d", u.key, off)
+	sum := sha256.Sum256([]byte(u.key))
+	return fmt.Sprintf("_parts/%s/%020d", hex.EncodeToString(sum[:]), off)
 }
 
 // WriteRange stores one chunk at off. Chunks may arrive in any order.
@@ -139,7 +146,7 @@ func (u *ChunkedUpload) Commit(ctx context.Context, expectedSize int64) (int64, 
 		for i, r := range rs {
 			keys[i] = u.partKey(r.off)
 		}
-		pr := &partsReader{ctx: ctx, store: u.store, keys: keys}
+		pr := Concat(ctx, u.store, keys)
 		n, digest, err := u.store.Put(ctx, u.key, pr)
 		closeErr := pr.Close()
 		if err != nil {
@@ -206,8 +213,13 @@ func (u *ChunkedUpload) deleteParts(ctx context.Context, keys []string) {
 	}
 }
 
-// partsReader concatenates staged chunks lazily so assembly never buffers a
-// whole artifact in memory.
+// Concat streams the named objects back to back, opening each only when the
+// reader reaches it, so assembling an artifact never buffers it in memory. A
+// missing object is an error, never a silently short read.
+func Concat(ctx context.Context, s Store, keys []string) io.ReadCloser {
+	return &partsReader{ctx: ctx, store: s, keys: keys}
+}
+
 type partsReader struct {
 	ctx   context.Context
 	store Store

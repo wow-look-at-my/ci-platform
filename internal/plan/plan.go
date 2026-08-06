@@ -7,6 +7,8 @@ package plan
 import (
 	"errors"
 	"fmt"
+	"sort"
+	"strings"
 
 	"github.com/wow-look-at-my/ci-platform/internal/model"
 )
@@ -21,11 +23,15 @@ type Input struct {
 // Plan is the concrete job set for one run.
 type Plan struct {
 	Jobs  []*PlannedJob
-	Order []string // job IDs, topologically sorted
+	Order []string // PlannedJob.ID values, topologically sorted
 
 	// Workflow is the source, kept so the scheduler can resolve workflow-level
 	// env and defaults when it builds an assignment.
 	Workflow *model.Workflow
+	// Contexts are the run-scoped contexts Build was given (github, vars,
+	// inputs, ...), kept so the scheduler evaluates if: and step expressions
+	// against exactly what the plan was built from.
+	Contexts map[string]any
 	// RunConcurrencyGroup is the workflow-level concurrency group, evaluated.
 	RunConcurrencyGroup string
 	RunCancelInProgress bool
@@ -120,7 +126,7 @@ func Build(w *model.Workflow, in Input) (*Plan, error) {
 		return nil, err
 	}
 
-	p := &Plan{Workflow: w}
+	p := &Plan{Workflow: w, Contexts: in.Contexts}
 	base := in.NewEval(contextsWith(in.Contexts, nil, nil), Status{Success: true})
 
 	if w.Concurrency != nil {
@@ -138,6 +144,7 @@ func Build(w *model.Workflow, in Input) (*Plan, error) {
 	}
 
 	for _, key := range order {
+		recordIncludeOrderDeviation(w, key)
 		jobs, err := buildJob(w.Jobs[key], in, base)
 		if err != nil {
 			return nil, fmt.Errorf("plan: job %q: %w", key, err)
@@ -148,6 +155,36 @@ func Build(w *model.Workflow, in Input) (*Plan, error) {
 		}
 	}
 	return p, nil
+}
+
+// recordIncludeOrderDeviation surfaces the one place a name can differ from
+// GitHub's: an include key the parser did not record in Matrix.Order has no
+// source order left in the IR, so its name segment is placed alphabetically.
+func recordIncludeOrderDeviation(w *model.Workflow, key string) {
+	ir := w.Jobs[key]
+	if ir.Strategy == nil || ir.Strategy.Matrix == nil {
+		return
+	}
+	m := ir.Strategy.Matrix
+	var loose []string
+	for _, inc := range m.Include {
+		for k := range inc {
+			if _, isDim := m.Dimensions[k]; isDim || containsString(m.Order, k) || containsString(loose, k) {
+				continue
+			}
+			loose = append(loose, k)
+		}
+	}
+	if len(loose) == 0 {
+		return
+	}
+	sort.Strings(loose)
+	w.Deviations = append(w.Deviations, model.Deviation{
+		Path:        fmt.Sprintf("jobs.%s.strategy.matrix.include", key),
+		GHABehavior: "include keys appear in the job name in the order they are written in the YAML",
+		OurBehavior: fmt.Sprintf("the include-only keys %s are ordered alphabetically in the job name", strings.Join(loose, ", ")),
+		Rationale:   "the IR stores an include entry as a map, so its source key order survives only if the parser records it in matrix Order",
+	})
 }
 
 func buildJob(ir *model.JobIR, in Input, base Evaluator) ([]*PlannedJob, error) {
@@ -180,6 +217,14 @@ func buildJob(ir *model.JobIR, in Input, base Evaluator) ([]*PlannedJob, error) 
 		retry = *ir.Retry
 		if retry.Attempts < 1 {
 			return nil, fmt.Errorf("retry policy allows %d attempts", retry.Attempts)
+		}
+		// Retrying a user failure manufactures a flaky green, and retrying a
+		// config error cannot fix the YAML. Rejecting the policy is louder
+		// than accepting it and quietly not honouring it.
+		for _, c := range retry.On {
+			if c != model.ClassInfra {
+				return nil, fmt.Errorf("retry policy asks to retry %q failures; only infrastructure failures are ever retried", c)
+			}
 		}
 	}
 

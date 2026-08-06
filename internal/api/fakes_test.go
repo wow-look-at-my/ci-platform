@@ -48,9 +48,9 @@ func newFakeStore() *fakeStore {
 	}
 }
 
-func (f *fakeStore) Durable() bool                     { return f.durable }
-func (f *fakeStore) Migrate(context.Context) error     { return nil }
-func (f *fakeStore) Close() error                      { return nil }
+func (f *fakeStore) Durable() bool                 { return f.durable }
+func (f *fakeStore) Migrate(context.Context) error { return nil }
+func (f *fakeStore) Close() error                  { return nil }
 
 func (f *fakeStore) UpsertRepo(context.Context, *model.Repo) error { return errUnused }
 
@@ -215,7 +215,7 @@ func (f *fakeStore) QueueDepthHistory(_ context.Context, since time.Time) ([]sto
 
 func (f *fakeStore) RecordQueueSample(context.Context, store.QueueSample) error { return errUnused }
 
-func (f *fakeStore) RegisterRunner(context.Context, *model.Runner) error   { return errUnused }
+func (f *fakeStore) RegisterRunner(context.Context, *model.Runner) error      { return errUnused }
 func (f *fakeStore) RunnerHeartbeat(context.Context, string, time.Time) error { return errUnused }
 func (f *fakeStore) GetRunner(context.Context, string) (*model.Runner, error) { return nil, errUnused }
 func (f *fakeStore) ListRunners(context.Context) ([]*model.Runner, error)     { return f.runners, nil }
@@ -223,12 +223,14 @@ func (f *fakeStore) MarkOfflineRunners(context.Context, time.Time) ([]*model.Run
 	return nil, errUnused
 }
 
-func (f *fakeStore) AddAnnotations(context.Context, int64, []model.Annotation) error { return errUnused }
+func (f *fakeStore) AddAnnotations(context.Context, int64, []model.Annotation) error {
+	return errUnused
+}
 func (f *fakeStore) ListAnnotations(_ context.Context, jobID int64) ([]model.Annotation, error) {
 	return f.anns[jobID], nil
 }
 
-func (f *fakeStore) CreateArtifact(context.Context, *model.Artifact) error       { return errUnused }
+func (f *fakeStore) CreateArtifact(context.Context, *model.Artifact) error        { return errUnused }
 func (f *fakeStore) FinalizeArtifact(context.Context, int64, int64, string) error { return errUnused }
 
 func (f *fakeStore) GetArtifact(_ context.Context, id int64) (*model.Artifact, error) {
@@ -263,9 +265,11 @@ func (f *fakeStore) FinalizeCache(context.Context, int64, int64) error     { ret
 func (f *fakeStore) LookupCache(context.Context, int64, string, []string, string, string) (*model.CacheEntry, string, error) {
 	return nil, "", errUnused
 }
-func (f *fakeStore) GetCache(context.Context, int64) (*model.CacheEntry, error) { return nil, errUnused }
-func (f *fakeStore) TouchCache(context.Context, int64, time.Time) error         { return errUnused }
-func (f *fakeStore) RecordCacheEvent(context.Context, model.CacheEvent) error   { return errUnused }
+func (f *fakeStore) GetCache(context.Context, int64) (*model.CacheEntry, error) {
+	return nil, errUnused
+}
+func (f *fakeStore) TouchCache(context.Context, int64, time.Time) error       { return errUnused }
+func (f *fakeStore) RecordCacheEvent(context.Context, model.CacheEvent) error { return errUnused }
 
 func (f *fakeStore) ListCacheEvents(_ context.Context, repoID int64, limit int) ([]model.CacheEvent, error) {
 	out := f.cacheEvs[repoID]
@@ -282,7 +286,9 @@ func (f *fakeStore) CacheUsage(_ context.Context, repoID int64) (int64, error) {
 	return f.usage[repoID], nil
 }
 
-func (f *fakeStore) PutSecret(context.Context, string, string, string, []byte) error { return errUnused }
+func (f *fakeStore) PutSecret(context.Context, string, string, string, []byte) error {
+	return errUnused
+}
 func (f *fakeStore) ResolveSecrets(context.Context, string, string, string) (map[string][]byte, error) {
 	return nil, errUnused
 }
@@ -314,13 +320,13 @@ func (f *fakeStore) ListEvents(_ context.Context, runID, jobID int64) ([]store.E
 
 // fakeController records what the API asked for.
 type fakeController struct {
-	mu       sync.Mutex
-	cancels  []model.CancelReason
-	jobIDs   []int64
-	runIDs   []int64
-	actions  []string
-	actors   []string
-	err      error
+	mu      sync.Mutex
+	cancels []model.CancelReason
+	jobIDs  []int64
+	runIDs  []int64
+	actions []string
+	actors  []string
+	err     error
 }
 
 func (c *fakeController) record(action string, runID, jobID int64, actor string, reason *model.CancelReason) error {

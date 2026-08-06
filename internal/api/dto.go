@@ -155,21 +155,21 @@ func runTiming(r *model.Run, now time.Time) model.Timing {
 
 // StepDTO is one step of one attempt.
 type StepDTO struct {
-	ID              int64      `json:"id"`
-	Number          int        `json:"number"`
-	Name            string     `json:"name"`
-	StepID          string     `json:"step_id,omitempty"`
-	Status          string     `json:"status"`
-	Conclusion      string     `json:"conclusion,omitempty"`
-	FailureClass    string     `json:"failure_class"`
-	ExitCode        int        `json:"exit_code"`
-	ContinueOnError bool       `json:"continue_on_error"`
-	Attempt         int        `json:"attempt"`
-	StartedAt       *time.Time `json:"started_at,omitempty"`
-	CompletedAt     *time.Time `json:"completed_at,omitempty"`
-	Duration        float64    `json:"duration"`
-	LogStart        int64      `json:"log_start"`
-	LogEnd          int64      `json:"log_end"`
+	ID              int64             `json:"id"`
+	Number          int               `json:"number"`
+	Name            string            `json:"name"`
+	StepID          string            `json:"step_id,omitempty"`
+	Status          string            `json:"status"`
+	Conclusion      string            `json:"conclusion,omitempty"`
+	FailureClass    string            `json:"failure_class"`
+	ExitCode        int               `json:"exit_code"`
+	ContinueOnError bool              `json:"continue_on_error"`
+	Attempt         int               `json:"attempt"`
+	StartedAt       *time.Time        `json:"started_at,omitempty"`
+	CompletedAt     *time.Time        `json:"completed_at,omitempty"`
+	Duration        float64           `json:"duration"`
+	LogStart        int64             `json:"log_start"`
+	LogEnd          int64             `json:"log_end"`
 	Outputs         map[string]string `json:"outputs,omitempty"`
 }
 

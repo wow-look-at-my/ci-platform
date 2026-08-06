@@ -124,9 +124,15 @@ type Container struct {
 	opts       Options
 	name       string
 	workspace  string // volume name
+	network    string
 	lock       *fileLock
 	removed    bool
 	hostTmpDir string
+	// Only what was actually created is removed, so teardown never reports a
+	// failure for a resource that never existed.
+	madeWorkspace bool
+	madeNetwork   bool
+	madeContainer bool
 }
 
 var _ exec.Sandbox = (*Container)(nil)
@@ -143,7 +149,7 @@ func (c *Container) TempDir() string { return c.opts.TempDir }
 // Create builds the sandbox and blocks until the inner dockerd answers. Every
 // failure is an *Error naming the stage; a partially built sandbox is torn down
 // before returning so a failed setup never leaks a container or a volume.
-func Create(ctx context.Context, opts Options) (c *Container, report *SetupReport, err error) {
+func Create(ctx context.Context, opts Options) (_ *Container, report *SetupReport, err error) {
 	opts.applyDefaults()
 	report = &SetupReport{Breakdown: map[string]time.Duration{}}
 	total := time.Now()
@@ -152,17 +158,19 @@ func Create(ctx context.Context, opts Options) (c *Container, report *SetupRepor
 	ctx, cancel := context.WithTimeout(ctx, opts.SetupTimeout)
 	defer cancel()
 
-	c = &Container{
+	// Deliberately a local, not the named return: returning nil on failure must
+	// not blind the cleanup defer to the container it has to remove.
+	c := &Container{
 		opts:      opts,
 		name:      fmt.Sprintf("%s-%d-%d", opts.NamePrefix, opts.JobID, opts.Attempt),
 		workspace: fmt.Sprintf("%s-ws-%d-%d", opts.NamePrefix, opts.JobID, opts.Attempt),
+		network:   fmt.Sprintf("%s-net-%d-%d", opts.NamePrefix, opts.JobID, opts.Attempt),
 	}
 	defer func() {
 		if err != nil {
 			// A half-built sandbox is torn down here; the caller only ever
 			// holds a container it can use.
-			c.Close(context.WithoutCancel(ctx))
-			c = nil
+			_ = c.Close(context.WithoutCancel(ctx))
 		}
 	}()
 
@@ -186,18 +194,38 @@ func Create(ctx context.Context, opts Options) (c *Container, report *SetupRepor
 	if _, cerr := capture(ctx, opts.Docker, "volume", "create", c.workspace); cerr != nil {
 		return nil, report, setupErr(ctx, "workspace_volume", cerr)
 	}
+	c.madeWorkspace = true
 	sw.mark("workspace_volume")
 
 	sw = report.begin()
-	if _, perr := capture(ctx, opts.Docker, "pull", opts.Image); perr != nil {
-		return nil, report, setupErr(ctx, "image_pull", perr)
+	// Pull only when the image is absent. An unconditional pull makes every job
+	// depend on the registry being reachable, so a rate-limited registry fails
+	// a job whose image is already on the host.
+	if _, ierr := capture(ctx, opts.Docker, "image", "inspect", opts.Image); ierr != nil {
+		if _, perr := capture(ctx, opts.Docker, "pull", opts.Image); perr != nil {
+			return nil, report, setupErr(ctx, "image_pull", perr)
+		}
+		opts.Log("pulled sandbox image " + opts.Image)
+	} else {
+		opts.Log("sandbox image " + opts.Image + " already present; not pulled")
 	}
 	sw.mark("image_pull")
+
+	sw = report.begin()
+	// A network of its own. The Docker-in-Docker entrypoint always publishes an
+	// unauthenticated daemon API on 2375 inside the container; on the shared
+	// default bridge that is root access to this job from every other job.
+	if _, nerr := capture(ctx, opts.Docker, "network", "create", c.network); nerr != nil {
+		return nil, report, setupErr(ctx, "network_create", nerr)
+	}
+	c.madeNetwork = true
+	sw.mark("network_create")
 
 	sw = report.begin()
 	args := []string{
 		"run", "-d",
 		"--name", c.name,
+		"--network", c.network,
 		// Privileged is what makes an inner dockerd possible at all; the
 		// isolation comes from it being a throwaway container with its own
 		// image store and network, not from dropping privileges.
@@ -216,6 +244,7 @@ func Create(ctx context.Context, opts Options) (c *Container, report *SetupRepor
 	if _, rerr := capture(ctx, opts.Docker, args...); rerr != nil {
 		return nil, report, setupErr(ctx, "container_create", rerr)
 	}
+	c.madeContainer = true
 	sw.mark("container_create")
 
 	sw = report.begin()
@@ -259,10 +288,17 @@ func setupErr(ctx context.Context, stage string, err error) *Error {
 func (c *Container) waitForDockerd(ctx context.Context) error {
 	var last error
 	for {
-		if _, err := capture(ctx, c.opts.Docker, "exec", c.name, "docker", "info", "--format", "{{.ServerVersion}}"); err == nil {
-			return nil
-		} else {
+		// `docker version` is the probe, not `docker info`: info exits 0 with
+		// "Cannot connect to the Docker daemon" in its output, so probing with
+		// it reports a dead daemon as ready.
+		out, err := capture(ctx, c.opts.Docker, "exec", c.name, "docker", "version", "--format", "{{.Server.Version}}")
+		switch {
+		case err != nil:
 			last = err
+		case strings.TrimSpace(out) == "":
+			last = fmt.Errorf("the inner daemon reported an empty server version")
+		default:
+			return nil
 		}
 		select {
 		case <-ctx.Done():
@@ -405,19 +441,23 @@ func (c *Container) Close(ctx context.Context) error {
 	c.removed = true
 	var errs []string
 
-	if _, err := capture(ctx, c.opts.Docker, "rm", "-f", "-v", c.name); err != nil {
-		errs = append(errs, fmt.Sprintf("removing container %s: %v", c.name, err))
-		c.opts.Log(fmt.Sprintf("TEARDOWN FAILED: could not remove container %s: %v", c.name, err))
-	} else {
-		c.opts.Log("removed container " + c.name)
+	remove := func(made bool, what, name string, args ...string) {
+		if !made {
+			return
+		}
+		if _, err := capture(ctx, c.opts.Docker, args...); err != nil {
+			errs = append(errs, fmt.Sprintf("removing %s %s: %v", what, name, err))
+			c.opts.Log(fmt.Sprintf("TEARDOWN FAILED: could not remove %s %s: %v", what, name, err))
+			return
+		}
+		c.opts.Log(fmt.Sprintf("removed %s %s", what, name))
 	}
 
-	if _, err := capture(ctx, c.opts.Docker, "volume", "rm", "-f", c.workspace); err != nil {
-		errs = append(errs, fmt.Sprintf("removing volume %s: %v", c.workspace, err))
-		c.opts.Log(fmt.Sprintf("TEARDOWN FAILED: could not remove workspace volume %s: %v", c.workspace, err))
-	} else {
-		c.opts.Log("removed workspace volume " + c.workspace)
-	}
+	// Container first: the network and volume it holds cannot be removed while
+	// it is attached.
+	remove(c.madeContainer, "container", c.name, "rm", "-f", "-v", c.name)
+	remove(c.madeWorkspace, "workspace volume", c.workspace, "volume", "rm", "-f", c.workspace)
+	remove(c.madeNetwork, "network", c.network, "network", "rm", c.network)
 
 	if c.hostTmpDir != "" {
 		if err := os.RemoveAll(c.hostTmpDir); err != nil {

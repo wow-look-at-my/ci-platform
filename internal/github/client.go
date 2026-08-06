@@ -190,10 +190,12 @@ func hostOf(raw string) string {
 // fields, and a missing Tokens is a startup error rather than an anonymous
 // client that 403s later.
 type Options struct {
-	BaseURL     string
-	Tokens      TokenSource
-	HTTPClient  *http.Client
-	UserAgent   string
+	BaseURL    string
+	Tokens     TokenSource
+	HTTPClient *http.Client
+	UserAgent  string
+	// MaxRetries is the number of retries after the first attempt. Zero means
+	// the default of 3; a negative value disables retrying entirely.
 	MaxRetries  int
 	BaseBackoff time.Duration
 	MaxBackoff  time.Duration
@@ -253,8 +255,11 @@ func NewClient(opts Options) (*Client, error) {
 		sleep:       opts.Sleep,
 		onRateLimit: opts.OnRateLimit,
 	}
-	if c.maxRetries == 0 {
+	switch {
+	case c.maxRetries == 0:
 		c.maxRetries = 3
+	case c.maxRetries < 0:
+		c.maxRetries = 0
 	}
 	if c.baseBackoff == 0 {
 		c.baseBackoff = 500 * time.Millisecond
@@ -670,12 +675,12 @@ func (c *Client) GetFileContents(ctx context.Context, repo Repo, path, ref strin
 	if path == "" {
 		return nil, errors.New("github: GetFileContents needs a path")
 	}
-	url := repo.path() + "/contents/" + escapePath(path)
+	endpoint := repo.path() + "/contents/" + escapePath(path)
 	if ref != "" {
-		url += "?ref=" + neturlQueryEscape(ref)
+		endpoint += "?ref=" + url.QueryEscape(ref)
 	}
 	var entry contentEntry
-	if _, err := c.Get(ctx, url, &entry); err != nil {
+	if _, err := c.Get(ctx, endpoint, &entry); err != nil {
 		return nil, err
 	}
 	if entry.Type == "dir" {
@@ -709,12 +714,12 @@ func (c *Client) ListWorkflowFiles(ctx context.Context, repo Repo, ref string) (
 	if !repo.Valid() {
 		return nil, fmt.Errorf("github: ListWorkflowFiles needs owner and name, got %q", repo)
 	}
-	url := repo.path() + "/contents/" + escapePath(WorkflowsDir)
+	endpoint := repo.path() + "/contents/" + escapePath(WorkflowsDir)
 	if ref != "" {
-		url += "?ref=" + neturlQueryEscape(ref)
+		endpoint += "?ref=" + url.QueryEscape(ref)
 	}
 	var entries []contentEntry
-	if _, err := c.Get(ctx, url, &entries); err != nil {
+	if _, err := c.Get(ctx, endpoint, &entries); err != nil {
 		if errors.Is(err, ErrNotFound) {
 			return nil, fmt.Errorf("%w: %s has no %s at ref %q", ErrNotFound, repo, WorkflowsDir, ref)
 		}
@@ -743,5 +748,3 @@ func escapePath(p string) string {
 	}
 	return strings.Join(parts, "/")
 }
-
-func neturlQueryEscape(s string) string { return url.QueryEscape(s) }

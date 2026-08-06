@@ -69,7 +69,6 @@ type jobState struct {
 	lastSent   time.Time
 	checkRunID int64
 	annSent    int
-	completed  bool
 }
 
 // NewReporter starts a Reporter. Close must be called to flush and stop it.
@@ -277,7 +276,6 @@ func (r *Reporter) flushJob(ctx context.Context, jobID int64, force bool) error 
 		if err == nil {
 			r.mu.Lock()
 			st.lastSent = r.now()
-			st.completed = u.Terminal()
 			r.mu.Unlock()
 			return nil
 		}

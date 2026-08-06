@@ -131,8 +131,10 @@ func (s *Server) cancelJob(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func (s *Server) rerunRun(w http.ResponseWriter, r *http.Request)       { s.rerun(w, r, "rerun") }
-func (s *Server) rerunRunFailed(w http.ResponseWriter, r *http.Request) { s.rerun(w, r, "rerun-failed") }
+func (s *Server) rerunRun(w http.ResponseWriter, r *http.Request) { s.rerun(w, r, "rerun") }
+func (s *Server) rerunRunFailed(w http.ResponseWriter, r *http.Request) {
+	s.rerun(w, r, "rerun-failed")
+}
 
 func (s *Server) rerun(w http.ResponseWriter, r *http.Request, action string) {
 	id, ok := pathID(w, r, "id")

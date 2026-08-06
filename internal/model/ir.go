@@ -231,11 +231,15 @@ type Strategy struct {
 	MaxParallel Expr  `json:"max_parallel,omitempty"`
 }
 
-// Matrix is the matrix declaration. Dimensions preserves key order so that leg
-// names are deterministic.
+// Matrix is the matrix declaration.
 type Matrix struct {
 	Dimensions map[string][]any `json:"dimensions,omitempty"`
-	Order      []string         `json:"order,omitempty"`
+	// Order is every matrix key in file order: the dimensions first, then any
+	// key appearing only under include. Both contribute segments to a leg's
+	// display name, and Include is a []map here so it cannot carry the order
+	// itself. Getting this wrong renames every leg, which breaks the branch
+	// protection rule keyed on the name.
+	Order []string `json:"order,omitempty"`
 	Include    []map[string]any `json:"include,omitempty"`
 	Exclude    []map[string]any `json:"exclude,omitempty"`
 	// FromExpr is set when the whole matrix is a ${{ fromJSON(...) }}; it is

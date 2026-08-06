@@ -85,7 +85,11 @@ func TestMatrix(t *testing.T) {
 	require.Equal(t, "4", s.MaxParallel.Raw)
 
 	m := s.Matrix
-	require.Equal(t, []string{"os", "go", "arch"}, m.Order, "dimension order must follow the file")
+	// Dimensions in file order, then include-only keys in first-appearance
+	// order: both contribute name segments, and the order is what the display
+	// name (and so the branch protection rule keyed on it) depends on.
+	require.Equal(t, []string{"os", "go", "arch", "coverage", "experimental"}, m.Order,
+		"key order must follow the file, include-only keys last")
 	require.Equal(t, []any{"ubuntu-latest", "macos-latest", "windows-latest"}, m.Dimensions["os"])
 	require.Equal(t, []any{"1.23", "1.24"}, m.Dimensions["go"])
 

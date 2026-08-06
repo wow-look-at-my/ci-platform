@@ -73,7 +73,7 @@ func (p *parser) matrix(n *yaml.Node, where string) (*model.Matrix, error) {
 	}
 
 	m := &model.Matrix{Dimensions: map[string][]any{}}
-	var excludeNodes []*yaml.Node
+	var excludeNodes, includeNodes []*yaml.Node
 	err := p.each(n, where, nil, func(key string, kn, vn *yaml.Node) error {
 		at := where + "." + key
 		switch key {
@@ -83,7 +83,7 @@ func (p *parser) matrix(n *yaml.Node, where string) (*model.Matrix, error) {
 				return err
 			}
 			if key == "include" {
-				m.Include = rows
+				m.Include, includeNodes = rows, nodes
 			} else {
 				m.Exclude, excludeNodes = rows, nodes
 			}
@@ -103,10 +103,35 @@ func (p *parser) matrix(n *yaml.Node, where string) (*model.Matrix, error) {
 	if len(m.Dimensions) == 0 && len(m.Include) == 0 {
 		return nil, p.errf(n, "%s has no dimensions and no `include:`", where)
 	}
+	// An include-only key still contributes a segment to a leg's display name,
+	// and the segment order is the YAML key order. Include is a []map in the
+	// IR, which loses that order, so record it here while the nodes are still
+	// available. Without this the name falls back to alphabetical and stops
+	// matching the branch protection rule keyed on it.
+	appendIncludeKeyOrder(m, includeNodes)
 	if err := p.checkExcludes(m, excludeNodes, where); err != nil {
 		return nil, err
 	}
 	return m, nil
+}
+
+func appendIncludeKeyOrder(m *model.Matrix, includeNodes []*yaml.Node) {
+	seen := make(map[string]bool, len(m.Order))
+	for _, k := range m.Order {
+		seen[k] = true
+	}
+	for _, row := range includeNodes {
+		if row == nil || row.Kind != yaml.MappingNode {
+			continue
+		}
+		for i := 0; i+1 < len(row.Content); i += 2 {
+			key := row.Content[i].Value
+			if key != "" && !seen[key] {
+				seen[key] = true
+				m.Order = append(m.Order, key)
+			}
+		}
+	}
 }
 
 func (p *parser) matrixDimension(n *yaml.Node, where string) ([]any, error) {

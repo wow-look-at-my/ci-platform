@@ -139,6 +139,15 @@ func NewHandler(secret string, sink Sink, opts ...Option) (*Handler, error) {
 	for _, o := range opts {
 		o(h)
 	}
+	if h.log == nil {
+		h.log = slog.Default()
+	}
+	if h.now == nil {
+		h.now = time.Now
+	}
+	if h.maxBodyBytes <= 0 {
+		h.maxBodyBytes = DefaultMaxBodyBytes
+	}
 	return h, nil
 }
 

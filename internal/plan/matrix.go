@@ -9,30 +9,48 @@ import (
 	"github.com/wow-look-at-my/ci-platform/internal/model"
 )
 
-// Leg is one expanded matrix combination. Order is the key order used for the
-// display name and the matrix key, so both are deterministic: declared
-// dimensions in declaration order, then include-only keys sorted.
+// Leg is one expanded matrix combination.
+//
+// Order is every key of the combination, deterministically ordered. NameKeys is
+// the subset that appears in the display name and the leg identity: for a cross
+// product combination that is the declared dimensions only, because GitHub
+// builds the name before merging an include's extra values into the vector
+// (MatrixBuilder.CreateConfiguration in the runner source). For a leg appended
+// by an unmatched include, every key of that include entry names it.
 type Leg struct {
-	Values map[string]any
-	Order  []string
+	Values   map[string]any
+	Order    []string
+	NameKeys []string
 }
 
-// Key renders the stable per-leg identity, "os=ubuntu,go=1.22".
+// Key renders the stable per-leg identity, "os=ubuntu,go=1.22". It is built
+// from the same keys as the display name, so adding an include that only
+// contributes extra values does not renumber existing legs.
 func (l Leg) Key() string {
-	parts := make([]string, 0, len(l.Order))
-	for _, k := range l.Order {
+	parts := make([]string, 0, len(l.NameKeys))
+	for _, k := range l.NameKeys {
 		parts = append(parts, k+"="+RenderValue(l.Values[k]))
 	}
 	return strings.Join(parts, ",")
 }
 
-// Suffix renders the GHA display suffix, "(ubuntu, 1.22)".
-func (l Leg) Suffix() string {
-	parts := make([]string, 0, len(l.Order))
-	for _, k := range l.Order {
-		parts = append(parts, RenderValue(l.Values[k]))
+// Segments are the display-name segments, in order.
+func (l Leg) Segments() []string {
+	var out []string
+	for _, k := range l.NameKeys {
+		out = append(out, NameSegments(l.Values[k])...)
 	}
-	return "(" + strings.Join(parts, ", ") + ")"
+	return out
+}
+
+// Suffix renders the GHA display suffix, "(ubuntu, 1.22)", or "" when no
+// segment survives (every value was empty or had no scalar leaves).
+func (l Leg) Suffix() string {
+	segs := l.Segments()
+	if len(segs) == 0 {
+		return ""
+	}
+	return "(" + strings.Join(segs, ", ") + ")"
 }
 
 // ExpandMatrix produces the legs of a strategy matrix in GHA's order and with
@@ -76,9 +94,22 @@ func ExpandMatrix(m *model.Matrix, ev Evaluator) ([]Leg, error) {
 		}
 	}
 
+	isDim := make(map[string]bool, len(dims))
+	for _, k := range dims {
+		isDim[k] = true
+	}
+
 	for _, ex := range resolved.Exclude {
 		if len(ex) == 0 {
 			return nil, fmt.Errorf("matrix exclude has an empty entry, which would exclude everything")
+		}
+		// GitHub rejects an exclude naming a key the matrix does not declare
+		// rather than quietly excluding nothing, and so do we: a typo there
+		// silently runs the combination the author meant to remove.
+		for k := range ex {
+			if !isDim[k] {
+				return nil, fmt.Errorf("matrix exclude key %q does not match any key within the matrix", k)
+			}
 		}
 		kept := combos[:0]
 		for _, c := range combos {
@@ -87,11 +118,6 @@ func ExpandMatrix(m *model.Matrix, ev Evaluator) ([]Leg, error) {
 			}
 		}
 		combos = kept
-	}
-
-	isDim := make(map[string]bool, len(dims))
-	for _, k := range dims {
-		isDim[k] = true
 	}
 
 	// Original dimension values are never overwritten by an include, so the
@@ -134,22 +160,30 @@ func ExpandMatrix(m *model.Matrix, ev Evaluator) ([]Leg, error) {
 		}
 	}
 
-	all := append(combos, appended...)
-	legs := make([]Leg, 0, len(all))
-	for _, c := range all {
-		legs = append(legs, Leg{Values: c, Order: legOrder(c, dims)})
+	legs := make([]Leg, 0, len(combos)+len(appended))
+	for _, c := range combos {
+		order := legOrder(c, dims, resolved.Order)
+		legs = append(legs, Leg{Values: c, Order: order, NameKeys: presentKeys(c, dims)})
+	}
+	for _, c := range appended {
+		order := legOrder(c, dims, resolved.Order)
+		legs = append(legs, Leg{Values: c, Order: order, NameKeys: order})
 	}
 	return legs, nil
 }
 
 // legOrder lists a leg's keys: declared dimensions in declaration order, then
-// keys an include added, sorted. Include key order is not recoverable from the
-// IR (a map), so sorting is what makes the name deterministic.
-func legOrder(values map[string]any, dims []string) []string {
-	order := make([]string, 0, len(values))
-	seen := make(map[string]bool, len(values))
-	for _, k := range dims {
-		if _, ok := values[k]; ok {
+// any other key in the order the matrix declared it, then the rest sorted.
+// Sorting is the fallback because an include entry is a map in the IR, so its
+// source key order survives only if the parser recorded it in Matrix.Order.
+func legOrder(values map[string]any, dims, declared []string) []string {
+	order := presentKeys(values, dims)
+	seen := make(map[string]bool, len(order))
+	for _, k := range order {
+		seen[k] = true
+	}
+	for _, k := range declared {
+		if _, ok := values[k]; ok && !seen[k] {
 			order = append(order, k)
 			seen[k] = true
 		}
@@ -164,28 +198,47 @@ func legOrder(values map[string]any, dims []string) []string {
 	return append(order, extra...)
 }
 
-// dimensionOrder returns the declared dimensions in declaration order, and
-// fails loudly when Order and Dimensions disagree: a dimension missing from
-// Order would otherwise silently reorder every leg name.
+func presentKeys(values map[string]any, keys []string) []string {
+	out := make([]string, 0, len(keys))
+	for _, k := range keys {
+		if _, ok := values[k]; ok {
+			out = append(out, k)
+		}
+	}
+	return out
+}
+
+// dimensionOrder returns the declared dimensions in declaration order. Order
+// may also name include-only keys, which order the name suffix but are not
+// dimensions. A dimension missing from Order is an error: leg names and leg
+// identity both depend on that order being complete.
 func dimensionOrder(m *model.Matrix) ([]string, error) {
 	if len(m.Dimensions) == 0 {
 		return nil, nil
 	}
-	if len(m.Order) != len(m.Dimensions) {
-		return nil, fmt.Errorf("matrix declares %d dimensions but the order lists %d; leg names depend on the order",
-			len(m.Dimensions), len(m.Order))
-	}
 	seen := make(map[string]bool, len(m.Order))
+	dims := make([]string, 0, len(m.Dimensions))
 	for _, k := range m.Order {
-		if _, ok := m.Dimensions[k]; !ok {
-			return nil, fmt.Errorf("matrix order names %q, which is not a declared dimension", k)
-		}
 		if seen[k] {
-			return nil, fmt.Errorf("matrix order names %q twice", k)
+			return nil, fmt.Errorf("matrix key order names %q twice", k)
 		}
 		seen[k] = true
+		if _, ok := m.Dimensions[k]; ok {
+			dims = append(dims, k)
+		}
 	}
-	return m.Order, nil
+	if len(dims) != len(m.Dimensions) {
+		var missing []string
+		for k := range m.Dimensions {
+			if !seen[k] {
+				missing = append(missing, k)
+			}
+		}
+		sort.Strings(missing)
+		return nil, fmt.Errorf("matrix dimensions %s are missing from the declared key order, which fixes leg names",
+			strings.Join(missing, ", "))
+	}
+	return dims, nil
 }
 
 // dimensionValues evaluates a dimension's values. A string value containing an

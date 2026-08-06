@@ -32,6 +32,9 @@ conclusion and a sentence explaining itself. Read `docs/incidents.md` first -- t
   talk to.
 - `internal/api`, `internal/webui`, `web-src`, `cmd/buildweb` -- REST + SSE, and the embedded UI.
 - `internal/runner`, `cmd/ci-runner` -- the agent, the DinD sandbox, the step executor.
+- `migrations` -- forward-only numbered SQL, `go:embed`ed and applied by the runner in `internal/store/pg`; an edited applied file is a hard stop, not a
+  silent divergence.
+- `internal/store/storetest` -- one conformance suite both stores run, so "works in memory, breaks in Postgres" is a test failure.
 - `test/fakes`, `test/chaos`, `test/e2e`, `test/conformance` -- test doubles and the suites that hold the non-negotiables up.
 
 ## Docs

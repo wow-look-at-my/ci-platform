@@ -113,8 +113,8 @@ func NewReporter(cli *gh.Client, opts Options) *Reporter {
 func normalizeContext(c string) string { return strings.ToLower(strings.TrimSpace(c)) }
 
 // Forbidden reports whether a context is refused.
-func (r *Reporter) Forbidden(context string) bool {
-	_, bad := r.forbidden[normalizeContext(context)]
+func (r *Reporter) Forbidden(name string) bool {
+	_, bad := r.forbidden[normalizeContext(name)]
 	return bad
 }
 

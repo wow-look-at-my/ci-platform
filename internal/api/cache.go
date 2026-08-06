@@ -57,11 +57,11 @@ type CacheDTO struct {
 	// "cache_events" when they were reconstructed from the event log. The
 	// reconstruction is incomplete by construction, and saying so beats
 	// rendering a short list as if it were the whole cache.
-	EntriesSource   string          `json:"entries_source"`
-	EntriesComplete bool            `json:"entries_complete"`
-	Warning         string          `json:"warning,omitempty"`
-	Stats           CacheStats      `json:"stats"`
-	ByKey           []CacheKeyStats `json:"by_key"`
+	EntriesSource   string             `json:"entries_source"`
+	EntriesComplete bool               `json:"entries_complete"`
+	Warning         string             `json:"warning,omitempty"`
+	Stats           CacheStats         `json:"stats"`
+	ByKey           []CacheKeyStats    `json:"by_key"`
 	Events          []model.CacheEvent `json:"events"`
 }
 

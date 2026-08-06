@@ -62,6 +62,10 @@ type Commit struct {
 		Email    string `json:"email"`
 		Username string `json:"username"`
 	} `json:"author"`
+	// The changed-file lists a paths: or paths-ignore: filter matches against.
+	Added    []string `json:"added,omitempty"`
+	Modified []string `json:"modified,omitempty"`
+	Removed  []string `json:"removed,omitempty"`
 }
 
 // PushEvent is a push to a ref.
@@ -74,6 +78,10 @@ type PushEvent struct {
 	Deleted    bool    `json:"deleted"`
 	Forced     bool    `json:"forced"`
 	HeadCommit *Commit `json:"head_commit"`
+	// Commits carries every commit in the push. A paths: filter matches against
+	// all of them, not just the head, or a push of several commits would miss
+	// files changed in any but the last.
+	Commits []Commit `json:"commits,omitempty"`
 }
 
 // Branch returns the branch name for a branch push, "" for a tag or anything

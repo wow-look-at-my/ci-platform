@@ -131,10 +131,10 @@ type rawStep struct {
 }
 
 type rawInput struct {
-	Description        string     `yaml:"description"`
-	Default            *yaml.Node `yaml:"default"`
-	Required           bool       `yaml:"required"`
-	DeprecationMessage string     `yaml:"deprecationMessage"`
+	Description        string    `yaml:"description"`
+	Default            yaml.Node `yaml:"default"`
+	Required           bool      `yaml:"required"`
+	DeprecationMessage string    `yaml:"deprecationMessage"`
 }
 
 type rawOutput struct {
@@ -206,7 +206,7 @@ func decodeInputs(n *yaml.Node, m *Metadata) error {
 			Required:           ri.Required,
 			DeprecationMessage: ri.DeprecationMessage,
 		}
-		if ri.Default != nil && ri.Default.Kind != 0 {
+		if ri.Default.Kind != 0 {
 			in.HasDefault = true
 			in.Default = ri.Default.Value
 		}

@@ -3,14 +3,20 @@ package plan
 import (
 	"encoding/json"
 	"fmt"
+	"sort"
 	"strconv"
 
 	"github.com/wow-look-at-my/ci-platform/internal/model"
 )
 
-// RenderValue renders one matrix value the way GitHub Actions renders it in a
-// job name. Scalars stringify; a list or object renders as compact JSON, which
-// is the only stable rendering available for a value with no text form.
+// MaxJobNameLength is GitHub's cap on a generated job name. Longer names are
+// truncated with an ellipsis, and branch protection matches the truncated form,
+// so the cap is part of the contract rather than cosmetic.
+const MaxJobNameLength = 100
+
+// RenderValue renders one matrix value as text. Scalars stringify; a list or
+// object renders as compact JSON, which is only used for the leg identity --
+// display names flatten containers instead (see NameSegments).
 func RenderValue(v any) string {
 	switch t := v.(type) {
 	case nil:
@@ -41,13 +47,50 @@ func RenderValue(v any) string {
 	return string(b)
 }
 
+// NameSegments flattens one matrix value into display-name segments the way
+// GitHub does: it walks the value and emits every scalar leaf, so an object
+// value contributes its leaves rather than a rendering of the object. An empty
+// string contributes nothing.
+//
+// Object keys are walked in sorted order. GitHub walks them in source order,
+// which a map in the IR cannot preserve.
+func NameSegments(v any) []string {
+	var out []string
+	appendLeaves(&out, v)
+	return out
+}
+
+func appendLeaves(out *[]string, v any) {
+	if list, ok := asList(v); ok {
+		for _, e := range list {
+			appendLeaves(out, e)
+		}
+		return
+	}
+	if obj, ok := asObject(v); ok {
+		keys := make([]string, 0, len(obj))
+		for k := range obj {
+			keys = append(keys, k)
+		}
+		sort.Strings(keys)
+		for _, k := range keys {
+			appendLeaves(out, obj[k])
+		}
+		return
+	}
+	if s := RenderValue(v); s != "" {
+		*out = append(*out, s)
+	}
+}
+
 // DisplayName is the check run name, which branch protection matches on, so it
-// must be byte-identical to GHA's.
+// must be byte-identical to GitHub's.
 //
 //   - no matrix: the evaluated `name:`, else the job key.
-//   - matrix, no `name:`: "<key> (<v1>, <v2>)" in declaration order.
-//   - matrix with `name:`: the evaluated name verbatim; GHA appends no suffix
-//     because the author is expected to interpolate matrix values themselves.
+//   - matrix, no `name:`: "<key> (<v1>, <v2>)" over the declared dimensions.
+//   - matrix with `name:`: the evaluated name verbatim. GitHub evaluates the
+//     name after strategy expansion and it replaces the generated name, so no
+//     suffix is appended.
 func DisplayName(key string, name model.Expr, leg *Leg, ev Evaluator) (string, error) {
 	if !name.Empty() {
 		s, err := EvalString(ev, name)
@@ -59,8 +102,19 @@ func DisplayName(key string, name model.Expr, leg *Leg, ev Evaluator) (string, e
 		}
 		return s, nil
 	}
-	if leg == nil || len(leg.Order) == 0 {
+	if leg == nil {
 		return key, nil
 	}
-	return key + " " + leg.Suffix(), nil
+	suffix := leg.Suffix()
+	if suffix == "" {
+		return key, nil
+	}
+	return truncateName(key + " " + suffix), nil
+}
+
+func truncateName(s string) string {
+	if len(s) <= MaxJobNameLength {
+		return s
+	}
+	return s[:MaxJobNameLength-3] + "..."
 }
