@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"path"
-	"sort"
 	"strings"
 	"time"
 
@@ -471,16 +470,6 @@ func stepName(spec protocol.StepSpec) string {
 	default:
 		return fmt.Sprintf("step %d", spec.Number)
 	}
-}
-
-// sortedEnvKeys keeps env rendering deterministic in tests and logs.
-func sortedEnvKeys(m map[string]string) []string {
-	out := make([]string, 0, len(m))
-	for k := range m {
-		out = append(out, k)
-	}
-	sort.Strings(out)
-	return out
 }
 
 // classifySignalFor builds the classifier's input from an attempt's outcome.

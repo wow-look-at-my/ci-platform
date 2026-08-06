@@ -7,7 +7,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"io"
 	"io/fs"
 	"os"
 	"path"
@@ -497,6 +496,3 @@ func sortedKeys(m map[string]string) []string {
 	sort.Strings(out)
 	return out
 }
-
-// discard is used where a writer is required but the output is not wanted.
-var discard io.Writer = io.Discard

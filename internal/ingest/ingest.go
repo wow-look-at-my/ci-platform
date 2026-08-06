@@ -26,9 +26,13 @@ import (
 )
 
 // Files reads a repository's workflow files at a ref.
+//
+// The installation id is passed explicitly rather than looked up: it arrives on
+// every webhook delivery, and resolving it again would be a second call that
+// can fail for reasons the delivery already answered.
 type Files interface {
-	ListWorkflowFiles(ctx context.Context, repo gh.Repo, ref string) ([]gh.WorkflowFile, error)
-	GetFileContents(ctx context.Context, repo gh.Repo, path, ref string) (*gh.FileContent, error)
+	ListWorkflowFiles(ctx context.Context, installationID int64, repo gh.Repo, ref string) ([]gh.WorkflowFile, error)
+	GetFileContents(ctx context.Context, installationID int64, repo gh.Repo, path, ref string) (*gh.FileContent, error)
 }
 
 // Starter starts a planned run.
@@ -90,6 +94,8 @@ type Trigger struct {
 	IsForkPR     bool
 	ChangedPaths []string
 	Inputs       map[string]any
+	// InstallationID is the App installation the delivery came from.
+	InstallationID int64
 	// WorkflowPath, when set, restricts ingest to one workflow file, which is
 	// what workflow_dispatch names.
 	WorkflowPath string
@@ -106,6 +112,7 @@ func (i *Ingester) Push(ctx context.Context, e *webhook.PushEvent) error {
 		Event: "push", Repo: e.Repo, Ref: e.Ref, HeadSHA: e.After,
 		HeadBranch: strings.TrimPrefix(e.Ref, "refs/heads/"),
 		Actor:      e.Sender.Login, ChangedPaths: changedPaths(e), Raw: e.Raw,
+		InstallationID: e.Meta.InstallationID,
 	})
 }
 
@@ -121,6 +128,8 @@ func (i *Ingester) PullRequest(ctx context.Context, e *webhook.PullRequestEvent)
 		Actor:      e.Sender.Login,
 		IsForkPR:   e.IsFork(),
 		Raw:        e.Raw,
+
+		InstallationID: e.Meta.InstallationID,
 	})
 }
 
@@ -131,6 +140,7 @@ func (i *Ingester) WorkflowDispatch(ctx context.Context, e *webhook.WorkflowDisp
 		HeadBranch: strings.TrimPrefix(e.Ref, "refs/heads/"),
 		Actor:      e.Sender.Login, Inputs: e.Inputs,
 		WorkflowPath: e.Workflow, Raw: e.Raw,
+		InstallationID: e.Meta.InstallationID,
 	})
 }
 
@@ -173,7 +183,7 @@ func (i *Ingester) Handle(ctx context.Context, t Trigger) error {
 	}
 
 	ghRepo := gh.Repo{Owner: repo.Owner, Name: repo.Name}
-	files, err := i.opts.Files.ListWorkflowFiles(ctx, ghRepo, t.HeadSHA)
+	files, err := i.opts.Files.ListWorkflowFiles(ctx, repo.InstallationID, ghRepo, t.HeadSHA)
 	if err != nil {
 		return fmt.Errorf("ingest: list workflows for %s@%s: %w", repo.FullName(), t.HeadSHA, err)
 	}
@@ -191,7 +201,7 @@ func (i *Ingester) Handle(ctx context.Context, t Trigger) error {
 }
 
 func (i *Ingester) handleFile(ctx context.Context, repo *model.Repo, ghRepo gh.Repo, t Trigger, f gh.WorkflowFile) error {
-	content, err := i.opts.Files.GetFileContents(ctx, ghRepo, f.Path, t.HeadSHA)
+	content, err := i.opts.Files.GetFileContents(ctx, repo.InstallationID, ghRepo, f.Path, t.HeadSHA)
 	if err != nil {
 		return fmt.Errorf("ingest: read %s: %w", f.Path, err)
 	}
@@ -248,6 +258,14 @@ func (i *Ingester) handleFile(ctx context.Context, repo *model.Repo, ghRepo gh.R
 func (i *Ingester) repo(ctx context.Context, t Trigger) (*model.Repo, error) {
 	repo, err := i.opts.Store.GetRepo(ctx, t.Repo.ID)
 	if err == nil {
+		// A reinstall changes the installation id, so refresh it from the
+		// delivery rather than trusting the stored one forever.
+		if t.InstallationID != 0 && repo.InstallationID != t.InstallationID {
+			repo.InstallationID = t.InstallationID
+			if err := i.opts.Store.UpsertRepo(ctx, repo); err != nil {
+				return nil, fmt.Errorf("ingest: refresh installation for %s: %w", repo.FullName(), err)
+			}
+		}
 		return repo, nil
 	}
 	if !errors.Is(err, store.ErrNotFound) {
@@ -256,7 +274,8 @@ func (i *Ingester) repo(ctx context.Context, t Trigger) (*model.Repo, error) {
 	owner, name := splitFullName(t.Repo.FullName, t.Repo.Name)
 	repo = &model.Repo{
 		ID: t.Repo.ID, Owner: owner, Name: name,
-		DefaultBranch: t.Repo.DefaultBranch, Private: t.Repo.Private,
+		InstallationID: t.InstallationID,
+		DefaultBranch:  t.Repo.DefaultBranch, Private: t.Repo.Private,
 	}
 	if err := i.opts.Store.UpsertRepo(ctx, repo); err != nil {
 		return nil, fmt.Errorf("ingest: record repo %s: %w", t.Repo.FullName, err)
