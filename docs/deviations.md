@@ -87,6 +87,75 @@ We deliberately do not implement GitHub's own runner protocol, so the official
 undocumented, and adopting it would forfeit the lease/heartbeat/requeue and
 failure-classification semantics that are the point of the project.
 
+## Scheduling
+
+### Gating and reporting deliberately disagree about a partially-skipped job
+
+`model.Aggregate` is the only reducer for what we TELL you about a run, and it
+refuses to call a mix of skipped and successful work a success. The `needs`
+context is a different question — whether dependents RUN — and there GitHub's
+semantics win: a matrix job with one skipped leg and one successful leg reports
+`success` and its dependents run.
+
+Reducing gating through Aggregate instead would skip those dependents, which is
+a deploy job silently not running because an unrelated matrix leg was filtered
+out. That is incident 5 reintroduced by the mechanism meant to prevent it.
+
+### A matrix that expands to zero combinations is a config error
+
+GitHub Actions, and act, fall back to a single unmatrixed job with a null
+matrix. That silently runs something the author excluded. We fail the run.
+
+### A retry policy naming `user` or `config` is rejected at plan time
+
+Rather than accepted and quietly not honoured. Retrying a failing test or a
+malformed workflow cannot help, so declaring it is a mistake worth surfacing.
+
+### Cancelling a run cancels every non-terminal job
+
+So `if: always()` and `if: cancelled()` jobs do not get a chance to run
+afterwards as they would on GitHub.
+
+### A continue-on-error job that failed reports success in the needs context only
+
+The job row and the run rollup keep the real failure. The context and the
+rollup deliberately disagree, because "does not fail its dependents" and "did
+not fail" are different claims.
+
+### Job names are capped at 100 characters
+
+Truncated to 97 plus an ellipsis, matching `JobNameBuilder`. Branch protection
+matches the truncated form.
+
+## Runner
+
+### One extra shell, and one stricter rule
+
+`shell: node` is ours; GitHub has no such built-in. `bash`, `sh`, and `python`
+match `ScriptHandlerHelpers.cs` verbatim.
+
+A heredoc delimiter appearing inside the value it delimits is rejected.
+`actions/runner` accepts it, since only an exact-match line closes the block;
+`@actions/core` refuses to write it. We refuse it too, which is stricter than
+GitHub.
+
+### An action's pre: step runs immediately before its own main
+
+GitHub hoists every `pre:` to the start of the job. `post:` matches GitHub:
+deferred to job end, reverse order, and run even after a failure.
+
+### Concurrent jobs serialize on the shared image cache
+
+Two `dockerd` instances on one `/var/lib/docker` corrupt it, so the cache volume
+is held under an exclusive lock. On a platform without `flock` the sandbox
+fails to start rather than sharing the cache unsafely.
+
+### Each job gets its own docker network
+
+Docker-in-Docker publishes an unauthenticated API on port 2375. On a shared
+bridge that is cross-job root access, so every job's sandbox is created on its
+own network.
+
 ## Execution model
 
 ### Retry is first-class and declarative
