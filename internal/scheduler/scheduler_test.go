@@ -678,10 +678,10 @@ func TestRerunFailedResetsFailuresAndDownstream(t *testing.T) {
 	got := h.job("build")
 	require.False(t, got.Conclusion != "" || got.Attempt != 2)
 
-	got := h.job("test")
+	got = h.job("test")
 	require.Equal(t, "", got.Conclusion)
 
-	got := h.job("lint")
+	got = h.job("lint")
 	require.False(t, got.Conclusion != model.ConclusionSuccess || got.Attempt != 1)
 
 	require.Equal(t, 2, h.runRow().Attempt)
@@ -750,9 +750,10 @@ func TestResultValidationRejectsDishonestOutcomes(t *testing.T) {
 		"cancel with no why":    {Conclusion: model.ConclusionCancelled},
 		"failure with no class": {Conclusion: model.ConclusionFailure},
 	} {
-		err := h.s.JobCompletedAt(ctx(), id, res, base)
-		require.NotNil(t, err)
-
+		t.Run(name, func(t *testing.T) {
+			require.Error(t, h.s.JobCompletedAt(ctx(), id, res, base),
+				"a result the platform cannot honestly report must be refused")
+		})
 	}
 }
 
@@ -775,13 +776,12 @@ func TestNewRejectsMissingWiring(t *testing.T) {
 		"no evaluator": func() { New(newFakeStore(), Options{}) },
 		"no minter":    func() { New(newFakeStore(), Options{NewEval: fakeFactory}) },
 	} {
-		func() {
+		t.Run(name, func(t *testing.T) {
 			defer func() {
-				require.NotNil(t, recover())
-
+				require.NotNil(t, recover(), "missing wiring must panic at construction, not fail silently later")
 			}()
 			f()
-		}()
+		})
 	}
 }
 
