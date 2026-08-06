@@ -1,0 +1,1239 @@
+{
+	"schema": 1,
+	"created": "2026-08-06T16:05:08.966751021Z",
+	"total_actions": 140,
+	"executed_actions": 140,
+	"cache_outcomes": {
+		"hit-local": 56,
+		"hit-remote": 6,
+		"miss": 3,
+		"unknown": 75
+	},
+	"cache_satisfied_pct": 95.38461538461539,
+	"wall_ms_total": 2688.858924,
+	"cache": {
+		"local_hits": 713,
+		"local_puts": 297,
+		"remote_hits": 17,
+		"remote_puts": 297,
+		"misses": 274,
+		"prefetched": 603
+	},
+	"web": {
+		"hits": 17,
+		"puts": 32,
+		"miss_not_in_index": 274,
+		"miss_http_404": 0,
+		"miss_http_error": 0,
+		"miss_no_outputid": 0,
+		"miss_read_body": 0,
+		"miss_decompress": 0,
+		"miss_checksum": 0,
+		"miss_buildid": 0,
+		"miss_modindex": 0,
+		"miss_network": 0,
+		"skipped_empty_index": 0,
+		"skipped_not_in_index": 274,
+		"skipped_batch_backoff": 0,
+		"reclaimed_404": 0,
+		"put_skipped_known": 0,
+		"put_refused_modindex": 265,
+		"put_refused_buildid": 0,
+		"index_keys": 1063586,
+		"index_authoritative": true
+	},
+	"actions": [
+		{
+			"package": "internal/goarch",
+			"mode": "vet",
+			"start": "2026-08-06T16:05:08.192334575Z",
+			"wall_ms": 521.205358
+		},
+		{
+			"package": "internal/unsafeheader",
+			"mode": "vet",
+			"start": "2026-08-06T16:05:08.192358046Z",
+			"wall_ms": 521.122875
+		},
+		{
+			"package": "internal/cpu",
+			"mode": "vet",
+			"start": "2026-08-06T16:05:08.192418046Z",
+			"wall_ms": 521.101664
+		},
+		{
+			"action_id": "ECUxH7Lz4e4rIoAghVl3",
+			"package": "github.com/wow-look-at-my/ci-platform/internal/model",
+			"mode": "build",
+			"need_build": true,
+			"start": "2026-08-06T16:05:08.249760692Z",
+			"wall_ms": 469.058322,
+			"cmd_real_ms": 107.997524,
+			"cmd_user_ms": 102.594,
+			"cmd_sys_ms": 85.37,
+			"outcome": "miss",
+			"put": true,
+			"bytes": 353218,
+			"get_us": 28,
+			"put_us": 3212
+		},
+		{
+			"package": "internal/bytealg",
+			"mode": "vet",
+			"start": "2026-08-06T16:05:08.713521016Z",
+			"wall_ms": 76.001584
+		},
+		{
+			"package": "internal/abi",
+			"mode": "vet",
+			"start": "2026-08-06T16:05:08.713545883Z",
+			"wall_ms": 75.771987
+		},
+		{
+			"package": "internal/chacha8rand",
+			"mode": "vet",
+			"start": "2026-08-06T16:05:08.718783987Z",
+			"wall_ms": 70.750685
+		},
+		{
+			"action_id": "1dvnuEKBexkdQHK-vptL",
+			"package": "github.com/wow-look-at-my/ci-platform/internal/store",
+			"mode": "build",
+			"need_build": true,
+			"start": "2026-08-06T16:05:08.773978163Z",
+			"wall_ms": 62.949184,
+			"cmd_real_ms": 54.31388,
+			"cmd_user_ms": 61.989,
+			"cmd_sys_ms": 34.635,
+			"outcome": "miss",
+			"put": true,
+			"bytes": 406112,
+			"get_us": 30,
+			"put_us": 2378
+		},
+		{
+			"action_id": "qve7qQaWfSz2m_xMov7K",
+			"package": "encoding/json",
+			"mode": "build",
+			"need_build": true,
+			"start": "2026-08-06T16:05:08.192304114Z",
+			"wall_ms": 57.45322,
+			"outcome": "hit-local",
+			"bytes": 2137110,
+			"get_us": 2695
+		},
+		{
+			"action_id": "nMDE67-Z76iSrIJ3UL2k",
+			"package": "github.com/wow-look-at-my/ci-platform/internal/protocol",
+			"mode": "build",
+			"need_build": true,
+			"start": "2026-08-06T16:05:08.718847896Z",
+			"wall_ms": 55.127316,
+			"cmd_real_ms": 48.778156,
+			"cmd_user_ms": 17.319,
+			"cmd_sys_ms": 43.307,
+			"outcome": "miss",
+			"put": true,
+			"bytes": 115398,
+			"get_us": 36,
+			"put_us": 788
+		},
+		{
+			"package": "github.com/wow-look-at-my/ci-platform/internal/model",
+			"mode": "vet",
+			"start": "2026-08-06T16:05:08.797310414Z",
+			"wall_ms": 31.820632,
+			"cmd_real_ms": 25.429879,
+			"cmd_user_ms": 25.082,
+			"cmd_sys_ms": 3.583
+		},
+		{
+			"action_id": "jIT5mh0lpErJL15DOxvU",
+			"package": "runtime",
+			"mode": "build",
+			"need_build": true,
+			"start": "2026-08-06T16:05:08.147529368Z",
+			"wall_ms": 29.523812,
+			"outcome": "hit-remote",
+			"bytes": 12595792,
+			"get_us": 363159
+		},
+		{
+			"package": "github.com/wow-look-at-my/ci-platform/internal/model",
+			"mode": "test run",
+			"start": "2026-08-06T16:05:08.837107029Z",
+			"wall_ms": 15.602492,
+			"cmd_real_ms": 15.222341,
+			"cmd_sys_ms": 9.077
+		},
+		{
+			"package": "github.com/wow-look-at-my/ci-platform/internal/store",
+			"mode": "vet",
+			"start": "2026-08-06T16:05:08.836946551Z",
+			"wall_ms": 12.285782,
+			"cmd_real_ms": 11.5983,
+			"cmd_user_ms": 8.606,
+			"cmd_sys_ms": 4.303
+		},
+		{
+			"package": "github.com/wow-look-at-my/ci-platform/internal/protocol",
+			"mode": "vet",
+			"start": "2026-08-06T16:05:08.829138955Z",
+			"wall_ms": 11.133709,
+			"cmd_real_ms": 10.550265,
+			"cmd_sys_ms": 11.538
+		},
+		{
+			"package": "github.com/wow-look-at-my/ci-platform/internal/protocol",
+			"mode": "test run",
+			"start": "2026-08-06T16:05:08.840288978Z",
+			"wall_ms": 10.556701,
+			"cmd_real_ms": 10.221542,
+			"cmd_user_ms": 2.64,
+			"cmd_sys_ms": 2.093
+		},
+		{
+			"action_id": "Jcu3g7aQDG6Zpc5fEPXH",
+			"package": "internal/cpu",
+			"mode": "build",
+			"need_build": true,
+			"start": "2026-08-06T16:05:08.131795464Z",
+			"wall_ms": 9.453511,
+			"outcome": "hit-remote",
+			"bytes": 105858,
+			"get_us": 199401
+		},
+		{
+			"action_id": "_lzBYVNxXR1-QhMLgCbl",
+			"package": "internal/goarch",
+			"mode": "build",
+			"need_build": true,
+			"start": "2026-08-06T16:05:08.131544703Z",
+			"wall_ms": 9.224768,
+			"outcome": "hit-remote",
+			"bytes": 7660,
+			"get_us": 407050
+		},
+		{
+			"action_id": "Jr0-l-UkPdLNY-d7xd7o",
+			"package": "internal/unsafeheader",
+			"mode": "build",
+			"need_build": true,
+			"start": "2026-08-06T16:05:08.131595769Z",
+			"wall_ms": 8.740983,
+			"outcome": "hit-remote",
+			"bytes": 3696,
+			"get_us": 407841
+		},
+		{
+			"package": "internal/byteorder",
+			"mode": "vet",
+			"start": "2026-08-06T16:05:08.713485561Z",
+			"wall_ms": 5.295258
+		},
+		{
+			"action_id": "5J8uH-_wYp1HYPTvpO_Q",
+			"package": "internal/byteorder",
+			"mode": "build",
+			"need_build": true,
+			"start": "2026-08-06T16:05:08.13199343Z",
+			"wall_ms": 4.244595,
+			"outcome": "hit-remote",
+			"bytes": 40480,
+			"get_us": 407730
+		},
+		{
+			"action_id": "CqTXmG-MIp01ui3dNlm-",
+			"package": "internal/oserror",
+			"mode": "build",
+			"need_build": true,
+			"start": "2026-08-06T16:05:08.180057906Z",
+			"wall_ms": 3.567952,
+			"outcome": "hit-local",
+			"bytes": 6668,
+			"get_us": 37
+		},
+		{
+			"action_id": "rSMnLcLHAYxA30itBHSX",
+			"package": "bytes",
+			"mode": "build",
+			"need_build": true,
+			"start": "2026-08-06T16:05:08.180735028Z",
+			"wall_ms": 2.923782,
+			"outcome": "hit-local",
+			"bytes": 512770,
+			"get_us": 3091
+		},
+		{
+			"action_id": "9fatT7VVKeu4cZlr6XnT",
+			"package": "math",
+			"mode": "build",
+			"need_build": true,
+			"start": "2026-08-06T16:05:08.149132953Z",
+			"wall_ms": 2.866371,
+			"outcome": "hit-local",
+			"bytes": 586292,
+			"get_us": 10007
+		},
+		{
+			"action_id": "2N57Ng_LjttZPHAG7vK8",
+			"package": "strconv",
+			"mode": "build",
+			"need_build": true,
+			"start": "2026-08-06T16:05:08.179964086Z",
+			"wall_ms": 2.580172,
+			"outcome": "hit-local",
+			"bytes": 537940,
+			"get_us": 3099
+		},
+		{
+			"action_id": "EmKFq71YIfO2xZrwl4Px",
+			"package": "internal/goexperiment",
+			"mode": "build",
+			"need_build": true,
+			"start": "2026-08-06T16:05:08.138252146Z",
+			"wall_ms": 2.513735,
+			"outcome": "hit-local",
+			"bytes": 12010,
+			"get_us": 150
+		},
+		{
+			"action_id": "Lzs5BZaKVrKxreV1TZe7",
+			"package": "path",
+			"mode": "build",
+			"need_build": true,
+			"start": "2026-08-06T16:05:08.180655503Z",
+			"wall_ms": 2.412913,
+			"outcome": "hit-local",
+			"bytes": 60326,
+			"get_us": 107
+		},
+		{
+			"action_id": "NlINKFx_8dpzKPi8rT_X",
+			"package": "sync/atomic",
+			"mode": "build",
+			"need_build": true,
+			"start": "2026-08-06T16:05:08.145015847Z",
+			"wall_ms": 2.398707,
+			"outcome": "hit-local",
+			"bytes": 280724,
+			"get_us": 2202
+		},
+		{
+			"action_id": "XcGnoeydZP5d_EI9kR2f",
+			"package": "syscall",
+			"mode": "build",
+			"need_build": true,
+			"start": "2026-08-06T16:05:08.18362785Z",
+			"wall_ms": 2.324116,
+			"outcome": "hit-local",
+			"bytes": 1780718,
+			"get_us": 11815
+		},
+		{
+			"action_id": "hc4FKkYrMJfmcLkYC_rG",
+			"package": "unicode",
+			"mode": "build",
+			"need_build": true,
+			"start": "2026-08-06T16:05:08.146860402Z",
+			"wall_ms": 2.271846,
+			"outcome": "hit-local",
+			"bytes": 456122,
+			"get_us": 6228
+		},
+		{
+			"action_id": "ulC5JEN5hsV7zadZzGGG",
+			"package": "internal/poll",
+			"mode": "build",
+			"need_build": true,
+			"start": "2026-08-06T16:05:08.187294144Z",
+			"wall_ms": 2.183008,
+			"outcome": "hit-local",
+			"bytes": 772714,
+			"get_us": 5624
+		},
+		{
+			"action_id": "E2ZLOjzflG_b-Rb8xlEg",
+			"package": "internal/runtime/syscall",
+			"mode": "build",
+			"need_build": true,
+			"start": "2026-08-06T16:05:08.144544501Z",
+			"wall_ms": 2.179707,
+			"outcome": "hit-local",
+			"bytes": 19574,
+			"get_us": 195
+		},
+		{
+			"action_id": "CpODpSVyI2mdoGg1Lxe1",
+			"package": "internal/goos",
+			"mode": "build",
+			"need_build": true,
+			"start": "2026-08-06T16:05:08.140338352Z",
+			"wall_ms": 2.08375,
+			"outcome": "hit-local",
+			"bytes": 3410,
+			"get_us": 71
+		},
+		{
+			"action_id": "nE8RidgeIrFbeI3MWcyQ",
+			"package": "internal/stringslite",
+			"mode": "build",
+			"need_build": true,
+			"start": "2026-08-06T16:05:08.14479368Z",
+			"wall_ms": 2.065145,
+			"outcome": "hit-local",
+			"bytes": 50598,
+			"get_us": 360
+		},
+		{
+			"action_id": "cELPSrnszxE8r1AQQ4wC",
+			"package": "internal/abi",
+			"mode": "build",
+			"need_build": true,
+			"start": "2026-08-06T16:05:08.140772593Z",
+			"wall_ms": 2.054047,
+			"outcome": "hit-local",
+			"bytes": 1175392,
+			"get_us": 10172
+		},
+		{
+			"action_id": "3IH11hXY1TNc4PlY4mDs",
+			"package": "sync",
+			"mode": "build",
+			"need_build": true,
+			"start": "2026-08-06T16:05:08.17718025Z",
+			"wall_ms": 2.002232,
+			"outcome": "hit-local",
+			"bytes": 929246,
+			"get_us": 1331
+		},
+		{
+			"action_id": "6c7vTA3gtGa8-7oRRJxE",
+			"package": "io/fs",
+			"mode": "build",
+			"need_build": true,
+			"start": "2026-08-06T16:05:08.187180692Z",
+			"wall_ms": 1.97257,
+			"outcome": "hit-local",
+			"bytes": 386406,
+			"get_us": 2553
+		},
+		{
+			"action_id": "7RnqOjMCnNrR6MG3VR2G",
+			"package": "internal/runtime/maps",
+			"mode": "build",
+			"need_build": true,
+			"start": "2026-08-06T16:05:08.145604778Z",
+			"wall_ms": 1.922097,
+			"outcome": "hit-local",
+			"bytes": 727608,
+			"get_us": 4452
+		},
+		{
+			"action_id": "jAmQzYVU-3kecZPYDho6",
+			"package": "internal/profilerecord",
+			"mode": "build",
+			"need_build": true,
+			"start": "2026-08-06T16:05:08.140766882Z",
+			"wall_ms": 1.884963,
+			"outcome": "hit-local",
+			"bytes": 10506,
+			"get_us": 80
+		},
+		{
+			"action_id": "y6iaZXKfvkLOldJk7KVa",
+			"package": "context",
+			"mode": "build",
+			"need_build": true,
+			"start": "2026-08-06T16:05:08.187277315Z",
+			"wall_ms": 1.857525,
+			"outcome": "hit-local",
+			"bytes": 379132,
+			"get_us": 2128
+		},
+		{
+			"action_id": "id4l8WacNyDzag_nBmWq",
+			"package": "strings",
+			"mode": "build",
+			"need_build": true,
+			"start": "2026-08-06T16:05:08.18366096Z",
+			"wall_ms": 1.824763,
+			"outcome": "hit-local",
+			"bytes": 607762,
+			"get_us": 3921
+		},
+		{
+			"action_id": "_nl7dE3VR6HMyMYzDHme",
+			"package": "iter",
+			"mode": "build",
+			"need_build": true,
+			"start": "2026-08-06T16:05:08.177217126Z",
+			"wall_ms": 1.684249,
+			"outcome": "hit-local",
+			"bytes": 13212,
+			"get_us": 46
+		},
+		{
+			"action_id": "Cb1G6fj-i9AKcZFv3Cmq",
+			"package": "internal/bytealg",
+			"mode": "build",
+			"need_build": true,
+			"start": "2026-08-06T16:05:08.14125039Z",
+			"wall_ms": 1.620769,
+			"outcome": "hit-local",
+			"bytes": 59754,
+			"get_us": 443
+		},
+		{
+			"action_id": "W0C2XcWdUpCflcAYsVTr",
+			"package": "internal/syscall/execenv",
+			"mode": "build",
+			"need_build": true,
+			"start": "2026-08-06T16:05:08.186231493Z",
+			"wall_ms": 1.54167,
+			"outcome": "hit-local",
+			"bytes": 6802,
+			"get_us": 136
+		},
+		{
+			"package": "runtime",
+			"mode": "vet",
+			"start": "2026-08-06T16:05:08.790784073Z",
+			"wall_ms": 1.509013
+		},
+		{
+			"action_id": "Xes_M-5EHX_KiXiucmsZ",
+			"package": "encoding/binary",
+			"mode": "build",
+			"need_build": true,
+			"start": "2026-08-06T16:05:08.183791793Z",
+			"wall_ms": 1.500848,
+			"outcome": "hit-remote",
+			"bytes": 1154356,
+			"get_us": 224046
+		},
+		{
+			"action_id": "OOqrjT-GQ7vpVWiwyxK3",
+			"package": "internal/reflectlite",
+			"mode": "build",
+			"need_build": true,
+			"start": "2026-08-06T16:05:08.177057526Z",
+			"wall_ms": 1.465227,
+			"outcome": "hit-local",
+			"bytes": 583752,
+			"get_us": 621
+		},
+		{
+			"action_id": "hMZzs6oOKBSgY0bGZJt4",
+			"package": "internal/runtime/sys",
+			"mode": "build",
+			"need_build": true,
+			"start": "2026-08-06T16:05:08.144145165Z",
+			"wall_ms": 1.426941,
+			"outcome": "hit-local",
+			"bytes": 37234,
+			"get_us": 110
+		},
+		{
+			"package": "internal/sync",
+			"mode": "vet",
+			"start": "2026-08-06T16:05:08.790859682Z",
+			"wall_ms": 1.405471
+		},
+		{
+			"action_id": "SROAT0HRC2Hg9dDH_6pa",
+			"package": "internal/testlog",
+			"mode": "build",
+			"need_build": true,
+			"start": "2026-08-06T16:05:08.1792629Z",
+			"wall_ms": 1.390591,
+			"outcome": "hit-local",
+			"bytes": 87468,
+			"get_us": 119
+		},
+		{
+			"action_id": "qR3QQZKfj7ynBR_8G90a",
+			"package": "os",
+			"mode": "build",
+			"need_build": true,
+			"start": "2026-08-06T16:05:08.189769662Z",
+			"wall_ms": 1.384405,
+			"outcome": "hit-local",
+			"bytes": 2049054,
+			"get_us": 11551
+		},
+		{
+			"action_id": "SumaXV5aAky_aA78bvB0",
+			"package": "cmp",
+			"mode": "build",
+			"need_build": true,
+			"start": "2026-08-06T16:05:08.14859984Z",
+			"wall_ms": 1.368735,
+			"outcome": "hit-local",
+			"bytes": 2546,
+			"get_us": 41
+		},
+		{
+			"action_id": "12f-evssxldyiKkp_5Xj",
+			"package": "internal/runtime/math",
+			"mode": "build",
+			"need_build": true,
+			"start": "2026-08-06T16:05:08.14365707Z",
+			"wall_ms": 1.357252,
+			"outcome": "hit-local",
+			"bytes": 8776,
+			"get_us": 101
+		},
+		{
+			"action_id": "r6ubJ8IsY8_PpevXsbn6",
+			"package": "unicode/utf8",
+			"mode": "build",
+			"need_build": true,
+			"start": "2026-08-06T16:05:08.147752772Z",
+			"wall_ms": 1.304334,
+			"outcome": "hit-local",
+			"bytes": 57486,
+			"get_us": 582
+		},
+		{
+			"action_id": "bZHbAlHQjt3UEUJSUon9",
+			"package": "internal/msan",
+			"mode": "build",
+			"need_build": true,
+			"start": "2026-08-06T16:05:08.142873497Z",
+			"wall_ms": 1.269814,
+			"outcome": "hit-local",
+			"bytes": 9402,
+			"get_us": 11352
+		},
+		{
+			"action_id": "m1SzGlSRfxnGgEXNNQBM",
+			"package": "unicode/utf16",
+			"mode": "build",
+			"need_build": true,
+			"start": "2026-08-06T16:05:08.15012364Z",
+			"wall_ms": 1.265037,
+			"outcome": "hit-local",
+			"bytes": 24624,
+			"get_us": 281
+		},
+		{
+			"action_id": "rA1-njTOl2sGWnEpIqgM",
+			"package": "internal/syscall/unix",
+			"mode": "build",
+			"need_build": true,
+			"start": "2026-08-06T16:05:08.186042846Z",
+			"wall_ms": 1.249132,
+			"outcome": "hit-local",
+			"bytes": 81106,
+			"get_us": 145
+		},
+		{
+			"action_id": "TbyPArFNqblKy61-f851",
+			"package": "reflect",
+			"mode": "build",
+			"need_build": true,
+			"start": "2026-08-06T16:05:08.182546525Z",
+			"wall_ms": 1.242866,
+			"outcome": "hit-local",
+			"bytes": 3499222,
+			"get_us": 21576
+		},
+		{
+			"action_id": "pyZ89-IY2e7q0y1gDerX",
+			"package": "time",
+			"mode": "build",
+			"need_build": true,
+			"start": "2026-08-06T16:05:08.18596483Z",
+			"wall_ms": 1.203661,
+			"outcome": "hit-local",
+			"bytes": 1316596,
+			"get_us": 7388
+		},
+		{
+			"action_id": "tAxC25afTXvMa0iQ6tuw",
+			"package": "internal/race",
+			"mode": "build",
+			"need_build": true,
+			"start": "2026-08-06T16:05:08.14326619Z",
+			"wall_ms": 1.192321,
+			"outcome": "hit-local",
+			"bytes": 28090,
+			"get_us": 253
+		},
+		{
+			"action_id": "QxnjpFgciAN7Ci94_1RW",
+			"package": "io",
+			"mode": "build",
+			"need_build": true,
+			"start": "2026-08-06T16:05:08.179551294Z",
+			"wall_ms": 1.182329,
+			"outcome": "hit-local",
+			"bytes": 424672,
+			"get_us": 2599
+		},
+		{
+			"action_id": "_u2Hzf-Xl7uGpMAYkljI",
+			"package": "internal/itoa",
+			"mode": "build",
+			"need_build": true,
+			"start": "2026-08-06T16:05:08.149970145Z",
+			"wall_ms": 1.16416,
+			"outcome": "hit-local",
+			"bytes": 13706,
+			"get_us": 49
+		},
+		{
+			"action_id": "Jbww8Ng71Pp4PgjFInEq",
+			"package": "internal/sync",
+			"mode": "build",
+			"need_build": true,
+			"start": "2026-08-06T16:05:08.147416619Z",
+			"wall_ms": 1.160621,
+			"outcome": "hit-local",
+			"bytes": 68006,
+			"get_us": 1296
+		},
+		{
+			"action_id": "ADR6wZmIIxsZJi1w5uPH",
+			"package": "internal/runtime/atomic",
+			"mode": "build",
+			"need_build": true,
+			"start": "2026-08-06T16:05:08.142653795Z",
+			"wall_ms": 1.125193,
+			"outcome": "hit-local",
+			"bytes": 282938,
+			"get_us": 15171
+		},
+		{
+			"action_id": "7ySg8tpgbPE3iNCYfVUK",
+			"package": "internal/fmtsort",
+			"mode": "build",
+			"need_build": true,
+			"start": "2026-08-06T16:05:08.184167403Z",
+			"wall_ms": 1.120025,
+			"outcome": "hit-local",
+			"bytes": 215386,
+			"get_us": 1366
+		},
+		{
+			"action_id": "5knPrUSKfMGzvCDJLSig",
+			"package": "fmt",
+			"mode": "build",
+			"need_build": true,
+			"start": "2026-08-06T16:05:08.191167538Z",
+			"wall_ms": 1.119943,
+			"outcome": "hit-local",
+			"bytes": 1026504,
+			"get_us": 5792
+		},
+		{
+			"action_id": "6yCn8tsPzZTr6UWwzl4j",
+			"package": "internal/godebug",
+			"mode": "build",
+			"need_build": true,
+			"start": "2026-08-06T16:05:08.183069632Z",
+			"wall_ms": 1.096128,
+			"outcome": "hit-local",
+			"bytes": 745184,
+			"get_us": 1368
+		},
+		{
+			"action_id": "NN8H1AyTr7H38Ui-BTLd",
+			"package": "internal/godebugs",
+			"mode": "build",
+			"need_build": true,
+			"start": "2026-08-06T16:05:08.137175403Z",
+			"wall_ms": 1.073991,
+			"outcome": "hit-local",
+			"bytes": 22382,
+			"get_us": 438
+		},
+		{
+			"action_id": "fvHCtLhFJZSJ83b5wijm",
+			"package": "encoding",
+			"mode": "build",
+			"need_build": true,
+			"start": "2026-08-06T16:05:08.149059082Z",
+			"wall_ms": 1.063736,
+			"outcome": "hit-local",
+			"bytes": 20028,
+			"get_us": 234
+		},
+		{
+			"action_id": "b34YzG7IQpAnDFGOmqAQ",
+			"package": "slices",
+			"mode": "build",
+			"need_build": true,
+			"start": "2026-08-06T16:05:08.178916693Z",
+			"wall_ms": 1.045564,
+			"outcome": "hit-local",
+			"bytes": 70446,
+			"get_us": 147
+		},
+		{
+			"package": "unicode",
+			"mode": "vet",
+			"start": "2026-08-06T16:05:08.791221662Z",
+			"wall_ms": 1.038261
+		},
+		{
+			"action_id": "kATinJCUPHSf5PHaY4cc",
+			"package": "math/bits",
+			"mode": "build",
+			"need_build": true,
+			"start": "2026-08-06T16:05:08.146726631Z",
+			"wall_ms": 1.023891,
+			"outcome": "hit-local",
+			"bytes": 106120,
+			"get_us": 976
+		},
+		{
+			"action_id": "7lsFd6v1_DL9VJ6z73Zw",
+			"package": "errors",
+			"mode": "build",
+			"need_build": true,
+			"start": "2026-08-06T16:05:08.178525744Z",
+			"wall_ms": 1.021761,
+			"outcome": "hit-local",
+			"bytes": 75810,
+			"get_us": 121
+		},
+		{
+			"action_id": "XH6UcTCq3HOnGhBlb9-E",
+			"package": "internal/runtime/exithook",
+			"mode": "build",
+			"need_build": true,
+			"start": "2026-08-06T16:05:08.143780075Z",
+			"wall_ms": 1.011858,
+			"outcome": "hit-local",
+			"bytes": 27682,
+			"get_us": 187
+		},
+		{
+			"action_id": "hKHBcXLG7wLDwynrgS5k",
+			"package": "internal/coverage/rtcov",
+			"mode": "build",
+			"need_build": true,
+			"start": "2026-08-06T16:05:08.13624045Z",
+			"wall_ms": 0.932501,
+			"outcome": "hit-local",
+			"bytes": 19342,
+			"get_us": 157
+		},
+		{
+			"action_id": "D1TXwy3cPbViK0wIuId5",
+			"package": "encoding/base64",
+			"mode": "build",
+			"need_build": true,
+			"start": "2026-08-06T16:05:08.185380786Z",
+			"wall_ms": 0.925298,
+			"outcome": "hit-local",
+			"bytes": 157246,
+			"get_us": 200
+		},
+		{
+			"action_id": "tUddQgXOSU_DFqp4bGmm",
+			"package": "internal/bisect",
+			"mode": "build",
+			"need_build": true,
+			"start": "2026-08-06T16:05:08.179184246Z",
+			"wall_ms": 0.871108,
+			"outcome": "hit-local",
+			"bytes": 205078,
+			"get_us": 254
+		},
+		{
+			"action_id": "dOgeX0QwJCUtIGtPrYbc",
+			"package": "internal/chacha8rand",
+			"mode": "build",
+			"need_build": true,
+			"start": "2026-08-06T16:05:08.14242394Z",
+			"wall_ms": 0.840962,
+			"outcome": "hit-local",
+			"bytes": 69398,
+			"get_us": 133
+		},
+		{
+			"action_id": "0wVXTWDAzjADYcttgboK",
+			"package": "internal/asan",
+			"mode": "build",
+			"need_build": true,
+			"start": "2026-08-06T16:05:08.142828457Z",
+			"wall_ms": 0.827198,
+			"outcome": "hit-local",
+			"bytes": 4520,
+			"get_us": 54
+		},
+		{
+			"package": "encoding/binary",
+			"mode": "vet",
+			"start": "2026-08-06T16:05:08.794175768Z",
+			"wall_ms": 0.730722
+		},
+		{
+			"package": "internal/fmtsort",
+			"mode": "vet",
+			"start": "2026-08-06T16:05:08.794236422Z",
+			"wall_ms": 0.700688
+		},
+		{
+			"package": "reflect",
+			"mode": "vet",
+			"start": "2026-08-06T16:05:08.79353115Z",
+			"wall_ms": 0.64317
+		},
+		{
+			"package": "path",
+			"mode": "vet",
+			"start": "2026-08-06T16:05:08.793609233Z",
+			"wall_ms": 0.626416
+		},
+		{
+			"action_id": "nMPg3FWhi6cOhFlPci_r",
+			"package": "internal/filepathlite",
+			"mode": "build",
+			"need_build": true,
+			"start": "2026-08-06T16:05:08.189155425Z",
+			"wall_ms": 0.602265,
+			"outcome": "hit-local",
+			"bytes": 101086,
+			"get_us": 145
+		},
+		{
+			"package": "syscall",
+			"mode": "vet",
+			"start": "2026-08-06T16:05:08.794260389Z",
+			"wall_ms": 0.552728
+		},
+		{
+			"package": "cmp",
+			"mode": "vet",
+			"start": "2026-08-06T16:05:08.792266448Z",
+			"wall_ms": 0.517611
+		},
+		{
+			"package": "strings",
+			"mode": "vet",
+			"start": "2026-08-06T16:05:08.795706242Z",
+			"wall_ms": 0.5092
+		},
+		{
+			"package": "fmt",
+			"mode": "vet",
+			"start": "2026-08-06T16:05:08.796409067Z",
+			"wall_ms": 0.501604
+		},
+		{
+			"package": "time",
+			"mode": "vet",
+			"start": "2026-08-06T16:05:08.794816571Z",
+			"wall_ms": 0.485271
+		},
+		{
+			"package": "internal/syscall/execenv",
+			"mode": "vet",
+			"start": "2026-08-06T16:05:08.795269805Z",
+			"wall_ms": 0.481098
+		},
+		{
+			"package": "math/bits",
+			"mode": "vet",
+			"start": "2026-08-06T16:05:08.790758834Z",
+			"wall_ms": 0.461406
+		},
+		{
+			"package": "io/fs",
+			"mode": "vet",
+			"start": "2026-08-06T16:05:08.795303823Z",
+			"wall_ms": 0.456903
+		},
+		{
+			"package": "internal/reflectlite",
+			"mode": "vet",
+			"start": "2026-08-06T16:05:08.792294416Z",
+			"wall_ms": 0.428604
+		},
+		{
+			"package": "io",
+			"mode": "vet",
+			"start": "2026-08-06T16:05:08.792893094Z",
+			"wall_ms": 0.411432
+		},
+		{
+			"package": "unicode/utf16",
+			"mode": "vet",
+			"start": "2026-08-06T16:05:08.795751433Z",
+			"wall_ms": 0.400096
+		},
+		{
+			"package": "os",
+			"mode": "vet",
+			"start": "2026-08-06T16:05:08.796004016Z",
+			"wall_ms": 0.39849
+		},
+		{
+			"package": "encoding/json",
+			"mode": "vet",
+			"start": "2026-08-06T16:05:08.796912279Z",
+			"wall_ms": 0.391422
+		},
+		{
+			"package": "encoding/base64",
+			"mode": "vet",
+			"start": "2026-08-06T16:05:08.794907542Z",
+			"wall_ms": 0.369284
+		},
+		{
+			"package": "internal/race",
+			"mode": "vet",
+			"start": "2026-08-06T16:05:08.790180327Z",
+			"wall_ms": 0.333017
+		},
+		{
+			"package": "internal/goexperiment",
+			"mode": "vet",
+			"start": "2026-08-06T16:05:08.789524095Z",
+			"wall_ms": 0.331051
+		},
+		{
+			"package": "internal/syscall/unix",
+			"mode": "vet",
+			"start": "2026-08-06T16:05:08.794937683Z",
+			"wall_ms": 0.331046
+		},
+		{
+			"package": "context",
+			"mode": "vet",
+			"start": "2026-08-06T16:05:08.796151991Z",
+			"wall_ms": 0.322931
+		},
+		{
+			"package": "internal/asan",
+			"mode": "vet",
+			"start": "2026-08-06T16:05:08.789857674Z",
+			"wall_ms": 0.322005
+		},
+		{
+			"package": "sync",
+			"mode": "vet",
+			"start": "2026-08-06T16:05:08.792456945Z",
+			"wall_ms": 0.305646
+		},
+		{
+			"package": "strconv",
+			"mode": "vet",
+			"start": "2026-08-06T16:05:08.793226914Z",
+			"wall_ms": 0.303108
+		},
+		{
+			"package": "bytes",
+			"mode": "vet",
+			"start": "2026-08-06T16:05:08.793305869Z",
+			"wall_ms": 0.302845
+		},
+		{
+			"package": "internal/stringslite",
+			"mode": "vet",
+			"start": "2026-08-06T16:05:08.790484714Z",
+			"wall_ms": 0.29814
+		},
+		{
+			"package": "internal/runtime/atomic",
+			"mode": "vet",
+			"start": "2026-08-06T16:05:08.78981341Z",
+			"wall_ms": 0.294986
+		},
+		{
+			"package": "internal/runtime/math",
+			"mode": "vet",
+			"start": "2026-08-06T16:05:08.790196103Z",
+			"wall_ms": 0.287839
+		},
+		{
+			"package": "internal/godebugs",
+			"mode": "vet",
+			"start": "2026-08-06T16:05:08.789495991Z",
+			"wall_ms": 0.285757
+		},
+		{
+			"package": "internal/oserror",
+			"mode": "vet",
+			"start": "2026-08-06T16:05:08.793527306Z",
+			"wall_ms": 0.283496
+		},
+		{
+			"package": "internal/goos",
+			"mode": "vet",
+			"start": "2026-08-06T16:05:08.78953564Z",
+			"wall_ms": 0.274327
+		},
+		{
+			"package": "iter",
+			"mode": "vet",
+			"start": "2026-08-06T16:05:08.792763792Z",
+			"wall_ms": 0.273337
+		},
+		{
+			"package": "sync/atomic",
+			"mode": "vet",
+			"start": "2026-08-06T16:05:08.790611247Z",
+			"wall_ms": 0.246208
+		},
+		{
+			"package": "internal/runtime/maps",
+			"mode": "vet",
+			"start": "2026-08-06T16:05:08.790514535Z",
+			"wall_ms": 0.243371
+		},
+		{
+			"package": "internal/itoa",
+			"mode": "vet",
+			"start": "2026-08-06T16:05:08.793044742Z",
+			"wall_ms": 0.242702
+		},
+		{
+			"package": "internal/filepathlite",
+			"mode": "vet",
+			"start": "2026-08-06T16:05:08.795761516Z",
+			"wall_ms": 0.241753
+		},
+		{
+			"package": "slices",
+			"mode": "vet",
+			"start": "2026-08-06T16:05:08.793288351Z",
+			"wall_ms": 0.237801
+		},
+		{
+			"package": "encoding",
+			"mode": "vet",
+			"start": "2026-08-06T16:05:08.792784686Z",
+			"wall_ms": 0.227117
+		},
+		{
+			"package": "internal/godebug",
+			"mode": "vet",
+			"start": "2026-08-06T16:05:08.794031751Z",
+			"wall_ms": 0.22636
+		},
+		{
+			"package": "internal/testlog",
+			"mode": "vet",
+			"start": "2026-08-06T16:05:08.795279095Z",
+			"wall_ms": 0.218168
+		},
+		{
+			"package": "internal/bisect",
+			"mode": "vet",
+			"start": "2026-08-06T16:05:08.793813372Z",
+			"wall_ms": 0.217314
+		},
+		{
+			"package": "math",
+			"mode": "vet",
+			"start": "2026-08-06T16:05:08.79301239Z",
+			"wall_ms": 0.212613
+		},
+		{
+			"package": "internal/msan",
+			"mode": "vet",
+			"start": "2026-08-06T16:05:08.789983136Z",
+			"wall_ms": 0.21182
+		},
+		{
+			"package": "internal/poll",
+			"mode": "vet",
+			"start": "2026-08-06T16:05:08.795498187Z",
+			"wall_ms": 0.207306
+		},
+		{
+			"package": "internal/runtime/sys",
+			"mode": "vet",
+			"start": "2026-08-06T16:05:08.790231336Z",
+			"wall_ms": 0.204646
+		},
+		{
+			"package": "internal/profilerecord",
+			"mode": "vet",
+			"start": "2026-08-06T16:05:08.789782768Z",
+			"wall_ms": 0.199436
+		},
+		{
+			"package": "unicode/utf8",
+			"mode": "vet",
+			"start": "2026-08-06T16:05:08.792262083Z",
+			"wall_ms": 0.193728
+		},
+		{
+			"mode": "write coverage meta-data file",
+			"start": "2026-08-06T16:05:08.836931212Z",
+			"wall_ms": 0.173603
+		},
+		{
+			"package": "internal/runtime/syscall",
+			"mode": "vet",
+			"start": "2026-08-06T16:05:08.790437322Z",
+			"wall_ms": 0.17298
+		},
+		{
+			"package": "internal/coverage/rtcov",
+			"mode": "vet",
+			"start": "2026-08-06T16:05:08.789321743Z",
+			"wall_ms": 0.172839
+		},
+		{
+			"package": "errors",
+			"mode": "vet",
+			"start": "2026-08-06T16:05:08.792724422Z",
+			"wall_ms": 0.166951
+		},
+		{
+			"package": "github.com/wow-look-at-my/ci-platform/internal/store",
+			"mode": "test run",
+			"start": "2026-08-06T16:05:08.849235412Z",
+			"wall_ms": 0.158705
+		},
+		{
+			"package": "internal/runtime/exithook",
+			"mode": "vet",
+			"start": "2026-08-06T16:05:08.790109486Z",
+			"wall_ms": 0.121176
+		},
+		{
+			"package": "github.com/wow-look-at-my/ci-platform/internal/model",
+			"mode": "test print",
+			"start": "2026-08-06T16:05:08.852725182Z",
+			"wall_ms": 0.001489
+		},
+		{
+			"package": "github.com/wow-look-at-my/ci-platform/internal/protocol",
+			"mode": "test print",
+			"start": "2026-08-06T16:05:08.852737412Z",
+			"wall_ms": 0.000859
+		},
+		{
+			"package": "github.com/wow-look-at-my/ci-platform/internal/store",
+			"mode": "test print",
+			"start": "2026-08-06T16:05:08.8527395Z",
+			"wall_ms": 0.00052
+		},
+		{
+			"mode": "go test",
+			"start": "2026-08-06T16:05:08.852750018Z",
+			"wall_ms": 0.000474
+		},
+		{
+			"package": "unsafe",
+			"mode": "vet",
+			"start": "2026-08-06T16:05:08.192354327Z",
+			"wall_ms": 0.000249
+		},
+		{
+			"package": "unsafe",
+			"mode": "built-in package",
+			"need_build": true,
+			"start": "2026-08-06T16:05:08.131560429Z",
+			"wall_ms": 0.000092
+		}
+	]
+}
