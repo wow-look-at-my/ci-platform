@@ -16,6 +16,7 @@ import (
 	"github.com/wow-look-at-my/ci-platform/internal/runner/agent"
 	"github.com/wow-look-at-my/ci-platform/internal/runner/exec"
 	"github.com/wow-look-at-my/ci-platform/internal/runner/sandbox"
+	"github.com/wow-look-at-my/ci-platform/internal/workflow/expr"
 )
 
 // config is every setting the runner takes, from flags or environment.
@@ -99,11 +100,6 @@ func runCommand(ctx context.Context, fs *flag.FlagSet, args []string) error {
 		log.Warn("no -actions-api-url configured: a step using `uses:` will fail as a config error naming the reference")
 	}
 
-	// The expression evaluator lives in internal/workflow/expr and is wired in
-	// here once it lands. Until then a step with an `if:` fails loudly naming
-	// the missing evaluator rather than being treated as true.
-	log.Warn("no expression evaluator wired: steps with `if:` will fail as config errors")
-
 	ag, err := agent.New(agent.Config{
 		Client:           client,
 		RunnerID:         id,
@@ -115,6 +111,7 @@ func runCommand(ctx context.Context, fs *flag.FlagSet, args []string) error {
 		Version:          version,
 		NewSandbox:       c.sandboxFactory(log),
 		Actions:          resolver,
+		NewEvaluator:     newEvaluator,
 		PollWait:         c.pollWait,
 		LogFlushInterval: c.logFlush,
 		LogBatchSize:     c.logBatch,
@@ -251,4 +248,15 @@ func envDuration(key string, def time.Duration) time.Duration {
 		os.Exit(2)
 	}
 	return d
+}
+
+// newEvaluator adapts the workflow expression evaluator to the executor's
+// interface. A step's `if:` is evaluated here rather than by the control plane
+// because it depends on the outcome of earlier steps in the same job.
+func newEvaluator(contexts map[string]any, status exec.Status) exec.Evaluator {
+	return expr.New(expr.Context(contexts)).WithStatus(expr.Status{
+		Success:   status.Success,
+		Failure:   status.Failure,
+		Cancelled: status.Cancelled,
+	})
 }

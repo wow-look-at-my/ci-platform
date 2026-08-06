@@ -108,6 +108,11 @@ type Assignment struct {
 	// with the job.
 	JobToken  string `json:"job_token"`
 	ServerURL string `json:"server_url"`
+	// ServiceEnv is the environment the artifact, cache, and OIDC clients
+	// discover their endpoints through. The control plane builds it because it
+	// owns those URLs and mints the token; a runner deriving them itself would
+	// be guessing at the server it is talking to.
+	ServiceEnv map[string]string `json:"service_env,omitempty"`
 
 	// Retry is the resolved job-level policy, so the runner can report an
 	// attempt as retryable without asking.

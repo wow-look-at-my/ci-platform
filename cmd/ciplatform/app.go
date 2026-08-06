@@ -85,6 +85,7 @@ func newApp(ctx context.Context, cfg *config.Config, log *slog.Logger) (*app, er
 	a.sched = scheduler.New(st, scheduler.Options{
 		NewEval:           newEvaluator,
 		MintJobToken:      signer.Mint,
+		ServiceEnv:        a.serviceEnv,
 		Notify:            a.notify,
 		LeaseTTL:          cfg.LeaseTTL,
 		SetupTimeout:      cfg.SetupTimeout,
@@ -386,4 +387,30 @@ type blobOpener struct{ blobs blob.Store }
 
 func (b blobOpener) Open(ctx context.Context, a *model.Artifact) (io.ReadCloser, error) {
 	return b.blobs.Get(ctx, a.StorageKey)
+}
+
+// serviceEnv is the environment a job's artifact, cache, and OIDC clients
+// discover their endpoints through. Fork PRs get no ID-token variables at all,
+// so the endpoint is not merely denied: it is not there to be found.
+func (a *app) serviceEnv(runID, jobID int64, attempt int, token string) map[string]string {
+	base := a.cfg.PublicURL.String()
+	env := map[string]string{}
+
+	retentionDays := int(a.cfg.ArtifactRetention / (24 * time.Hour))
+	for k, v := range artifacts.RunnerEnv(base, base, runID, token, retentionDays) {
+		env[k] = v
+	}
+
+	mode := "read"
+	run, err := a.store.GetRun(context.Background(), runID)
+	if err == nil && scheduler.OIDCAllowed(run) {
+		mode = "write"
+		for k, v := range oidc.RunnerEnv(base, token) {
+			env[k] = v
+		}
+	}
+	for k, v := range cachesvc.RunnerEnv(base, token, mode) {
+		env[k] = v
+	}
+	return env
 }

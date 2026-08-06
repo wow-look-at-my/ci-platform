@@ -32,6 +32,10 @@ type Options struct {
 	NewEval plan.EvaluatorFactory
 	// MintJobToken issues the per-job bearer token carried in an assignment.
 	MintJobToken func(runID, jobID int64, attempt int) (string, error)
+	// ServiceEnv builds the artifact/cache/OIDC environment for a job, given
+	// the token just minted for it. Optional: absent, a job simply has no
+	// artifact or cache service to talk to, which those actions report.
+	ServiceEnv func(runID, jobID int64, attempt int, token string) map[string]string
 	// Notify fires when a run on the repo's default branch ends non-success.
 	Notify func(ctx context.Context, n Notification)
 

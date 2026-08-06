@@ -180,6 +180,9 @@ func (s *Scheduler) buildAssignment(ctx context.Context, run *model.Run, repo *m
 	if a.TimeoutMinutes == 0 {
 		a.TimeoutMinutes = int(s.opts.DefaultJobTimeout / time.Minute)
 	}
+	if s.opts.ServiceEnv != nil {
+		a.ServiceEnv = s.opts.ServiceEnv(run.ID, j.ID, j.Attempt, token)
+	}
 	if a.Container, err = resolveContainer(pj.IR.Container, ev); err != nil {
 		return nil, fmt.Errorf("scheduler: job %q container: %w", j.Name, err)
 	}

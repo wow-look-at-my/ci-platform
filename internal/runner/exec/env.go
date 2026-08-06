@@ -38,6 +38,11 @@ func (e *Executor) baseEnv() map[string]string {
 		"RUNNER_OS":               osName(e.cfg.RunnerOS),
 		"RUNNER_ARCH":             archName(e.cfg.RunnerArch),
 	}
+	// The control plane owns the artifact, cache, and OIDC URLs and mints the
+	// token, so it sends the environment those clients discover them through.
+	for k, v := range a.ServiceEnv {
+		env[k] = v
+	}
 	if e.cfg.RuntimeToken != "" {
 		env["ACTIONS_RUNTIME_TOKEN"] = e.cfg.RuntimeToken
 	}
