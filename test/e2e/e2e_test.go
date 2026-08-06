@@ -122,9 +122,8 @@ func (c *controlPlane) waitReady(t *testing.T) {
 				return
 			}
 		}
-		if c.exited() {
-			t.Fatalf("control plane exited before becoming ready:\n%s", c.out.String())
-		}
+		require.False(t, c.exited())
+
 		time.Sleep(200 * time.Millisecond)
 	}
 	t.Fatalf("control plane never became ready:\n%s", c.out.String())

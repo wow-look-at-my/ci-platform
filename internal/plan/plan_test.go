@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
 	"github.com/wow-look-at-my/ci-platform/internal/model"
 )
 
@@ -35,9 +36,8 @@ func build(t *testing.T, w *model.Workflow, canned map[string]any) *Plan {
 		Contexts: map[string]any{"github": map[string]any{"ref": "refs/heads/main"}},
 		NewEval:  newFakeFactory(canned),
 	})
-	if err != nil {
-		t.Fatalf("build: %v", err)
-	}
+	require.Nil(t, err)
+
 	return p
 }
 
@@ -69,9 +69,8 @@ func TestOperatorPublishName(t *testing.T) {
 		}}
 	})), nil)
 	assertStrings(t, names(p), []string{"publish (claude-host/agent-host, Dockerfile)"})
-	if p.Jobs[0].MatrixKey != "image=claude-host/agent-host,dockerfile=Dockerfile" {
-		t.Fatalf("matrix key: %q", p.Jobs[0].MatrixKey)
-	}
+	require.Equal(t, "image=claude-host/agent-host,dockerfile=Dockerfile", p.Jobs[0].MatrixKey)
+
 }
 
 func TestExplicitNameOnAMatrixedJobGetsNoSuffix(t *testing.T) {
@@ -110,9 +109,9 @@ func TestBuildMatchesActStrategyAllCase(t *testing.T) {
 		"b (site-a, 10.x, prod)",
 		"b (site-b, 12.x, dev)",
 	})
-	if got := p.Jobs[0].Matrix["php-version"]; got != 5.4 {
-		t.Fatalf("include did not merge php-version: %v", got)
-	}
+	got := p.Jobs[0].Matrix["php-version"]
+	require.Equal(t, 5.4, got)
+
 }
 
 func TestMatrixSiblingsAndOrder(t *testing.T) {
@@ -127,17 +126,14 @@ func TestMatrixSiblingsAndOrder(t *testing.T) {
 		}),
 	), nil)
 	assertStrings(t, p.Order, []string{"a", "b#os=ubuntu", "b#os=windows"})
-	if p.Jobs[0].MatrixSiblings != nil {
-		t.Fatal("an unmatrixed job has no siblings")
-	}
+	require.Nil(t, p.Jobs[0].MatrixSiblings)
+
 	assertStrings(t, p.Jobs[1].MatrixSiblings, []string{"b#os=ubuntu", "b#os=windows"})
 	assertStrings(t, p.Jobs[2].MatrixSiblings, []string{"b#os=ubuntu", "b#os=windows"})
-	if p.ByID("b#os=windows") != p.Jobs[2] || p.Find("b", "os=ubuntu") != p.Jobs[1] {
-		t.Fatal("lookup helpers disagree with the plan")
-	}
-	if len(p.Legs("b")) != 2 {
-		t.Fatal("Legs should return both legs")
-	}
+	require.False(t, p.ByID("b#os=windows") != p.Jobs[2] || p.Find("b", "os=ubuntu") != p.Jobs[1])
+
+	require.Equal(t, 2, len(p.Legs("b")))
+
 }
 
 func TestTopologicalOrderFollowsNeeds(t *testing.T) {
@@ -155,31 +151,27 @@ func TestCycleIsRejected(t *testing.T) {
 		job("b", func(j *model.JobIR) { j.Needs = []string{"a"} }),
 	)
 	_, err := Build(w, Input{Run: &model.Run{}, NewEval: newFakeFactory(nil)})
-	if err == nil || !strings.Contains(err.Error(), "cycle") {
-		t.Fatalf("want a cycle error, got %v", err)
-	}
+	require.False(t, err == nil || !strings.Contains(err.Error(), "cycle"))
+
 }
 
 func TestSelfNeedAndUnknownNeedAreRejected(t *testing.T) {
 	_, err := Build(workflow(job("a", func(j *model.JobIR) { j.Needs = []string{"a"} })),
 		Input{Run: &model.Run{}, NewEval: newFakeFactory(nil)})
-	if err == nil || !strings.Contains(err.Error(), "needs itself") {
-		t.Fatalf("want a self-need error, got %v", err)
-	}
+	require.False(t, err == nil || !strings.Contains(err.Error(), "needs itself"))
+
 	_, err = Build(workflow(job("a", func(j *model.JobIR) { j.Needs = []string{"ghost"} })),
 		Input{Run: &model.Run{}, NewEval: newFakeFactory(nil)})
-	if err == nil || !strings.Contains(err.Error(), "does not define") {
-		t.Fatalf("want an unknown-need error, got %v", err)
-	}
+	require.False(t, err == nil || !strings.Contains(err.Error(), "does not define"))
+
 }
 
 func TestJobOrderMustCoverEveryJob(t *testing.T) {
 	w := workflow(job("a"), job("b"))
 	w.JobOrder = []string{"a"}
 	_, err := Build(w, Input{Run: &model.Run{}, NewEval: newFakeFactory(nil)})
-	if err == nil || !strings.Contains(err.Error(), "job order") {
-		t.Fatalf("want a job order error, got %v", err)
-	}
+	require.False(t, err == nil || !strings.Contains(err.Error(), "job order"))
+
 }
 
 func TestRetryPolicyResolution(t *testing.T) {
@@ -188,21 +180,18 @@ func TestRetryPolicyResolution(t *testing.T) {
 		job("a"),
 		job("b", func(j *model.JobIR) { j.Retry = &custom }),
 	), nil)
-	if p.Jobs[0].Retry.Attempts != model.DefaultRetryPolicy().Attempts {
-		t.Fatalf("default policy not applied: %+v", p.Jobs[0].Retry)
-	}
-	if p.Jobs[1].Retry.Attempts != 5 || p.Jobs[1].Retry.Backoff != model.BackoffFixed {
-		t.Fatalf("declared policy not applied: %+v", p.Jobs[1].Retry)
-	}
+	require.Equal(t, model.DefaultRetryPolicy().Attempts, p.Jobs[0].Retry.Attempts)
+
+	require.False(t, p.Jobs[1].Retry.Attempts != 5 || p.Jobs[1].Retry.Backoff != model.BackoffFixed)
+
 }
 
 func TestZeroAttemptRetryPolicyIsRejected(t *testing.T) {
 	bad := model.RetryPolicy{Attempts: 0}
 	_, err := Build(workflow(job("a", func(j *model.JobIR) { j.Retry = &bad })),
 		Input{Run: &model.Run{}, NewEval: newFakeFactory(nil)})
-	if err == nil || !strings.Contains(err.Error(), "attempts") {
-		t.Fatalf("want an attempts error, got %v", err)
-	}
+	require.False(t, err == nil || !strings.Contains(err.Error(), "attempts"))
+
 }
 
 func TestFailFastDefaultsToTrue(t *testing.T) {
@@ -212,15 +201,12 @@ func TestFailFastDefaultsToTrue(t *testing.T) {
 		job("b", func(j *model.JobIR) { j.Strategy = &model.Strategy{FailFast: &no} }),
 		job("c"),
 	), nil)
-	if !p.Jobs[0].FailFast {
-		t.Fatal("absent fail-fast must default to true")
-	}
-	if p.Jobs[1].FailFast {
-		t.Fatal("declared fail-fast: false was ignored")
-	}
-	if !p.Jobs[2].FailFast {
-		t.Fatal("a job with no strategy still fails fast")
-	}
+	require.True(t, p.Jobs[0].FailFast)
+
+	require.False(t, p.Jobs[1].FailFast)
+
+	require.True(t, p.Jobs[2].FailFast)
+
 }
 
 func TestMaxParallelAndConcurrencyAreEvaluated(t *testing.T) {
@@ -234,12 +220,10 @@ func TestMaxParallelAndConcurrencyAreEvaluated(t *testing.T) {
 			CancelInProgress: model.NewExpr("true"),
 		}
 	})), map[string]any{"vars.parallel": 2})
-	if p.Jobs[0].MaxParallel != 2 {
-		t.Fatalf("max-parallel: %d", p.Jobs[0].MaxParallel)
-	}
-	if p.Jobs[0].ConcurrencyGroup != "deploy-refs/heads/main" || !p.Jobs[0].CancelInProgress {
-		t.Fatalf("concurrency: %q %v", p.Jobs[0].ConcurrencyGroup, p.Jobs[0].CancelInProgress)
-	}
+	require.Equal(t, 2, p.Jobs[0].MaxParallel)
+
+	require.False(t, p.Jobs[0].ConcurrencyGroup != "deploy-refs/heads/main" || !p.Jobs[0].CancelInProgress)
+
 }
 
 func TestWorkflowConcurrencyIsResolved(t *testing.T) {
@@ -249,26 +233,23 @@ func TestWorkflowConcurrencyIsResolved(t *testing.T) {
 		CancelInProgress: model.NewExpr("true"),
 	}
 	p := build(t, w, nil)
-	if p.RunConcurrencyGroup != "ci-refs/heads/main" || !p.RunCancelInProgress {
-		t.Fatalf("run concurrency: %q %v", p.RunConcurrencyGroup, p.RunCancelInProgress)
-	}
+	require.False(t, p.RunConcurrencyGroup != "ci-refs/heads/main" || !p.RunCancelInProgress)
+
 }
 
 func TestRunsOnMustSelectSomething(t *testing.T) {
 	w := workflow(job("a", func(j *model.JobIR) { j.RunsOn = model.RunsOn{} }))
 	_, err := Build(w, Input{Run: &model.Run{}, NewEval: newFakeFactory(nil)})
-	if err == nil || !strings.Contains(err.Error(), "runs-on") {
-		t.Fatalf("want a runs-on error, got %v", err)
-	}
+	require.False(t, err == nil || !strings.Contains(err.Error(), "runs-on"))
+
 }
 
 func TestRunnerGroupIsKept(t *testing.T) {
 	p := build(t, workflow(job("a", func(j *model.JobIR) {
 		j.RunsOn = model.RunsOn{Group: model.NewExpr("big-boxes")}
 	})), nil)
-	if p.Jobs[0].RunnerGroup != "big-boxes" || len(p.Jobs[0].Labels) != 0 {
-		t.Fatalf("runs-on group: %+v", p.Jobs[0])
-	}
+	require.False(t, p.Jobs[0].RunnerGroup != "big-boxes" || len(p.Jobs[0].Labels) != 0)
+
 }
 
 func TestContinueOnErrorTimeoutAndEnvironment(t *testing.T) {
@@ -278,17 +259,15 @@ func TestContinueOnErrorTimeoutAndEnvironment(t *testing.T) {
 		j.Environment = &model.Environment{Name: model.NewExpr("production")}
 	})), nil)
 	got := p.Jobs[0]
-	if !got.ContinueOnError || got.TimeoutMinutes != 42 || got.Environment != "production" {
-		t.Fatalf("resolved job: %+v", got)
-	}
+	require.False(t, !got.ContinueOnError || got.TimeoutMinutes != 42 || got.Environment != "production")
+
 }
 
 func TestBadBooleanIsAnErrorNotADefault(t *testing.T) {
 	w := workflow(job("a", func(j *model.JobIR) { j.ContinueOnError = model.NewExpr("ture") }))
 	_, err := Build(w, Input{Run: &model.Run{}, NewEval: newFakeFactory(nil)})
-	if err == nil || !strings.Contains(err.Error(), "true or false") {
-		t.Fatalf("want a boolean error, got %v", err)
-	}
+	require.False(t, err == nil || !strings.Contains(err.Error(), "true or false"))
+
 }
 
 func TestBuildRejectsMissingInputs(t *testing.T) {
@@ -301,9 +280,9 @@ func TestBuildRejectsMissingInputs(t *testing.T) {
 		{"no run", workflow(), Input{NewEval: newFakeFactory(nil)}},
 		{"no evaluator", workflow(), Input{Run: &model.Run{}}},
 	} {
-		if _, err := Build(tc.w, tc.in); err == nil {
-			t.Fatalf("%s: want an error", tc.name)
-		}
+		_, err := Build(tc.w, tc.in)
+		require.NotNil(t, err)
+
 	}
 }
 
@@ -316,9 +295,8 @@ func TestFullyExcludedMatrixIsAnError(t *testing.T) {
 		}}
 	}))
 	_, err := Build(w, Input{Run: &model.Run{}, NewEval: newFakeFactory(nil)})
-	if err == nil || !strings.Contains(err.Error(), "zero combinations") {
-		t.Fatalf("want a zero-combination error, got %v", err)
-	}
+	require.False(t, err == nil || !strings.Contains(err.Error(), "zero combinations"))
+
 }
 
 func TestStrategyContextIsExposedToExpressions(t *testing.T) {
@@ -340,13 +318,10 @@ func TestIncludeKeyWithNoRecordedOrderIsSurfacedAsADeviation(t *testing.T) {
 		}}
 	}))
 	build(t, w, nil)
-	if len(w.Deviations) != 1 {
-		t.Fatalf("want the include-order deviation recorded, got %v", w.Deviations)
-	}
+	require.Equal(t, 1, len(w.Deviations))
+
 	d := w.Deviations[0]
-	if d.Path != "jobs.publish.strategy.matrix.include" || !strings.Contains(d.OurBehavior, "artifact") {
-		t.Fatalf("deviation %+v", d)
-	}
+	require.False(t, d.Path != "jobs.publish.strategy.matrix.include" || !strings.Contains(d.OurBehavior, "artifact"))
 
 	// With the order recorded, there is nothing to surface.
 	w2 := workflow(job("publish", func(j *model.JobIR) {
@@ -357,7 +332,6 @@ func TestIncludeKeyWithNoRecordedOrderIsSurfacedAsADeviation(t *testing.T) {
 		}}
 	}))
 	build(t, w2, nil)
-	if len(w2.Deviations) != 0 {
-		t.Fatalf("no deviation expected, got %v", w2.Deviations)
-	}
+	require.Equal(t, 0, len(w2.Deviations))
+
 }

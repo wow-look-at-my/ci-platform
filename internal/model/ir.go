@@ -239,9 +239,9 @@ type Matrix struct {
 	// display name, and Include is a []map here so it cannot carry the order
 	// itself. Getting this wrong renames every leg, which breaks the branch
 	// protection rule keyed on the name.
-	Order []string `json:"order,omitempty"`
-	Include    []map[string]any `json:"include,omitempty"`
-	Exclude    []map[string]any `json:"exclude,omitempty"`
+	Order   []string         `json:"order,omitempty"`
+	Include []map[string]any `json:"include,omitempty"`
+	Exclude []map[string]any `json:"exclude,omitempty"`
 	// FromExpr is set when the whole matrix is a ${{ fromJSON(...) }}; it is
 	// resolved at plan time once needs outputs exist.
 	FromExpr Expr `json:"from_expr,omitempty"`

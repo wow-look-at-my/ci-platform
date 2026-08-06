@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/require"
 	"github.com/wow-look-at-my/ci-platform/internal/model"
 )
 
@@ -18,13 +19,11 @@ func legSuffixes(legs []Leg) []string {
 
 func assertStrings(t *testing.T, got, want []string) {
 	t.Helper()
-	if len(got) != len(want) {
-		t.Fatalf("got %d entries %v, want %d %v", len(got), got, len(want), want)
-	}
+	require.Equal(t, len(want), len(got))
+
 	for i := range got {
-		if got[i] != want[i] {
-			t.Fatalf("entry %d: got %q, want %q\nfull: %v", i, got[i], want[i], got)
-		}
+		require.Equal(t, want[i], got[i])
+
 	}
 }
 
@@ -37,15 +36,13 @@ func TestCartesianProductFollowsDeclarationOrder(t *testing.T) {
 		Order: []string{"os", "go"},
 	}
 	legs, err := ExpandMatrix(m, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.Nil(t, err)
+
 	assertStrings(t, legSuffixes(legs), []string{
 		"(ubuntu, 1.22)", "(ubuntu, 1.23)", "(windows, 1.22)", "(windows, 1.23)",
 	})
-	if legs[0].Key() != "os=ubuntu,go=1.22" {
-		t.Fatalf("matrix key: %q", legs[0].Key())
-	}
+	require.Equal(t, "os=ubuntu,go=1.22", legs[0].Key())
+
 }
 
 func TestExcludeIsAPartialMatch(t *testing.T) {
@@ -58,9 +55,8 @@ func TestExcludeIsAPartialMatch(t *testing.T) {
 		Exclude: []map[string]any{{"os": "windows"}, {"os": "macos", "go": "1.22"}},
 	}
 	legs, err := ExpandMatrix(m, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.Nil(t, err)
+
 	assertStrings(t, legSuffixes(legs), []string{"(ubuntu, 1.22)", "(ubuntu, 1.23)", "(macos, 1.23)"})
 }
 
@@ -73,9 +69,8 @@ func TestExcludeUnknownKeyIsAnError(t *testing.T) {
 		Exclude:    []map[string]any{{"arch": "arm64"}},
 	}
 	_, err := ExpandMatrix(m, nil)
-	if err == nil || !strings.Contains(err.Error(), "does not match any key") {
-		t.Fatalf("want an unknown-exclude-key error, got %v", err)
-	}
+	require.False(t, err == nil || !strings.Contains(err.Error(), "does not match any key"))
+
 }
 
 // The include semantics GitHub documents, using GitHub's own example, which is
@@ -100,9 +95,8 @@ func TestIncludeMergesOrAppendsLikeGitHub(t *testing.T) {
 		},
 	}
 	legs, err := ExpandMatrix(m, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.Nil(t, err)
+
 	assertStrings(t, legSuffixes(legs), []string{
 		"(apple, cat)",
 		"(apple, dog)",
@@ -120,9 +114,8 @@ func TestIncludeMergesOrAppendsLikeGitHub(t *testing.T) {
 		{"fruit": "banana", "animal": "cat"},
 	}
 	for i, w := range want {
-		if !reflect.DeepEqual(legs[i].Values, w) {
-			t.Fatalf("leg %d values: got %v, want %v", i, legs[i].Values, w)
-		}
+		require.Equal(t, legs[i].Values, w)
+
 	}
 }
 
@@ -135,9 +128,8 @@ func TestIncludeNeverOverwritesAnOriginalDimension(t *testing.T) {
 		Include: []map[string]any{{"os": "macos", "extra": "yes"}},
 	}
 	legs, err := ExpandMatrix(m, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.Nil(t, err)
+
 	assertStrings(t, legSuffixes(legs), []string{"(ubuntu)", "(windows)", "(macos, yes)"})
 }
 
@@ -153,9 +145,8 @@ func TestIncludeOnlyMatrix(t *testing.T) {
 		},
 	}
 	legs, err := ExpandMatrix(m, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.Nil(t, err)
+
 	assertStrings(t, legSuffixes(legs), []string{
 		"(claude-host/agent-host, Dockerfile)",
 		"(claude-host/base, Dockerfile.base)",
@@ -167,9 +158,8 @@ func TestIncludeOnlyMatrixWithoutDeclaredOrderSortsKeys(t *testing.T) {
 		{"image": "claude-host/agent-host", "dockerfile": "Dockerfile"},
 	}}
 	legs, err := ExpandMatrix(m, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.Nil(t, err)
+
 	assertStrings(t, legSuffixes(legs), []string{"(Dockerfile, claude-host/agent-host)"})
 }
 
@@ -183,9 +173,8 @@ func TestExcludeThenIncludeOrdering(t *testing.T) {
 		Include: []map[string]any{{"os": "windows", "note": "readded"}},
 	}
 	legs, err := ExpandMatrix(m, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.Nil(t, err)
+
 	assertStrings(t, legSuffixes(legs), []string{"(ubuntu)", "(windows, readded)"})
 }
 
@@ -199,9 +188,8 @@ func TestAppendedLegIsNotACandidateForLaterIncludes(t *testing.T) {
 		},
 	}
 	legs, err := ExpandMatrix(m, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.Nil(t, err)
+
 	assertStrings(t, legSuffixes(legs), []string{"(apple)", "(banana)", "(banana, cat)"})
 }
 
@@ -218,18 +206,16 @@ func TestMatrixValueRendering(t *testing.T) {
 		Order: []string{"n", "b", "obj", "arr"},
 	}
 	legs, err := ExpandMatrix(m, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.Nil(t, err)
+
 	assertStrings(t, legSuffixes(legs), []string{
 		"(1, true, 1, x, y)",
 		"(2.5, true, 1, x, y)",
 	})
 	// The leg identity keeps the whole value, so two legs differing only
 	// inside an object are still distinguishable.
-	if legs[0].Key() != `n=1,b=true,obj={"a":1,"b":""},arr=["x","y"]` {
-		t.Fatalf("matrix key: %q", legs[0].Key())
-	}
+	require.Equal(t, `n=1,b=true,obj={"a":1,"b":""},arr=["x","y"]`, legs[0].Key())
+
 }
 
 func TestNameIsTruncatedLikeGitHub(t *testing.T) {
@@ -237,24 +223,20 @@ func TestNameIsTruncatedLikeGitHub(t *testing.T) {
 	name, err := DisplayName("job", model.Expr{}, &Leg{
 		Values: map[string]any{"v": long}, Order: []string{"v"}, NameKeys: []string{"v"},
 	}, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(name) != MaxJobNameLength || !strings.HasSuffix(name, "...") {
-		t.Fatalf("got %d chars %q", len(name), name)
-	}
+	require.Nil(t, err)
+
+	require.False(t, len(name) != MaxJobNameLength || !strings.HasSuffix(name, "..."))
+
 }
 
 func TestLegWithNoScalarSegmentsGetsNoSuffix(t *testing.T) {
 	name, err := DisplayName("job", model.Expr{}, &Leg{
 		Values: map[string]any{"v": ""}, Order: []string{"v"}, NameKeys: []string{"v"},
 	}, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if name != "job" {
-		t.Fatalf("got %q, want %q", name, "job")
-	}
+	require.Nil(t, err)
+
+	require.Equal(t, "job", name)
+
 }
 
 func TestNumericValuesCompareAcrossTypes(t *testing.T) {
@@ -264,9 +246,8 @@ func TestNumericValuesCompareAcrossTypes(t *testing.T) {
 		Exclude:    []map[string]any{{"n": float64(2)}},
 	}
 	legs, err := ExpandMatrix(m, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.Nil(t, err)
+
 	assertStrings(t, legSuffixes(legs), []string{"(1)"})
 }
 
@@ -279,18 +260,16 @@ func TestMatrixFromJSONExpression(t *testing.T) {
 	})(map[string]any{}, Status{Success: true})
 	m := &model.Matrix{FromExpr: model.NewExpr("${{ fromJSON(needs.setup.outputs.matrix) }}")}
 	legs, err := ExpandMatrix(m, ev)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.Nil(t, err)
+
 	assertStrings(t, legSuffixes(legs), []string{"(ubuntu)"})
 }
 
 func TestMatrixFromJSONMustBeAnObject(t *testing.T) {
 	ev := newFakeFactory(map[string]any{"fromJSON(x)": []any{1, 2}})(map[string]any{}, Status{})
 	_, err := ExpandMatrix(&model.Matrix{FromExpr: model.NewExpr("${{ fromJSON(x) }}")}, ev)
-	if err == nil || !strings.Contains(err.Error(), "not an object") {
-		t.Fatalf("want an object-shape error, got %v", err)
-	}
+	require.False(t, err == nil || !strings.Contains(err.Error(), "not an object"))
+
 }
 
 func TestDimensionValueExpressionSplicesAList(t *testing.T) {
@@ -300,9 +279,8 @@ func TestDimensionValueExpressionSplicesAList(t *testing.T) {
 		Order:      []string{"os"},
 	}
 	legs, err := ExpandMatrix(m, ev)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.Nil(t, err)
+
 	assertStrings(t, legSuffixes(legs), []string{"(a)", "(b)", "(c)"})
 }
 
@@ -311,16 +289,16 @@ func TestMatrixOrderMustCoverEveryDimension(t *testing.T) {
 		Dimensions: map[string][]any{"os": {"ubuntu"}, "go": {"1.22"}},
 		Order:      []string{"os"},
 	}
-	if _, err := ExpandMatrix(m, nil); err == nil {
-		t.Fatal("want an error when the declared order omits a dimension")
-	}
+	_, err := ExpandMatrix(m, nil)
+	require.NotNil(t, err)
+
 }
 
 func TestEmptyDimensionIsAnError(t *testing.T) {
 	m := &model.Matrix{Dimensions: map[string][]any{"os": {}}, Order: []string{"os"}}
-	if _, err := ExpandMatrix(m, nil); err == nil {
-		t.Fatal("want an error for a dimension with no values")
-	}
+	_, err := ExpandMatrix(m, nil)
+	require.NotNil(t, err)
+
 }
 
 func TestEmptyExcludeEntryIsAnError(t *testing.T) {
@@ -329,14 +307,13 @@ func TestEmptyExcludeEntryIsAnError(t *testing.T) {
 		Order:      []string{"os"},
 		Exclude:    []map[string]any{{}},
 	}
-	if _, err := ExpandMatrix(m, nil); err == nil {
-		t.Fatal("want an error for an empty exclude entry")
-	}
+	_, err := ExpandMatrix(m, nil)
+	require.NotNil(t, err)
+
 }
 
 func TestNilMatrixMeansOneLeg(t *testing.T) {
 	legs, err := ExpandMatrix(nil, nil)
-	if err != nil || legs != nil {
-		t.Fatalf("got %v, %v", legs, err)
-	}
+	require.False(t, err != nil || legs != nil)
+
 }

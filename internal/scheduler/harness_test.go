@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
 	"github.com/wow-look-at-my/ci-platform/internal/model"
 	"github.com/wow-look-at-my/ci-platform/internal/plan"
 )
@@ -56,30 +57,26 @@ func newHarness(t *testing.T, w *model.Workflow, mods ...func(*Options)) *harnes
 	h.s = New(h.st, opts)
 
 	repo := &model.Repo{ID: 7, Owner: "wow-look-at-my", Name: "ci-platform", DefaultBranch: "master"}
-	if err := h.st.UpsertRepo(context.Background(), repo); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, h.st.UpsertRepo(context.Background(), repo))
+
 	h.run = &model.Run{
 		ID: 1, RepoID: repo.ID, RepoFull: repo.FullName(),
 		WorkflowName: "CI", WorkflowPath: w.Path, RunNumber: 1, Attempt: 1,
 		Event: "push", HeadSHA: "deadbeef", HeadBranch: "feature", Actor: "someone",
 		Status: model.StatusQueued, CreatedAt: base,
 	}
-	if err := h.st.CreateRun(context.Background(), h.run); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, h.st.CreateRun(context.Background(), h.run))
+
 	p, err := plan.Build(w, plan.Input{
 		Run:      h.run,
 		Contexts: map[string]any{"github": map[string]any{"ref": "refs/heads/feature"}},
 		NewEval:  fakeFactory,
 	})
-	if err != nil {
-		t.Fatalf("plan: %v", err)
-	}
+	require.Nil(t, err)
+
 	h.plan = p
-	if err := h.s.StartRun(context.Background(), h.run, p); err != nil {
-		t.Fatalf("start run: %v", err)
-	}
+	require.NoError(t, h.s.StartRun(context.Background(), h.run, p))
+
 	return h
 }
 

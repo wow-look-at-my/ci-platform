@@ -44,9 +44,8 @@ func TestDockerSandboxEndToEnd(t *testing.T) {
 	})
 	require.NoError(t, err)
 	t.Cleanup(func() {
-		if cerr := c.Close(context.Background()); cerr != nil {
-			t.Errorf("teardown: %v", cerr)
-		}
+		assert.NoError(t, c.Close(context.Background()))
+
 	})
 
 	t.Logf("setup total=%s warm=%v breakdown=%v", report.Total, report.CacheWarm, report.Breakdown)

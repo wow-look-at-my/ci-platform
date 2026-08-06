@@ -4,6 +4,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/require"
 	"github.com/wow-look-at-my/ci-platform/internal/model"
 )
 
@@ -25,74 +26,66 @@ func TestRenderValueCoversTheTypesYAMLAndJSONProduce(t *testing.T) {
 		{[]any{1, "a"}, `[1,"a"]`},
 		{map[string]any{"k": 1}, `{"k":1}`},
 	} {
-		if got := RenderValue(tc.in); got != tc.want {
-			t.Fatalf("RenderValue(%v) = %q, want %q", tc.in, got, tc.want)
-		}
+		got := RenderValue(tc.in)
+		require.Equal(t, tc.want, got)
+
 	}
 }
 
 func TestEvalBoolRejectsAMisspelledLiteral(t *testing.T) {
-	if _, err := EvalBool(nil, model.NewExpr("ture"), false); err == nil {
-		t.Fatal("a misspelled boolean must not silently read as false")
-	}
+	_, err := EvalBool(nil, model.NewExpr("ture"), false)
+	require.NotNil(t, err)
+
 	got, err := EvalBool(nil, model.Expr{}, true)
-	if err != nil || !got {
-		t.Fatalf("an absent expression takes the default: %v %v", got, err)
-	}
-	if _, err := EvalBool(nil, model.NewExpr("${{ x }}"), false); err == nil {
-		t.Fatal("an expression with no evaluator must be an error, not false")
-	}
+	require.False(t, err != nil || !got)
+
+	_, err = EvalBool(nil, model.NewExpr("${{ x }}"), false)
+	require.NotNil(t, err)
+
 	for raw, want := range map[string]bool{" TRUE ": true, "False": false} {
 		got, err := EvalBool(nil, model.NewExpr(raw), false)
-		if err != nil || got != want {
-			t.Fatalf("EvalBool(%q) = %v, %v", raw, got, err)
-		}
+		require.False(t, err != nil || got != want)
+
 	}
 }
 
 func TestEvalIntAndStringMap(t *testing.T) {
 	ev := newFakeFactory(map[string]any{"vars.n": "12", "vars.bad": []any{1}})(map[string]any{}, Status{})
 	n, err := EvalInt(ev, model.NewExpr("${{ vars.n }}"), 0)
-	if err != nil || n != 12 {
-		t.Fatalf("EvalInt = %d, %v", n, err)
-	}
-	if _, err := EvalInt(ev, model.NewExpr("${{ vars.bad }}"), 0); err == nil {
-		t.Fatal("a non-number expression must be an error")
-	}
-	if _, err := EvalInt(nil, model.NewExpr("nine"), 0); err == nil {
-		t.Fatal("a non-numeric literal must be an error")
-	}
-	if _, err := EvalInt(nil, model.NewExpr("${{ x }}"), 0); err == nil {
-		t.Fatal("an expression with no evaluator must be an error")
-	}
+	require.False(t, err != nil || n != 12)
+
+	_, err = EvalInt(ev, model.NewExpr("${{ vars.bad }}"), 0)
+	require.NotNil(t, err)
+
+	_, err = EvalInt(nil, model.NewExpr("nine"), 0)
+	require.NotNil(t, err)
+
+	_, err = EvalInt(nil, model.NewExpr("${{ x }}"), 0)
+	require.NotNil(t, err)
 
 	out, err := EvalStringMap(ev, map[string]model.Expr{"A": model.NewExpr("1"), "B": model.NewExpr("${{ vars.n }}")})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if out["A"] != "1" || out["B"] != "12" {
-		t.Fatalf("EvalStringMap = %v", out)
-	}
-	if out, err := EvalStringMap(ev, nil); out != nil || err != nil {
-		t.Fatalf("an empty map stays nil: %v %v", out, err)
-	}
-	if _, err := EvalStringMap(ev, map[string]model.Expr{"A": model.NewExpr("${{ nope }}")}); err == nil {
-		t.Fatal("an unresolvable value must surface")
-	}
+	require.Nil(t, err)
+
+	require.False(t, out["A"] != "1" || out["B"] != "12")
+
+	out, err = EvalStringMap(ev, nil)
+	require.False(t, out != nil || err != nil)
+
+	_, err = EvalStringMap(ev, map[string]model.Expr{"A": model.NewExpr("${{ nope }}")})
+	require.NotNil(t, err)
+
 }
 
 func TestExpandMatrixNeedsAnEvaluatorForExpressions(t *testing.T) {
 	_, err := ExpandMatrix(&model.Matrix{FromExpr: model.NewExpr("${{ fromJSON(x) }}")}, nil)
-	if err == nil || !strings.Contains(err.Error(), "evaluator") {
-		t.Fatalf("want an evaluator error, got %v", err)
-	}
+	require.False(t, err == nil || !strings.Contains(err.Error(), "evaluator"))
+
 	_, err = ExpandMatrix(&model.Matrix{
 		Dimensions: map[string][]any{"os": {"${{ vars.x }}"}},
 		Order:      []string{"os"},
 	}, nil)
-	if err == nil || !strings.Contains(err.Error(), "evaluator") {
-		t.Fatalf("want an evaluator error, got %v", err)
-	}
+	require.False(t, err == nil || !strings.Contains(err.Error(), "evaluator"))
+
 }
 
 func TestFromJSONMatrixRejectsMalformedShapes(t *testing.T) {
@@ -102,9 +95,9 @@ func TestFromJSONMatrixRejectsMalformedShapes(t *testing.T) {
 		"bad-entry":   map[string]any{"include": []any{"nope"}},
 	})(map[string]any{}, Status{})
 	for _, raw := range []string{"bad-dim", "bad-include", "bad-entry"} {
-		if _, err := ExpandMatrix(&model.Matrix{FromExpr: model.NewExpr("${{ " + raw + " }}")}, ev); err == nil {
-			t.Fatalf("%s: want an error", raw)
-		}
+		_, err := ExpandMatrix(&model.Matrix{FromExpr: model.NewExpr("${{ " + raw + " }}")}, ev)
+		require.NotNil(t, err)
+
 	}
 }
 
@@ -116,17 +109,15 @@ func TestFromJSONMatrixHonoursDeclaredOrder(t *testing.T) {
 		FromExpr: model.NewExpr("${{ m }}"),
 		Order:    []string{"os", "go"},
 	}, ev)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.Nil(t, err)
+
 	assertStrings(t, legSuffixes(legs), []string{"(ubuntu, 1.24)"})
 }
 
 func TestEmptyIncludeEntryIsAnError(t *testing.T) {
 	_, err := ExpandMatrix(&model.Matrix{Include: []map[string]any{{}}}, nil)
-	if err == nil || !strings.Contains(err.Error(), "include") {
-		t.Fatalf("want an empty-include error, got %v", err)
-	}
+	require.False(t, err == nil || !strings.Contains(err.Error(), "include"))
+
 }
 
 func TestStringDimensionsAreAccepted(t *testing.T) {
@@ -135,8 +126,7 @@ func TestStringDimensionsAreAccepted(t *testing.T) {
 		Dimensions: map[string][]any{"x": {"${{ list }}"}},
 		Order:      []string{"x"},
 	}, ev)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.Nil(t, err)
+
 	assertStrings(t, legSuffixes(legs), []string{"(a)", "(b)"})
 }

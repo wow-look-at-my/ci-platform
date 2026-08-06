@@ -34,10 +34,10 @@ type CheckRun struct {
 
 // CheckOutput is the check run's output block.
 type CheckOutput struct {
-	Title       string            `json:"title"`
-	Summary     string            `json:"summary"`
-	Text        string            `json:"text"`
-	Annotations []map[string]any  `json:"annotations"`
+	Title       string           `json:"title"`
+	Summary     string           `json:"summary"`
+	Text        string           `json:"text"`
+	Annotations []map[string]any `json:"annotations"`
 }
 
 // CheckAction is one button offered on a check run.

@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
 	"github.com/wow-look-at-my/ci-platform/internal/model"
 	"github.com/wow-look-at-my/ci-platform/internal/plan"
 	"github.com/wow-look-at-my/ci-platform/internal/store"
@@ -20,15 +21,12 @@ func TestStartRunQueuesOnlyRootJobs(t *testing.T) {
 		jobIR("test", func(j *model.JobIR) { j.Needs = []string{"build"} }),
 	))
 	h.tick(base)
-	if h.st.queued(h.job("build").ID) == nil {
-		t.Fatal("build should be queued")
-	}
-	if h.st.queued(h.job("test").ID) != nil {
-		t.Fatal("test must not be queued before build finishes")
-	}
-	if len(h.st.eventsOfKind(EventQueued)) != 1 {
-		t.Fatalf("want one queued event, got %d", len(h.st.eventsOfKind(EventQueued)))
-	}
+	require.NotNil(t, h.st.queued(h.job("build").ID))
+
+	require.Nil(t, h.st.queued(h.job("test").ID))
+
+	require.Equal(t, 1, len(h.st.eventsOfKind(EventQueued)))
+
 }
 
 func TestTickIsIdempotent(t *testing.T) {
@@ -36,9 +34,9 @@ func TestTickIsIdempotent(t *testing.T) {
 	h.tick(base)
 	h.tick(base)
 	h.tick(base)
-	if n := len(h.st.eventsOfKind(EventQueued)); n != 1 {
-		t.Fatalf("a job was queued %d times", n)
-	}
+	n := len(h.st.eventsOfKind(EventQueued))
+	require.Equal(t, 1, n)
+
 }
 
 func TestDependentRunsAfterSuccess(t *testing.T) {
@@ -49,9 +47,8 @@ func TestDependentRunsAfterSuccess(t *testing.T) {
 	h.tick(base)
 	h.complete("build", model.ConclusionSuccess, model.ClassNone, base.Add(time.Minute))
 	h.tick(base.Add(2 * time.Minute))
-	if h.st.queued(h.job("test").ID) == nil {
-		t.Fatal("test should be queued once build succeeded")
-	}
+	require.NotNil(t, h.st.queued(h.job("test").ID))
+
 }
 
 // A failed dependency skips its dependents, and a skipped job is never
@@ -69,16 +66,13 @@ func TestFailurePropagatesAsSkipNotSuccess(t *testing.T) {
 
 	h.requireConclusion("test", model.ConclusionSkipped)
 	h.requireConclusion("deploy", model.ConclusionSkipped)
-	if h.runRow().Conclusion != model.ConclusionFailure {
-		t.Fatalf("run concluded %q", h.runRow().Conclusion)
-	}
+	require.Equal(t, model.ConclusionFailure, h.runRow().Conclusion)
+
 	skips := h.st.eventsOfKind(EventSkipped)
-	if len(skips) != 2 {
-		t.Fatalf("want two skip events, got %d", len(skips))
-	}
-	if !strings.Contains(skips[0].Message, "build concluded failure") {
-		t.Fatalf("skip event does not say why: %q", skips[0].Message)
-	}
+	require.Equal(t, 2, len(skips))
+
+	require.Contains(t, skips[0].Message, "build concluded failure")
+
 }
 
 // GitHub compiles a condition naming no status function as
@@ -109,9 +103,8 @@ func TestAlwaysOverridesAFailedDependency(t *testing.T) {
 	h.tick(base)
 	h.complete("build", model.ConclusionFailure, model.ClassUser, base.Add(time.Minute))
 	h.tick(base.Add(2 * time.Minute))
-	if h.st.queued(h.job("report").ID) == nil {
-		t.Fatal("always() should run the job after a failure")
-	}
+	require.NotNil(t, h.st.queued(h.job("report").ID))
+
 }
 
 func TestFailureFunctionRunsOnlyOnFailure(t *testing.T) {
@@ -139,19 +132,13 @@ func TestNeedsContextCarriesOutputsAndResult(t *testing.T) {
 	h.tick(base)
 	j := h.job("build")
 	j.Status = model.StatusInProgress
-	if err := h.st.UpdateJob(ctx(), j); err != nil {
-		t.Fatal(err)
-	}
-	if err := h.s.JobCompletedAt(ctx(), j.ID, Result{
-		Conclusion: model.ConclusionSuccess,
-		Outputs:    map[string]string{"version": "1.2.3"},
-	}, base.Add(time.Minute)); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, h.st.UpdateJob(ctx(), j))
+
+	require.NoError(t, h.s.JobCompletedAt(ctx(), j.ID, Result{Conclusion: model.ConclusionSuccess, Outputs: map[string]string{"version": "1.2.3"}}, base.Add(time.Minute)))
+
 	h.tick(base.Add(2 * time.Minute))
-	if h.st.queued(h.job("deploy").ID) == nil {
-		t.Fatal("deploy should have seen needs.build.outputs.version")
-	}
+	require.NotNil(t, h.st.queued(h.job("deploy").ID))
+
 }
 
 // A run where every job was skipped must never report success.
@@ -162,16 +149,13 @@ func TestAllSkippedRunIsNotSuccess(t *testing.T) {
 	))
 	h.tick(base)
 	got := h.runRow()
-	if got.Conclusion != model.ConclusionSkipped {
-		t.Fatalf("an all-skipped run concluded %q", got.Conclusion)
-	}
+	require.Equal(t, model.ConclusionSkipped, got.Conclusion)
+
 	roll, err := h.s.RunRollup(ctx(), h.run.ID)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if strings.Contains(roll.Summary, "success") {
-		t.Fatalf("summary claims success: %q", roll.Summary)
-	}
+	require.Nil(t, err)
+
+	require.NotContains(t, roll.Summary, "success")
+
 }
 
 // continue-on-error unblocks dependents without hiding the failure from the
@@ -185,15 +169,14 @@ func TestContinueOnErrorUnblocksDependentsButStaysRed(t *testing.T) {
 	h.complete("flaky", model.ConclusionFailure, model.ClassUser, base.Add(time.Minute))
 	h.tick(base.Add(2 * time.Minute))
 
-	if h.st.queued(h.job("after").ID) == nil {
-		t.Fatal("continue-on-error must not block dependents")
-	}
+	require.NotNil(t, h.st.queued(h.job("after").ID))
+
 	h.requireConclusion("flaky", model.ConclusionFailure)
 	h.complete("after", model.ConclusionSuccess, model.ClassNone, base.Add(3*time.Minute))
 	h.tick(base.Add(4 * time.Minute))
-	if got := h.runRow().Conclusion; got != model.ConclusionFailure {
-		t.Fatalf("the rollup swallowed a continue-on-error failure: %q", got)
-	}
+	got := h.runRow().Conclusion
+	require.Equal(t, model.ConclusionFailure, got)
+
 }
 
 func TestInfraFailureRetriesWithBackoff(t *testing.T) {
@@ -202,23 +185,18 @@ func TestInfraFailureRetriesWithBackoff(t *testing.T) {
 	h.complete("build", model.ConclusionInfraFailure, model.ClassInfra, base.Add(time.Minute))
 
 	j := h.job("build")
-	if j.Status == model.StatusCompleted {
-		t.Fatal("an infra failure inside the policy must not complete the job")
-	}
-	if j.Attempt != 2 || j.InfraRetryCount != 1 {
-		t.Fatalf("attempt %d, retries %d", j.Attempt, j.InfraRetryCount)
-	}
+	require.NotEqual(t, model.StatusCompleted, j.Status)
+
+	require.False(t, j.Attempt != 2 || j.InfraRetryCount != 1)
+
 	q := h.st.queued(j.ID)
-	if q == nil {
-		t.Fatal("a retried job must go back on the queue")
-	}
+	require.NotNil(t, q)
+
 	want := base.Add(time.Minute).Add(model.DefaultRetryPolicy().Delay(2))
-	if !q.NotBefore.Equal(want) {
-		t.Fatalf("NotBefore %s, want %s", q.NotBefore, want)
-	}
-	if len(h.st.eventsOfKind(EventRetried)) != 1 {
-		t.Fatal("a retry must be recorded")
-	}
+	require.True(t, q.NotBefore.Equal(want))
+
+	require.Equal(t, 1, len(h.st.eventsOfKind(EventRetried)))
+
 }
 
 func TestUserAndConfigFailuresAreNeverRetried(t *testing.T) {
@@ -233,9 +211,8 @@ func TestUserAndConfigFailuresAreNeverRetried(t *testing.T) {
 		h.tick(base)
 		h.complete("build", tc.concl, tc.class, base.Add(time.Minute))
 		j := h.job("build")
-		if j.Status != model.StatusCompleted || j.Attempt != 1 {
-			t.Fatalf("%s failure was retried: status %s attempt %d", tc.class, j.Status, j.Attempt)
-		}
+		require.False(t, j.Status != model.StatusCompleted || j.Attempt != 1)
+
 	}
 }
 
@@ -248,12 +225,10 @@ func TestRetriesExhaustAndTheJobFails(t *testing.T) {
 		h.complete("build", model.ConclusionInfraFailure, model.ClassInfra, at)
 	}
 	j := h.job("build")
-	if j.Status != model.StatusCompleted || j.Conclusion != model.ConclusionInfraFailure {
-		t.Fatalf("after exhausting retries: status %s conclusion %s", j.Status, j.Conclusion)
-	}
-	if j.InfraRetryCount != model.DefaultRetryPolicy().Attempts-1 {
-		t.Fatalf("retry count %d", j.InfraRetryCount)
-	}
+	require.False(t, j.Status != model.StatusCompleted || j.Conclusion != model.ConclusionInfraFailure)
+
+	require.Equal(t, model.DefaultRetryPolicy().Attempts-1, j.InfraRetryCount)
+
 }
 
 // A runner that disappears must never fail or lose the job.
@@ -265,29 +240,23 @@ func TestLeaseReapRequeuesWithAReason(t *testing.T) {
 	j.RunnerID = "runner-9"
 	started := base.Add(time.Minute)
 	j.StartedAt = &started
-	if err := h.st.UpdateJob(ctx(), j); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, h.st.UpdateJob(ctx(), j))
+
 	h.st.reap = []*model.Job{j}
 	h.tick(base.Add(5 * time.Minute))
 
 	got := h.job("build")
-	if got.Status != model.StatusQueued {
-		t.Fatalf("a reaped job is queued again, got %s", got.Status)
-	}
-	if got.Conclusion != "" {
-		t.Fatalf("a lost runner must not conclude the job, got %q", got.Conclusion)
-	}
-	if got.RequeueCount != 1 || got.Attempt != 2 {
-		t.Fatalf("requeues %d attempt %d", got.RequeueCount, got.Attempt)
-	}
+	require.Equal(t, model.StatusQueued, got.Status)
+
+	require.Equal(t, "", got.Conclusion)
+
+	require.False(t, got.RequeueCount != 1 || got.Attempt != 2)
+
 	ev := h.st.eventsOfKind(EventRequeued)
-	if len(ev) != 1 || !strings.Contains(ev[0].Message, "runner-9") {
-		t.Fatalf("requeue event: %+v", ev)
-	}
-	if ev[0].Detail["actor"] != string(model.CancelActorRunnerLost) {
-		t.Fatalf("requeue actor: %v", ev[0].Detail["actor"])
-	}
+	require.False(t, len(ev) != 1 || !strings.Contains(ev[0].Message, "runner-9"))
+
+	require.Equal(t, string(model.CancelActorRunnerLost), ev[0].Detail["actor"])
+
 }
 
 func TestConcurrencyGroupCancelsInProgress(t *testing.T) {
@@ -300,29 +269,23 @@ func TestConcurrencyGroupCancelsInProgress(t *testing.T) {
 		jobIR("deploy-b", func(j *model.JobIR) { j.Needs = []string{"gate"}; group(j) }),
 	))
 	h.tick(base)
-	if h.st.queued(h.job("deploy-a").ID) == nil {
-		t.Fatal("deploy-a should hold the group first")
-	}
+	require.NotNil(t, h.st.queued(h.job("deploy-a").ID))
+
 	// deploy-b becomes ready while deploy-a holds the group.
 	h.complete("gate", model.ConclusionSuccess, model.ClassNone, base.Add(time.Minute))
 	h.tick(base.Add(2 * time.Minute))
 
 	a, b := h.job("deploy-a"), h.job("deploy-b")
-	if a.Status != model.StatusCompleted {
-		t.Fatalf("the older job should have been superseded, got %s", a.Status)
-	}
-	if a.Conclusion != model.ConclusionCancelled || a.Cancel == nil {
-		t.Fatalf("cancelled without a reason: %+v", a)
-	}
-	if a.Cancel.Actor != model.CancelActorConcurrencyGroup {
-		t.Fatalf("actor %q", a.Cancel.Actor)
-	}
-	if !strings.Contains(a.Cancel.Sentence, "deploy") {
-		t.Fatalf("sentence does not name the group: %q", a.Cancel.Sentence)
-	}
-	if h.st.queued(b.ID) == nil {
-		t.Fatal("the superseding job should be queued")
-	}
+	require.Equal(t, model.StatusCompleted, a.Status)
+
+	require.False(t, a.Conclusion != model.ConclusionCancelled || a.Cancel == nil)
+
+	require.Equal(t, model.CancelActorConcurrencyGroup, a.Cancel.Actor)
+
+	require.Contains(t, a.Cancel.Sentence, "deploy")
+
+	require.NotNil(t, h.st.queued(b.ID))
+
 }
 
 func TestConcurrencyGroupWithoutCancelWaits(t *testing.T) {
@@ -336,27 +299,22 @@ func TestConcurrencyGroupWithoutCancelWaits(t *testing.T) {
 	))
 	h.tick(base)
 	b := h.job("deploy-b")
-	if b.Status != model.StatusWaiting {
-		t.Fatalf("the second job should be waiting, got %s", b.Status)
-	}
-	if h.st.queued(b.ID) != nil {
-		t.Fatal("a waiting job must not be on the queue")
-	}
+	require.Equal(t, model.StatusWaiting, b.Status)
+
+	require.Nil(t, h.st.queued(b.ID))
+
 	ev := h.st.eventsOfKind(EventWaiting)
-	if len(ev) != 1 {
-		t.Fatalf("want one waiting event, got %d", len(ev))
-	}
+	require.Equal(t, 1, len(ev))
+
 	// It stays waiting, and does not write an event a tick.
 	h.tick(base.Add(time.Minute))
-	if len(h.st.eventsOfKind(EventWaiting)) != 1 {
-		t.Fatal("waiting must be recorded once, not once a tick")
-	}
+	require.Equal(t, 1, len(h.st.eventsOfKind(EventWaiting)))
+
 	// Once the holder finishes, the waiter is admitted.
 	h.complete("deploy-a", model.ConclusionSuccess, model.ClassNone, base.Add(2*time.Minute))
 	h.tick(base.Add(3 * time.Minute))
-	if h.st.queued(h.job("deploy-b").ID) == nil {
-		t.Fatal("the waiter should be admitted once the group frees up")
-	}
+	require.NotNil(t, h.st.queued(h.job("deploy-b").ID))
+
 }
 
 func TestFailFastCancelsSiblingLegs(t *testing.T) {
@@ -372,12 +330,10 @@ func TestFailFastCancelsSiblingLegs(t *testing.T) {
 
 	for _, name := range []string{"test (windows)", "test (macos)"} {
 		j := h.job(name)
-		if j.Conclusion != model.ConclusionCancelled {
-			t.Fatalf("%s concluded %q, want cancelled", name, j.Conclusion)
-		}
-		if j.Cancel == nil || !strings.Contains(j.Cancel.Sentence, "fail-fast") {
-			t.Fatalf("%s: cancel reason %+v", name, j.Cancel)
-		}
+		require.Equal(t, model.ConclusionCancelled, j.Conclusion)
+
+		require.False(t, j.Cancel == nil || !strings.Contains(j.Cancel.Sentence, "fail-fast"))
+
 	}
 }
 
@@ -392,9 +348,9 @@ func TestFailFastFalseLetsSiblingsFinish(t *testing.T) {
 	h.tick(base)
 	h.complete("test (ubuntu)", model.ConclusionFailure, model.ClassUser, base.Add(time.Minute))
 	h.tick(base.Add(2 * time.Minute))
-	if got := h.job("test (windows)").Conclusion; got != "" {
-		t.Fatalf("fail-fast: false still cancelled a sibling (%q)", got)
-	}
+	got := h.job("test (windows)").Conclusion
+	require.Equal(t, "", got)
+
 }
 
 func TestMaxParallelLimitsLegs(t *testing.T) {
@@ -408,14 +364,12 @@ func TestMaxParallelLimitsLegs(t *testing.T) {
 		}
 	})))
 	h.tick(base)
-	if h.st.queued(h.job("test (windows)").ID) != nil {
-		t.Fatal("max-parallel 1 must admit only one leg")
-	}
+	require.Nil(t, h.st.queued(h.job("test (windows)").ID))
+
 	h.complete("test (ubuntu)", model.ConclusionSuccess, model.ClassNone, base.Add(time.Minute))
 	h.tick(base.Add(2 * time.Minute))
-	if h.st.queued(h.job("test (windows)").ID) == nil {
-		t.Fatal("the second leg should run once the first finished")
-	}
+	require.NotNil(t, h.st.queued(h.job("test (windows)").ID))
+
 }
 
 func TestJobTimeoutIsTimedOutAndNotRetried(t *testing.T) {
@@ -428,21 +382,17 @@ func TestJobTimeoutIsTimedOutAndNotRetried(t *testing.T) {
 	j.Status = model.StatusInProgress
 	j.StartedAt = &started
 	j.SetupCompletedAt = &started
-	if err := h.st.UpdateJob(ctx(), j); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, h.st.UpdateJob(ctx(), j))
+
 	h.tick(started.Add(6 * time.Minute))
 
 	got := h.job("build")
-	if got.Conclusion != model.ConclusionTimedOut {
-		t.Fatalf("conclusion %q", got.Conclusion)
-	}
-	if got.Cancel == nil || got.Cancel.Actor != model.CancelActorTimeout {
-		t.Fatalf("cancel reason %+v", got.Cancel)
-	}
-	if got.Attempt != 1 {
-		t.Fatal("a timeout is the user's and must not retry")
-	}
+	require.Equal(t, model.ConclusionTimedOut, got.Conclusion)
+
+	require.False(t, got.Cancel == nil || got.Cancel.Actor != model.CancelActorTimeout)
+
+	require.Equal(t, 1, got.Attempt)
+
 }
 
 // A job stuck in setup ran no user command, so it is the platform's fault and
@@ -454,22 +404,18 @@ func TestSetupTimeoutIsInfraAndRetries(t *testing.T) {
 	started := base.Add(time.Minute)
 	j.Status = model.StatusInProgress
 	j.StartedAt = &started
-	if err := h.st.UpdateJob(ctx(), j); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, h.st.UpdateJob(ctx(), j))
+
 	h.tick(started.Add(3 * time.Minute))
 
 	got := h.job("build")
-	if got.Status == model.StatusCompleted {
-		t.Fatalf("a setup timeout inside the retry policy must retry, got %q", got.Conclusion)
-	}
-	if got.Attempt != 2 || got.InfraRetryCount != 1 {
-		t.Fatalf("attempt %d retries %d", got.Attempt, got.InfraRetryCount)
-	}
+	require.NotEqual(t, model.StatusCompleted, got.Status)
+
+	require.False(t, got.Attempt != 2 || got.InfraRetryCount != 1)
+
 	ev := h.st.eventsOfKind(EventRetried)
-	if len(ev) != 1 || ev[0].Detail["class"] != string(model.ClassInfra) {
-		t.Fatalf("retry event %+v", ev)
-	}
+	require.False(t, len(ev) != 1 || ev[0].Detail["class"] != string(model.ClassInfra))
+
 }
 
 func TestStepTimeoutStopsTheJob(t *testing.T) {
@@ -481,33 +427,24 @@ func TestStepTimeoutStopsTheJob(t *testing.T) {
 	})))
 	h.tick(base)
 	a, err := h.s.Acquire(ctx(), "runner-1", []string{"ubuntu-latest"}, base.Add(time.Minute))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if a.Steps[0].TimeoutMinutes != 2 {
-		t.Fatalf("step timeout not resolved: %+v", a.Steps[0])
-	}
+	require.Nil(t, err)
+
+	require.Equal(t, 2, a.Steps[0].TimeoutMinutes)
+
 	started := base.Add(2 * time.Minute)
 	j := h.job("build")
 	j.SetupCompletedAt = &started
-	if err := h.st.UpdateJob(ctx(), j); err != nil {
-		t.Fatal(err)
-	}
-	if err := h.st.UpsertStep(ctx(), &model.Step{
-		JobID: j.ID, Number: 1, Name: "slow", Attempt: j.Attempt,
-		Status: model.StatusInProgress, StartedAt: &started,
-	}); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, h.st.UpdateJob(ctx(), j))
+
+	require.NoError(t, h.st.UpsertStep(ctx(), &model.Step{JobID: j.ID, Number: 1, Name: "slow", Attempt: j.Attempt, Status: model.StatusInProgress, StartedAt: &started}))
+
 	h.tick(started.Add(3 * time.Minute))
 
 	got := h.job("build")
-	if got.Conclusion != model.ConclusionTimedOut {
-		t.Fatalf("conclusion %q", got.Conclusion)
-	}
-	if got.Cancel == nil || !strings.Contains(got.Cancel.Sentence, "step 1") {
-		t.Fatalf("cancel reason %+v", got.Cancel)
-	}
+	require.Equal(t, model.ConclusionTimedOut, got.Conclusion)
+
+	require.False(t, got.Cancel == nil || !strings.Contains(got.Cancel.Sentence, "step 1"))
+
 }
 
 func TestRunTimeoutStopsEverything(t *testing.T) {
@@ -515,12 +452,10 @@ func TestRunTimeoutStopsEverything(t *testing.T) {
 	h.tick(base)
 	h.tick(base.Add(11 * time.Minute))
 	got := h.job("build")
-	if got.Conclusion != model.ConclusionTimedOut || got.Cancel == nil {
-		t.Fatalf("job %+v", got)
-	}
-	if h.runRow().Status != model.StatusCompleted {
-		t.Fatal("the run should be closed")
-	}
+	require.False(t, got.Conclusion != model.ConclusionTimedOut || got.Cancel == nil)
+
+	require.Equal(t, model.StatusCompleted, h.runRow().Status)
+
 }
 
 func TestCancelRunRecordsAReasonOnEveryJob(t *testing.T) {
@@ -531,36 +466,30 @@ func TestCancelRunRecordsAReasonOnEveryJob(t *testing.T) {
 		Sentence:    "someone pressed cancel on the run page.",
 		TriggeredBy: "someone",
 	}
-	if err := h.s.CancelAt(ctx(), h.run.ID, reason, base.Add(time.Minute)); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, h.s.CancelAt(ctx(), h.run.ID, reason, base.Add(time.Minute)))
+
 	for _, j := range h.jobs() {
-		if j.Conclusion != model.ConclusionCancelled {
-			t.Fatalf("%s concluded %q", j.Name, j.Conclusion)
-		}
-		if j.Cancel == nil || j.Cancel.Sentence == "" {
-			t.Fatalf("%s cancelled with no sentence", j.Name)
-		}
+		require.Equal(t, model.ConclusionCancelled, j.Conclusion)
+
+		require.False(t, j.Cancel == nil || j.Cancel.Sentence == "")
+
 	}
-	if got := h.runRow().Conclusion; got != model.ConclusionCancelled {
-		t.Fatalf("run concluded %q", got)
-	}
+	got := h.runRow().Conclusion
+	require.Equal(t, model.ConclusionCancelled, got)
+
 }
 
 func TestCancellationWithoutASentenceIsRejected(t *testing.T) {
 	h := newHarness(t, wf(jobIR("a")))
 	h.tick(base)
 	err := h.s.CancelAt(ctx(), h.run.ID, model.CancelReason{Actor: model.CancelActorUser}, base)
-	if err == nil || !strings.Contains(err.Error(), "explanation") {
-		t.Fatalf("want a missing-sentence error, got %v", err)
-	}
+	require.False(t, err == nil || !strings.Contains(err.Error(), "explanation"))
+
 	err = h.s.CancelJobAt(ctx(), h.job("a").ID, model.CancelReason{Sentence: "no actor"}, base)
-	if err == nil || !strings.Contains(err.Error(), "actor") {
-		t.Fatalf("want a missing-actor error, got %v", err)
-	}
-	if h.job("a").Conclusion != "" {
-		t.Fatal("a rejected cancellation must not have changed the job")
-	}
+	require.False(t, err == nil || !strings.Contains(err.Error(), "actor"))
+
+	require.Equal(t, "", h.job("a").Conclusion)
+
 }
 
 func TestCancelJobSkipsItsDependents(t *testing.T) {
@@ -569,42 +498,33 @@ func TestCancelJobSkipsItsDependents(t *testing.T) {
 		jobIR("test", func(j *model.JobIR) { j.Needs = []string{"build"} }),
 	))
 	h.tick(base)
-	if err := h.s.CancelJobAt(ctx(), h.job("build").ID, model.CancelReason{
-		Actor: model.CancelActorUser, Sentence: "cancelled by hand.",
-	}, base.Add(time.Minute)); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, h.s.CancelJobAt(ctx(), h.job("build").ID, model.CancelReason{Actor: model.CancelActorUser, Sentence: "cancelled by hand."}, base.Add(time.Minute)))
+
 	h.tick(base.Add(2 * time.Minute))
 	h.requireConclusion("test", model.ConclusionSkipped)
-	if got := h.runRow().Conclusion; got != model.ConclusionCancelled {
-		t.Fatalf("run concluded %q", got)
-	}
+	got := h.runRow().Conclusion
+	require.Equal(t, model.ConclusionCancelled, got)
+
 }
 
 func TestAssignmentCarriesIdempotencyKeyAndToken(t *testing.T) {
 	h := newHarness(t, wf(jobIR("build")))
 	h.tick(base)
 	a, err := h.s.Acquire(ctx(), "runner-1", []string{"ubuntu-latest"}, base.Add(time.Minute))
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.Nil(t, err)
+
 	j := h.job("build")
 	want := "1/" + itoa(j.ID) + "/1"
-	if a.IdempotencyKey != want {
-		t.Fatalf("idempotency key %q, want %q", a.IdempotencyKey, want)
-	}
-	if a.JobToken != "tok" || a.ServerURL != "https://ci.example.com" {
-		t.Fatalf("assignment %+v", a)
-	}
-	if a.Retry.Attempts != model.DefaultRetryPolicy().Attempts {
-		t.Fatal("the resolved retry policy must travel with the assignment")
-	}
-	if j.Status != model.StatusInProgress || j.RunnerID != "runner-1" || j.LeaseExpiresAt == nil {
-		t.Fatalf("job after dispatch: %+v", j)
-	}
-	if len(h.st.eventsOfKind(EventDispatched)) != 1 {
-		t.Fatal("dispatch must be recorded")
-	}
+	require.Equal(t, want, a.IdempotencyKey)
+
+	require.False(t, a.JobToken != "tok" || a.ServerURL != "https://ci.example.com")
+
+	require.Equal(t, model.DefaultRetryPolicy().Attempts, a.Retry.Attempts)
+
+	require.False(t, j.Status != model.StatusInProgress || j.RunnerID != "runner-1" || j.LeaseExpiresAt == nil)
+
+	require.Equal(t, 1, len(h.st.eventsOfKind(EventDispatched)))
+
 }
 
 func itoa(v int64) string {
@@ -623,45 +543,35 @@ func itoa(v int64) string {
 // OIDC, and the restriction is recorded rather than silent.
 func TestForkPullRequestGetsNoSecrets(t *testing.T) {
 	h := newHarness(t, wf(jobIR("build")))
-	if err := h.st.PutSecret(ctx(), "repo", "wow-look-at-my/ci-platform", "DEPLOY_KEY", []byte("s3cret")); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, h.st.PutSecret(ctx(), "repo", "wow-look-at-my/ci-platform", "DEPLOY_KEY", []byte("s3cret")))
+
 	h.tick(base)
 
 	a, err := h.s.Acquire(ctx(), "runner-1", []string{"ubuntu-latest"}, base.Add(time.Minute))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if a.Secrets["DEPLOY_KEY"] != "s3cret" {
-		t.Fatal("a same-repo run should receive its secrets")
-	}
+	require.Nil(t, err)
+
+	require.Equal(t, "s3cret", a.Secrets["DEPLOY_KEY"])
 
 	// Now the same workflow as a fork PR.
 	fh := newHarness(t, wf(jobIR("build")))
 	fh.run.IsForkPR = true
-	if err := fh.st.UpdateRun(ctx(), fh.run); err != nil {
-		t.Fatal(err)
-	}
-	if err := fh.st.PutSecret(ctx(), "repo", "wow-look-at-my/ci-platform", "DEPLOY_KEY", []byte("s3cret")); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, fh.st.UpdateRun(ctx(), fh.run))
+
+	require.NoError(t, fh.st.PutSecret(ctx(), "repo", "wow-look-at-my/ci-platform", "DEPLOY_KEY", []byte("s3cret")))
+
 	fh.tick(base)
 	fa, err := fh.s.Acquire(ctx(), "runner-1", []string{"ubuntu-latest"}, base.Add(time.Minute))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(fa.Secrets) != 0 {
-		t.Fatalf("a fork PR received secrets: %v", fa.Secrets)
-	}
-	if _, ok := fa.Contexts["secrets"]; ok {
-		t.Fatal("a fork PR must not get a secrets context either")
-	}
-	if OIDCAllowed(fh.run) || SecretsAllowed(fh.run) {
-		t.Fatal("fork PRs must be refused secrets and OIDC")
-	}
-	if len(fh.st.eventsOfKind(EventRestricted)) != 1 {
-		t.Fatal("the restriction must be recorded, not silent")
-	}
+	require.Nil(t, err)
+
+	require.Equal(t, 0, len(fa.Secrets))
+
+	_, ok := fa.Contexts["secrets"]
+	require.False(t, ok)
+
+	require.False(t, OIDCAllowed(fh.run) || SecretsAllowed(fh.run))
+
+	require.Equal(t, 1, len(fh.st.eventsOfKind(EventRestricted)))
+
 }
 
 func TestForkApprovalHoldsJobs(t *testing.T) {
@@ -672,34 +582,27 @@ func TestForkApprovalHoldsJobs(t *testing.T) {
 		RequireForkApproval: true,
 	})
 	repo := &model.Repo{ID: 7, Owner: "o", Name: "r", DefaultBranch: "master"}
-	if err := h.st.UpsertRepo(ctx(), repo); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, h.st.UpsertRepo(ctx(), repo))
+
 	h.run = &model.Run{ID: 1, RepoID: 7, IsForkPR: true, Status: model.StatusQueued, CreatedAt: base, HeadBranch: "pr"}
-	if err := h.st.CreateRun(ctx(), h.run); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, h.st.CreateRun(ctx(), h.run))
+
 	p, err := plan.Build(wf(jobIR("build")), plan.Input{Run: h.run, NewEval: fakeFactory})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := h.s.StartRun(ctx(), h.run, p); err != nil {
-		t.Fatal(err)
-	}
+	require.Nil(t, err)
+
+	require.NoError(t, h.s.StartRun(ctx(), h.run, p))
+
 	h.tick(base)
-	if h.st.queued(h.job("build").ID) != nil {
-		t.Fatal("an unapproved fork PR must not dispatch")
-	}
-	if err := h.s.Approve(ctx(), h.run.ID, "maintainer", base.Add(time.Minute)); err != nil {
-		t.Fatal(err)
-	}
+	require.Nil(t, h.st.queued(h.job("build").ID))
+
+	require.NoError(t, h.s.Approve(ctx(), h.run.ID, "maintainer", base.Add(time.Minute)))
+
 	h.tick(base.Add(2 * time.Minute))
-	if h.st.queued(h.job("build").ID) == nil {
-		t.Fatal("approval should release the jobs")
-	}
-	if err := h.s.Approve(ctx(), h.run.ID, "", base); err == nil {
-		t.Fatal("approving without an approver must be rejected")
-	}
+	require.NotNil(t, h.st.queued(h.job("build").ID))
+
+	err = h.s.Approve(ctx(), h.run.ID, "", base)
+	require.NotNil(t, err)
+
 }
 
 func TestRollupSummaryAndDefaultBranchAlarm(t *testing.T) {
@@ -709,47 +612,38 @@ func TestRollupSummaryAndDefaultBranchAlarm(t *testing.T) {
 		jobIR("publish", func(j *model.JobIR) { j.Retry = &once }),
 	))
 	h.run.HeadBranch = "master"
-	if err := h.st.UpdateRun(ctx(), h.run); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, h.st.UpdateRun(ctx(), h.run))
+
 	h.tick(base)
 	h.complete("build", model.ConclusionSuccess, model.ClassNone, base.Add(time.Minute))
 	h.complete("publish", model.ConclusionInfraFailure, model.ClassInfra, base.Add(2*time.Minute))
 	h.tick(base.Add(3 * time.Minute))
 
 	roll, err := h.s.RunRollup(ctx(), h.run.ID)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if roll.Conclusion != model.ConclusionInfraFailure {
-		t.Fatalf("rollup concluded %q", roll.Conclusion)
-	}
-	if roll.ByClass[model.ClassInfra] != 1 || roll.ByConclusion[model.ConclusionSuccess] != 1 {
-		t.Fatalf("counts %+v %+v", roll.ByClass, roll.ByConclusion)
-	}
-	if !strings.Contains(roll.Summary, "not your code's") {
-		t.Fatalf("summary %q", roll.Summary)
-	}
-	if len(h.notes) != 1 {
-		t.Fatalf("want one default-branch notification, got %d", len(h.notes))
-	}
-	if h.notes[0].Kind != NotifyDefaultBranchNotSuccess || h.notes[0].Branch != "master" {
-		t.Fatalf("notification %+v", h.notes[0])
-	}
+	require.Nil(t, err)
+
+	require.Equal(t, model.ConclusionInfraFailure, roll.Conclusion)
+
+	require.False(t, roll.ByClass[model.ClassInfra] != 1 || roll.ByConclusion[model.ConclusionSuccess] != 1)
+
+	require.Contains(t, roll.Summary, "not your code's")
+
+	require.Equal(t, 1, len(h.notes))
+
+	require.False(t, h.notes[0].Kind != NotifyDefaultBranchNotSuccess || h.notes[0].Branch != "master")
+
 }
 
 func TestNoAlarmOnASuccessfulDefaultBranchRun(t *testing.T) {
 	h := newHarness(t, wf(jobIR("build")))
 	h.run.HeadBranch = "master"
-	if err := h.st.UpdateRun(ctx(), h.run); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, h.st.UpdateRun(ctx(), h.run))
+
 	h.tick(base)
 	h.complete("build", model.ConclusionSuccess, model.ClassNone, base.Add(time.Minute))
 	h.tick(base.Add(2 * time.Minute))
-	if len(h.notes) != 0 {
-		t.Fatalf("a green run raised an alarm: %+v", h.notes)
-	}
+	require.Equal(t, 0, len(h.notes))
+
 }
 
 func TestNoAlarmOffTheDefaultBranch(t *testing.T) {
@@ -757,9 +651,8 @@ func TestNoAlarmOffTheDefaultBranch(t *testing.T) {
 	h.tick(base)
 	h.complete("build", model.ConclusionFailure, model.ClassUser, base.Add(time.Minute))
 	h.tick(base.Add(2 * time.Minute))
-	if len(h.notes) != 0 {
-		t.Fatalf("a feature branch raised the default-branch alarm: %+v", h.notes)
-	}
+	require.Equal(t, 0, len(h.notes))
+
 }
 
 func TestRerunFailedResetsFailuresAndDownstream(t *testing.T) {
@@ -775,31 +668,27 @@ func TestRerunFailedResetsFailuresAndDownstream(t *testing.T) {
 	h.requireConclusion("test", model.ConclusionSkipped)
 
 	// A finished run's plan is dropped, so a re-run re-registers it.
-	if err := h.s.RerunFailed(ctx(), h.run.ID, "someone"); !errors.Is(err, ErrNoPlan) {
-		t.Fatalf("want ErrNoPlan before the plan is re-registered, got %v", err)
-	}
-	if err := h.s.RegisterPlan(h.run.ID, h.plan); err != nil {
-		t.Fatal(err)
-	}
-	if err := h.s.RerunFailed(ctx(), h.run.ID, "someone"); err != nil {
-		t.Fatal(err)
-	}
-	if got := h.job("build"); got.Conclusion != "" || got.Attempt != 2 {
-		t.Fatalf("build after re-run: %+v", got)
-	}
-	if got := h.job("test"); got.Conclusion != "" {
-		t.Fatal("a downstream job must be re-run with its dependency")
-	}
-	if got := h.job("lint"); got.Conclusion != model.ConclusionSuccess || got.Attempt != 1 {
-		t.Fatal("a successful, unrelated job must keep its result")
-	}
-	if h.runRow().Attempt != 2 {
-		t.Fatalf("run attempt %d", h.runRow().Attempt)
-	}
+	err := h.s.RerunFailed(ctx(), h.run.ID, "someone")
+	require.True(t, errors.Is(err, ErrNoPlan))
+
+	require.NoError(t, h.s.RegisterPlan(h.run.ID, h.plan))
+
+	require.NoError(t, h.s.RerunFailed(ctx(), h.run.ID, "someone"))
+
+	got := h.job("build")
+	require.False(t, got.Conclusion != "" || got.Attempt != 2)
+
+	got := h.job("test")
+	require.Equal(t, "", got.Conclusion)
+
+	got := h.job("lint")
+	require.False(t, got.Conclusion != model.ConclusionSuccess || got.Attempt != 1)
+
+	require.Equal(t, 2, h.runRow().Attempt)
+
 	h.tick(base.Add(3 * time.Minute))
-	if h.st.queued(h.job("build").ID) == nil {
-		t.Fatal("the re-run job should be queued again")
-	}
+	require.NotNil(t, h.st.queued(h.job("build").ID))
+
 }
 
 func TestRerunJobResetsOnlyItAndDownstream(t *testing.T) {
@@ -813,18 +702,15 @@ func TestRerunJobResetsOnlyItAndDownstream(t *testing.T) {
 	h.complete("test", model.ConclusionSuccess, model.ClassNone, base.Add(3*time.Minute))
 	h.tick(base.Add(4 * time.Minute))
 
-	if err := h.s.RegisterPlan(h.run.ID, h.plan); err != nil {
-		t.Fatal(err)
-	}
-	if err := h.s.RerunJob(ctx(), h.job("build").ID, "someone"); err != nil {
-		t.Fatal(err)
-	}
-	if h.job("build").Conclusion != "" || h.job("test").Conclusion != "" {
-		t.Fatal("re-running a job re-runs what depends on it")
-	}
-	if err := h.s.RerunFailed(ctx(), h.run.ID, ""); err == nil {
-		t.Fatal("a re-run without an actor must be rejected")
-	}
+	require.NoError(t, h.s.RegisterPlan(h.run.ID, h.plan))
+
+	require.NoError(t, h.s.RerunJob(ctx(), h.job("build").ID, "someone"))
+
+	require.False(t, h.job("build").Conclusion != "" || h.job("test").Conclusion != "")
+
+	err := h.s.RerunFailed(ctx(), h.run.ID, "")
+	require.NotNil(t, err)
+
 }
 
 func TestSchedulerWithoutAPlanFailsLoudly(t *testing.T) {
@@ -833,30 +719,25 @@ func TestSchedulerWithoutAPlanFailsLoudly(t *testing.T) {
 	id := h.job("build").ID
 	h.s.forgetPlan(h.run.ID)
 	err := h.s.JobCompletedAt(ctx(), id, Result{Conclusion: model.ConclusionSuccess}, base)
-	if !errors.Is(err, ErrNoPlan) {
-		t.Fatalf("want ErrNoPlan, got %v", err)
-	}
+	require.True(t, errors.Is(err, ErrNoPlan))
+
 }
 
 func TestAcquireSkipsAJobCancelledWhileQueued(t *testing.T) {
 	h := newHarness(t, wf(jobIR("build")))
 	h.tick(base)
-	if err := h.s.CancelJobAt(ctx(), h.job("build").ID, model.CancelReason{
-		Actor: model.CancelActorUser, Sentence: "cancelled before a runner took it.",
-	}, base.Add(time.Minute)); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, h.s.CancelJobAt(ctx(), h.job("build").ID, model.CancelReason{Actor: model.CancelActorUser, Sentence: "cancelled before a runner took it."}, base.Add(time.Minute)))
+
 	_, err := h.s.Acquire(ctx(), "runner-1", []string{"ubuntu-latest"}, base.Add(2*time.Minute))
-	if !errors.Is(err, store.ErrNotFound) {
-		t.Fatalf("want nothing to run, got %v", err)
-	}
+	require.True(t, errors.Is(err, store.ErrNotFound))
+
 }
 
 func TestAcquireNeedsARunnerID(t *testing.T) {
 	h := newHarness(t, wf(jobIR("build")))
-	if _, err := h.s.Acquire(ctx(), "", nil, base); err == nil {
-		t.Fatal("want an error for an anonymous acquire")
-	}
+	_, err := h.s.Acquire(ctx(), "", nil, base)
+	require.NotNil(t, err)
+
 }
 
 func TestResultValidationRejectsDishonestOutcomes(t *testing.T) {
@@ -869,24 +750,23 @@ func TestResultValidationRejectsDishonestOutcomes(t *testing.T) {
 		"cancel with no why":    {Conclusion: model.ConclusionCancelled},
 		"failure with no class": {Conclusion: model.ConclusionFailure},
 	} {
-		if err := h.s.JobCompletedAt(ctx(), id, res, base); err == nil {
-			t.Fatalf("%s: want an error", name)
-		}
+		err := h.s.JobCompletedAt(ctx(), id, res, base)
+		require.NotNil(t, err)
+
 	}
 }
 
 func TestStartRunRejectsAnEmptyPlan(t *testing.T) {
 	h := newHarness(t, wf(jobIR("build")))
 	err := h.s.StartRun(ctx(), h.run, &plan.Plan{})
-	if err == nil || !strings.Contains(err.Error(), "no jobs") {
-		t.Fatalf("want a no-jobs error, got %v", err)
-	}
-	if err := h.s.StartRun(ctx(), nil, h.plan); err == nil {
-		t.Fatal("want an error for a nil run")
-	}
-	if err := h.s.StartRun(ctx(), h.run, nil); err == nil {
-		t.Fatal("want an error for a nil plan")
-	}
+	require.False(t, err == nil || !strings.Contains(err.Error(), "no jobs"))
+
+	err = h.s.StartRun(ctx(), nil, h.plan)
+	require.NotNil(t, err)
+
+	err = h.s.StartRun(ctx(), h.run, nil)
+	require.NotNil(t, err)
+
 }
 
 func TestNewRejectsMissingWiring(t *testing.T) {
@@ -897,9 +777,8 @@ func TestNewRejectsMissingWiring(t *testing.T) {
 	} {
 		func() {
 			defer func() {
-				if recover() == nil {
-					t.Fatalf("%s: want a panic naming the missing wiring", name)
-				}
+				require.NotNil(t, recover())
+
 			}()
 			f()
 		}()
@@ -909,9 +788,9 @@ func TestNewRejectsMissingWiring(t *testing.T) {
 func TestEnqueueFailureIsNotSwallowed(t *testing.T) {
 	h := newHarness(t, wf(jobIR("build")))
 	h.st.failEnqueue = true
-	if err := h.s.Tick(ctx(), base); err == nil {
-		t.Fatal("a queue write that failed must surface")
-	}
+	err := h.s.Tick(ctx(), base)
+	require.NotNil(t, err)
+
 }
 
 func TestRunConcurrencySupersedesTheOlderRun(t *testing.T) {
@@ -922,29 +801,23 @@ func TestRunConcurrencySupersedesTheOlderRun(t *testing.T) {
 	w2 := wf(jobIR("build"))
 	w2.Concurrency = &model.Concurrency{Group: model.NewExpr("ci-main"), CancelInProgress: model.NewExpr("true")}
 	p1, err := plan.Build(w2, plan.Input{Run: h.run, NewEval: fakeFactory})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.Nil(t, err)
+
 	h.s.registerPlan(h.run.ID, p1)
 
 	run2 := &model.Run{ID: 2, RepoID: 7, Status: model.StatusQueued, CreatedAt: base.Add(time.Minute), HeadBranch: "feature", HeadSHA: "cafe"}
-	if err := h.st.CreateRun(ctx(), run2); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, h.st.CreateRun(ctx(), run2))
+
 	p2, err := plan.Build(w2, plan.Input{Run: run2, NewEval: fakeFactory})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := h.s.StartRun(ctx(), run2, p2); err != nil {
-		t.Fatal(err)
-	}
+	require.Nil(t, err)
+
+	require.NoError(t, h.s.StartRun(ctx(), run2, p2))
+
 	old := h.runRow()
-	if old.Conclusion != model.ConclusionCancelled {
-		t.Fatalf("the older run concluded %q", old.Conclusion)
-	}
-	if old.Cancel == nil || old.Cancel.Actor != model.CancelActorSupersededByRun {
-		t.Fatalf("cancel reason %+v", old.Cancel)
-	}
+	require.Equal(t, model.ConclusionCancelled, old.Conclusion)
+
+	require.False(t, old.Cancel == nil || old.Cancel.Actor != model.CancelActorSupersededByRun)
+
 }
 
 func TestRunConcurrencyWithoutCancelHoldsTheNewerRun(t *testing.T) {
@@ -952,70 +825,56 @@ func TestRunConcurrencyWithoutCancelHoldsTheNewerRun(t *testing.T) {
 	w2 := wf(jobIR("build"))
 	w2.Concurrency = &model.Concurrency{Group: model.NewExpr("ci-main")}
 	p1, err := plan.Build(w2, plan.Input{Run: h.run, NewEval: fakeFactory})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.Nil(t, err)
+
 	h.s.registerPlan(h.run.ID, p1)
 	h.tick(base)
 
 	run2 := &model.Run{ID: 2, RepoID: 7, Status: model.StatusQueued, CreatedAt: base.Add(time.Minute), HeadBranch: "feature"}
-	if err := h.st.CreateRun(ctx(), run2); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, h.st.CreateRun(ctx(), run2))
+
 	p2, err := plan.Build(w2, plan.Input{Run: run2, NewEval: fakeFactory})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := h.s.StartRun(ctx(), run2, p2); err != nil {
-		t.Fatal(err)
-	}
+	require.Nil(t, err)
+
+	require.NoError(t, h.s.StartRun(ctx(), run2, p2))
+
 	h.tick(base.Add(2 * time.Minute))
 
 	jobs, err := h.st.ListJobsForRun(ctx(), 2)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if h.st.queued(jobs[0].ID) != nil {
-		t.Fatal("the newer run must wait while the older one holds the group")
-	}
+	require.Nil(t, err)
+
+	require.Nil(t, h.st.queued(jobs[0].ID))
+
 }
 
 func TestJobSetupCompletedRecordsTheBoundary(t *testing.T) {
 	h := newHarness(t, wf(jobIR("build")))
 	h.tick(base)
-	if _, err := h.s.Acquire(ctx(), "runner-1", []string{"ubuntu-latest"}, base.Add(time.Minute)); err != nil {
-		t.Fatal(err)
-	}
+	_, err := h.s.Acquire(ctx(), "runner-1", []string{"ubuntu-latest"}, base.Add(time.Minute))
+	require.Nil(t, err)
+
 	at := base.Add(3 * time.Minute)
-	if err := h.s.JobSetupCompleted(ctx(), h.job("build").ID, at); err != nil {
-		t.Fatal(err)
-	}
-	if h.job("build").SetupCompletedAt == nil {
-		t.Fatal("setup boundary not recorded")
-	}
+	require.NoError(t, h.s.JobSetupCompleted(ctx(), h.job("build").ID, at))
+
+	require.NotNil(t, h.job("build").SetupCompletedAt)
+
 	ev := h.st.eventsOfKind(EventStarted)
-	if len(ev) != 1 || !strings.Contains(ev[0].Message, "setup finished in 2m0s") {
-		t.Fatalf("started event %+v", ev)
-	}
+	require.False(t, len(ev) != 1 || !strings.Contains(ev[0].Message, "setup finished in 2m0s"))
+
 	// Idempotent.
-	if err := h.s.JobSetupCompleted(ctx(), h.job("build").ID, at.Add(time.Minute)); err != nil {
-		t.Fatal(err)
-	}
-	if len(h.st.eventsOfKind(EventStarted)) != 1 {
-		t.Fatal("a repeated setup report must not write a second event")
-	}
+	require.NoError(t, h.s.JobSetupCompleted(ctx(), h.job("build").ID, at.Add(time.Minute)))
+
+	require.Equal(t, 1, len(h.st.eventsOfKind(EventStarted)))
+
 }
 
 func TestReleaseJobRequiresAReason(t *testing.T) {
 	h := newHarness(t, wf(jobIR("build")))
 	h.tick(base)
 	id := h.job("build").ID
-	if err := h.s.ReleaseJob(ctx(), "runner-1", id, model.CancelReason{Actor: model.CancelActorShutdown}); err == nil {
-		t.Fatal("a release with no sentence must be rejected")
-	}
-	if err := h.s.ReleaseJob(ctx(), "runner-1", id, model.CancelReason{
-		Actor: model.CancelActorShutdown, Sentence: "the agent is shutting down, so the job goes back on the queue.",
-	}); err != nil {
-		t.Fatal(err)
-	}
+	err := h.s.ReleaseJob(ctx(), "runner-1", id, model.CancelReason{Actor: model.CancelActorShutdown})
+	require.NotNil(t, err)
+
+	require.NoError(t, h.s.ReleaseJob(ctx(), "runner-1", id, model.CancelReason{Actor: model.CancelActorShutdown, Sentence: "the agent is shutting down, so the job goes back on the queue."}))
+
 }
