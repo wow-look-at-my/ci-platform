@@ -92,6 +92,15 @@ WHERE id = $1`
 	})
 }
 
+// DropFromQueue removes a job's queue entry, lease and all. Missing is not an
+// error: the caller wants the row gone, and it is.
+func (s *Store) DropFromQueue(ctx context.Context, jobID int64) error {
+	if _, err := s.pool.Exec(ctx, `DELETE FROM job_queue WHERE job_id = $1`, jobID); err != nil {
+		return mapErr("pg: DropFromQueue", err)
+	}
+	return nil
+}
+
 // Dequeue atomically claims one eligible job for a runner and returns it with a
 // lease held until now+ttl.
 //
@@ -317,6 +326,11 @@ RETURNING ` + jobCols
 			if err != nil {
 				return mapErr("pg: ReapExpiredLeases", err)
 			}
+			// The stored row is unleased, but the returned copy keeps the
+			// runner it lost so the caller can name it. Without this the
+			// requeue can only say "the runner", which is the report the
+			// operator cannot act on.
+			j.RunnerID = r.runnerID
 			jobs = append(jobs, j)
 
 			sentence := fmt.Sprintf(

@@ -184,6 +184,19 @@ func (f *fakeStore) ListSteps(_ context.Context, jobID int64, attempt int) ([]*m
 
 // --- Queue ---
 
+// DropFromQueue voids a job's queue entry, which is how a new attempt clears
+// the previous one before enqueuing with its own backoff.
+func (f *fakeStore) DropFromQueue(_ context.Context, jobID int64) error {
+	out := f.queue[:0]
+	for _, q := range f.queue {
+		if q.JobID != jobID {
+			out = append(out, q)
+		}
+	}
+	f.queue = out
+	return nil
+}
+
 func (f *fakeStore) Enqueue(_ context.Context, q store.QueuedJob) error {
 	if f.failEnqueue {
 		return errors.New("fakeStore: enqueue failed")
@@ -241,9 +254,17 @@ func (f *fakeStore) ReleaseLease(_ context.Context, _ string, jobID int64, _ mod
 	return nil
 }
 
+// ReapExpiredLeases increments RequeueCount, as both real stores do: the store
+// owns that counter, and a fake that skipped it would let the scheduler
+// double-count a single lost runner without any test noticing.
 func (f *fakeStore) ReapExpiredLeases(_ context.Context, _ time.Time) ([]*model.Job, error) {
 	out := f.reap
 	f.reap = nil
+	for _, j := range out {
+		j.RequeueCount++
+		j.Status = model.StatusQueued
+		j.LeaseExpiresAt = nil
+	}
 	return out, nil
 }
 

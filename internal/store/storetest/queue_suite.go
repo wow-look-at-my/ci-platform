@@ -299,13 +299,17 @@ func testLeaseExpiryRequeues(t *testing.T, f *fixture) {
 		"a lost runner is a requeue, never a failure")
 	require.Empty(t, reaped[0].Conclusion, "the job has no conclusion: it did not finish")
 	require.Equal(t, 1, reaped[0].RequeueCount)
+	require.Equal(t, "runner-gone", reaped[0].RunnerID,
+		"the reaped copy must name the runner it lost, or the requeue cannot say who vanished")
 	require.Nil(t, reaped[0].LeaseExpiresAt)
-	require.Empty(t, reaped[0].RunnerID)
 
+	// The STORED row is unleased and names nobody; only the returned copy keeps
+	// the lost runner, so nothing downstream mistakes the job for still-leased.
 	stored, err := f.s.GetJob(f.ctx, job.ID)
 	require.NoError(t, err)
 	require.Equal(t, model.StatusQueued, stored.Status)
 	require.Equal(t, 1, stored.RequeueCount)
+	require.Empty(t, stored.RunnerID)
 
 	events, err := f.s.ListEvents(f.ctx, 0, job.ID)
 	require.NoError(t, err)

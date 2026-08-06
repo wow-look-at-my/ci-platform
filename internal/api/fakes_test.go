@@ -266,6 +266,8 @@ func (f *fakeStore) FinalizeCache(context.Context, int64, int64) error     { ret
 func (f *fakeStore) LookupCache(context.Context, int64, string, []string, string, string) (*model.CacheEntry, string, error) {
 	return nil, "", errUnused
 }
+func (f *fakeStore) DropFromQueue(context.Context, int64) error { return nil }
+
 func (f *fakeStore) ArtifactUsage(context.Context, int64) (int64, error) { return 0, nil }
 
 func (f *fakeStore) ListCacheEntries(context.Context, int64) ([]*model.CacheEntry, error) {

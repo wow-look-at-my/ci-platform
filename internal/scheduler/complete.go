@@ -179,9 +179,17 @@ func (s *Scheduler) requeueForRetry(ctx context.Context, pj *plan.PlannedJob, j 
 		return err
 	}
 	s.forgetStepTimeouts(j.ID)
+	// Void the old entry first. Enqueue will not disturb a live lease, so
+	// without this the previous attempt's leased row survives: the backoff
+	// below is discarded and the stale row is later reaped as a lost runner
+	// that never existed.
+	if err := s.st.DropFromQueue(ctx, j.ID); err != nil {
+		return err
+	}
 	if err := s.st.Enqueue(ctx, store.QueuedJob{
 		JobID:     j.ID,
 		RunID:     j.RunID,
+		Attempt:   j.Attempt,
 		Labels:    j.Labels,
 		Group:     j.ConcurrencyGroup,
 		QueuedAt:  now,
@@ -220,7 +228,6 @@ func (s *Scheduler) reapExpiredLeases(ctx context.Context, now time.Time) error 
 		if err := reason.Validate(); err != nil {
 			return err
 		}
-		j.RequeueCount++
 		j.Attempt++
 		j.Status = model.StatusQueued
 		j.Conclusion = ""

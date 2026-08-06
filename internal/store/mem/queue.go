@@ -244,6 +244,15 @@ func (s *Store) requeueLocked(row *queueRow) {
 	}
 }
 
+// DropFromQueue removes a job's queue entry, lease and all. Missing is not an
+// error: the caller wants the row gone, and it is.
+func (s *Store) DropFromQueue(_ context.Context, jobID int64) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	delete(s.queue, jobID)
+	return nil
+}
+
 // ReapExpiredLeases requeues every job whose lease expired and returns them.
 // This is what turns "the runner disappeared" into a requeue rather than a lost
 // or failed job: the status goes back to queued, never to failed, and the
@@ -264,7 +273,13 @@ func (s *Store) ReapExpiredLeases(_ context.Context, now time.Time) ([]*model.Jo
 		lost := row.runnerID
 		s.requeueLocked(row)
 		if j, ok := s.jobs[row.jobID]; ok {
-			out = append(out, cloneJob(j))
+			// The stored job is unleased, but the returned copy keeps the
+			// runner it lost so the caller can name it. Without this the
+			// requeue can only say "the runner", which is the report the
+			// operator cannot act on.
+			reaped := cloneJob(j)
+			reaped.RunnerID = lost
+			out = append(out, reaped)
 		}
 		sentence := fmt.Sprintf(
 			"Runner %s stopped reporting, so its lease on this job expired and the job was put "+

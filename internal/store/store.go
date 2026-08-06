@@ -149,6 +149,12 @@ type Queue interface {
 	Dequeue(ctx context.Context, runnerID string, labels []string, ttl time.Duration) (*model.Job, error)
 	// Heartbeat extends the lease. ErrLeaseLost means the job was requeued.
 	Heartbeat(ctx context.Context, runnerID string, jobID int64, ttl time.Duration) error
+	// DropFromQueue removes a job's queue entry, lease and all, without
+	// requeuing it. A new attempt uses it before enqueuing: Enqueue refuses to
+	// disturb a live lease, so without this the old leased row survives, the
+	// new attempt's backoff is discarded, and the stale row is later reaped as
+	// a runner that was never lost.
+	DropFromQueue(ctx context.Context, jobID int64) error
 	// ReleaseLease drops a lease without completing the job, requeuing it.
 	ReleaseLease(ctx context.Context, runnerID string, jobID int64, reason model.CancelReason) error
 	// ReapExpiredLeases requeues every job whose lease expired and returns
