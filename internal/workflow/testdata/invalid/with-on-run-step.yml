@@ -1,0 +1,11 @@
+name: with on a run step
+
+on: push
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo hi
+        with:
+          key: value

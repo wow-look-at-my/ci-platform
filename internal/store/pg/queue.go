@@ -17,10 +17,10 @@ import (
 // Event kinds written by the queue. They are the job timeline the UI reads
 // back, and the only place a requeue's explanation is recorded.
 const (
-	EventDispatched  = "dispatched"
+	EventDispatched   = "dispatched"
 	EventRedispatched = "redispatched"
-	EventRequeued    = "requeued"
-	EventRunnerLost  = "runner_lost"
+	EventRequeued     = "requeued"
+	EventRunnerLost   = "runner_lost"
 )
 
 // Enqueue makes a job eligible for dispatch. It is idempotent on job id: a job
@@ -54,6 +54,17 @@ func (s *Store) Enqueue(ctx context.Context, q store.QueuedJob) error {
 		}
 		if q.RunID != 0 && q.RunID != runID {
 			return fmt.Errorf("pg: Enqueue: job %d belongs to run %d, not %d", q.JobID, runID, q.RunID)
+		}
+		// The caller states the attempt because it is half of the dispatch
+		// idempotency key. Disagreeing with the job row means the caller and
+		// the store have different ideas about which attempt this is, which
+		// would let the same attempt dispatch twice; refuse rather than pick.
+		if q.Attempt != 0 {
+			if q.Attempt != attempt {
+				return fmt.Errorf("pg: Enqueue: job %d is on attempt %d, caller enqueued attempt %d",
+					q.JobID, attempt, q.Attempt)
+			}
+			attempt = q.Attempt
 		}
 
 		const ins = `
@@ -206,6 +217,10 @@ WHERE job_id = $2 AND runner_id = $1 AND state = 'leased'`
 // ReleaseLease drops a lease without completing the job and puts it back on the
 // queue. The reason is validated first: a requeue nobody can explain is the bug
 // this signature exists to prevent.
+//
+// not_before is left alone, here and in the reaper: a requeue is immediately
+// dispatchable to another runner. Backoff belongs to a retry, which completes
+// the job and enqueues the next attempt with its own NotBefore.
 func (s *Store) ReleaseLease(ctx context.Context, runnerID string, jobID int64, reason model.CancelReason) error {
 	if err := reason.Validate(); err != nil {
 		return fmt.Errorf("pg: ReleaseLease: %w", err)
@@ -215,12 +230,12 @@ func (s *Store) ReleaseLease(ctx context.Context, runnerID string, jobID int64, 
 		const q = `
 UPDATE job_queue
 SET state = 'queued', runner_id = '', lease_expires_at = NULL,
-    requeue_count = requeue_count + 1, not_before = $3
+    requeue_count = requeue_count + 1
 WHERE job_id = $2 AND runner_id = $1 AND state = 'leased'
 RETURNING run_id, requeue_count`
 		var runID int64
 		var requeues int
-		err := tx.QueryRow(ctx, q, runnerID, jobID, now).Scan(&runID, &requeues)
+		err := tx.QueryRow(ctx, q, runnerID, jobID).Scan(&runID, &requeues)
 		if errors.Is(err, pgx.ErrNoRows) {
 			return store.ErrLeaseLost
 		}
@@ -259,12 +274,16 @@ func (s *Store) ReapExpiredLeases(ctx context.Context, now time.Time) ([]*model.
 	now = now.UTC()
 	var jobs []*model.Job
 	err := s.tx(ctx, func(tx pgx.Tx) error {
+		// The self-join carries the pre-update runner_id out: RETURNING on the
+		// updated row would hand back the '' this statement just wrote, and the
+		// event has to name the runner that vanished.
 		const claim = `
-UPDATE job_queue
+UPDATE job_queue q
 SET state = 'queued', runner_id = '', lease_expires_at = NULL,
-    requeue_count = requeue_count + 1, not_before = $1
-WHERE state = 'leased' AND lease_expires_at <= $1
-RETURNING job_id, run_id, requeue_count, runner_id`
+    requeue_count = q.requeue_count + 1
+FROM job_queue prev
+WHERE prev.job_id = q.job_id AND q.state = 'leased' AND q.lease_expires_at <= $1
+RETURNING q.job_id, q.run_id, q.requeue_count, prev.runner_id`
 		rows, err := tx.Query(ctx, claim, now)
 		if err != nil {
 			return mapErr("pg: ReapExpiredLeases", err)

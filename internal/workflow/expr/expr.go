@@ -141,3 +141,45 @@ func splitExpr(s string) (body, rest string, ok bool) {
 	}
 	return "", "", false
 }
+
+// Validate reports a syntax error in any ${{ }} body of a template, without
+// evaluating it. The parser uses this so a malformed expression is a config
+// error at parse time rather than a surprise mid-run.
+func Validate(raw string) error {
+	rest := raw
+	for {
+		i := strings.Index(rest, "${{")
+		if i < 0 {
+			return nil
+		}
+		body, after, ok := splitExpr(rest[i+3:])
+		if !ok {
+			return fmt.Errorf("unterminated expression: %q", rest[i:])
+		}
+		if _, err := parse(body); err != nil {
+			return err
+		}
+		rest = after
+	}
+}
+
+// ValidateCondition validates an `if:` value, which may be a bare expression.
+func ValidateCondition(raw string) error {
+	src := strings.TrimSpace(raw)
+	if src == "" {
+		return nil
+	}
+	if strings.HasPrefix(src, "${{") {
+		body, after, ok := splitExpr(src[3:])
+		if !ok {
+			return fmt.Errorf("unterminated expression: %q", src)
+		}
+		if strings.TrimSpace(after) == "" {
+			src = body
+		} else {
+			return Validate(raw)
+		}
+	}
+	_, err := parse(src)
+	return err
+}

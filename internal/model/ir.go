@@ -41,6 +41,10 @@ type Workflow struct {
 	Path string `json:"path"`
 	// Name is the workflow's display name, defaulting to Path.
 	Name string `json:"name"`
+	// Description is the optional description: prose. It affects nothing, but
+	// it is a valid key in GitHub's schema, so dropping it would mean failing a
+	// run over a documentation string.
+	Description string `json:"description,omitempty"`
 	// RunName is the optional run-name: template.
 	RunName Expr `json:"run_name,omitempty"`
 

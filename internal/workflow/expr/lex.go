@@ -2,6 +2,7 @@ package expr
 
 import (
 	"fmt"
+	"math"
 	"strconv"
 	"strings"
 )
@@ -122,13 +123,20 @@ func (l *lexer) lexIdent() token {
 		break
 	}
 	text := l.src[start:l.i]
-	switch strings.ToLower(text) {
+	// Keyword matching is case-SENSITIVE (LexicalAnalyzer.cs uses Ordinal), so
+	// `TRUE` is a named-value, not a boolean. Function names are not: those are
+	// resolved case-insensitively at call time.
+	switch text {
 	case "true":
 		return token{kind: tokBool, text: text, num: 1, pos: start}
 	case "false":
 		return token{kind: tokBool, text: text, pos: start}
 	case "null":
 		return token{kind: tokNull, text: text, pos: start}
+	case "NaN":
+		return token{kind: tokNumber, text: text, num: math.NaN(), pos: start}
+	case "Infinity":
+		return token{kind: tokNumber, text: text, num: math.Inf(1), pos: start}
 	}
 	return token{kind: tokIdent, text: text, pos: start}
 }

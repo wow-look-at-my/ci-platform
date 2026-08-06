@@ -1,0 +1,10 @@
+name: Unknown key
+
+on: push
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    contineu-on-error: true
+    steps:
+      - run: echo hi

@@ -1,0 +1,8 @@
+name: Missing runs-on
+
+on: push
+
+jobs:
+  build:
+    steps:
+      - run: echo hi

@@ -2,6 +2,7 @@ package expr
 
 import (
 	"fmt"
+	"math"
 	"strings"
 )
 
@@ -20,20 +21,23 @@ func (e *Evaluator) eval(n node) (any, error) {
 		if err != nil {
 			return nil, err
 		}
-		return getProp(obj, x.name), nil
+		if x.name == "*" {
+			return indexValue(obj, nil, true), nil
+		}
+		return indexValue(obj, x.name, false), nil
 	case indexNode:
 		obj, err := e.eval(x.x)
 		if err != nil {
 			return nil, err
 		}
 		if x.i == nil {
-			return getProp(obj, "*"), nil
+			return indexValue(obj, nil, true), nil
 		}
 		idx, err := e.eval(x.i)
 		if err != nil {
 			return nil, err
 		}
-		return getIndex(obj, idx), nil
+		return indexValue(obj, idx, false), nil
 	case unaryNode:
 		v, err := e.eval(x.x)
 		if err != nil {
@@ -107,75 +111,115 @@ func lookupFold(m map[string]any, name string) (any, bool) {
 	return nil, false
 }
 
-// getProp never errors: a missing property is null, matching GHA.
-func getProp(obj any, name string) any {
+// indexValue is both `obj.name` and `obj[idx]`; the reference implementation
+// compiles property access into an index by a string literal, so they share
+// every rule. It never errors: a missing key, an out-of-range index and a
+// wrong-kind operand are all null.
+//
+// The one exception is a wildcard against a non-collection, which yields an
+// EMPTY array rather than null, so `'str'.*` and `github.missing.*` are both
+// safe to keep indexing into.
+func indexValue(obj, idx any, wildcard bool) any {
 	obj = normalize(obj)
-	if name == "*" {
-		switch x := obj.(type) {
-		case map[string]any:
+	switch x := obj.(type) {
+	case filtered:
+		return indexFiltered(x, idx, wildcard)
+	case map[string]any:
+		if wildcard {
 			out := make(filtered, 0, len(x))
+			// The reference iterates in insertion order, which a Go map does
+			// not have; sorting is the only deterministic choice available.
 			for _, k := range sortedKeys(x) {
 				out = append(out, normalize(x[k]))
 			}
 			return out
-		case []any:
+		}
+		return objectIndex(x, idx)
+	case []any:
+		if wildcard {
 			out := make(filtered, 0, len(x))
 			for _, e := range x {
 				out = append(out, normalize(e))
 			}
 			return out
-		case filtered:
-			// A wildcard on an already-filtered array flattens one level.
-			out := make(filtered, 0, len(x))
-			for _, e := range x {
-				if inner, ok := asArray(e); ok {
-					out = append(out, inner...)
-					continue
-				}
-				out = append(out, normalize(e))
-			}
-			return out
 		}
-		return nil
+		return arrayIndex(x, idx)
 	}
-	if f, ok := obj.(filtered); ok {
-		out := make(filtered, 0, len(f))
-		for _, e := range f {
-			if m, ok := asMap(e); ok {
-				if v, ok := lookupFold(m, name); ok {
-					out = append(out, normalize(v))
-				}
-			}
-		}
-		return out
-	}
-	if m, ok := obj.(map[string]any); ok {
-		if v, ok := lookupFold(m, name); ok {
-			return normalize(v)
-		}
+	if wildcard {
+		return filtered{}
 	}
 	return nil
 }
 
-// getIndex never errors either: out of range and wrong-kind both yield null.
-func getIndex(obj, idx any) any {
-	obj, idx = normalize(obj), normalize(idx)
-	if s, ok := idx.(string); ok {
-		if m, ok := asMap(obj); ok {
-			if v, ok := lookupFold(m, s); ok {
-				return normalize(v)
+// indexFiltered applies the index to every ELEMENT of a filtered array, which
+// is why `commits.*.message[0]` is not the first message: the [0] is applied to
+// each message, and a string has no element 0.
+func indexFiltered(f filtered, idx any, wildcard bool) any {
+	out := filtered{}
+	for _, item := range f {
+		switch x := normalize(item).(type) {
+		case map[string]any:
+			if wildcard {
+				for _, k := range sortedKeys(x) {
+					out = append(out, normalize(x[k]))
+				}
+				continue
+			}
+			if v := objectIndex(x, idx); v != nil {
+				out = append(out, v)
+			}
+		case []any:
+			if wildcard {
+				for _, e := range x {
+					out = append(out, normalize(e))
+				}
+				continue
+			}
+			if v := arrayIndex(x, idx); v != nil {
+				out = append(out, v)
+			}
+		case filtered:
+			if wildcard {
+				out = append(out, x...)
+				continue
+			}
+			if v := arrayIndex(x, idx); v != nil {
+				out = append(out, v)
 			}
 		}
+	}
+	return out
+}
+
+// objectIndex looks up by the index's string form; any primitive index works,
+// so obj[0] reads the key "0".
+func objectIndex(m map[string]any, idx any) any {
+	if !isPrimitive(idx) {
 		return nil
 	}
-	arr, isArr := asArray(obj)
-	if !isArr {
-		return nil
+	if v, ok := lookupFold(m, stringify(idx)); ok {
+		return normalize(v)
 	}
+	return nil
+}
+
+// arrayIndex floors a non-integer index, so arr[1.1] is arr[1].
+func arrayIndex(arr []any, idx any) any {
 	n := toNumber(idx)
-	i := int(n)
-	if float64(i) != n || i < 0 || i >= len(arr) {
+	if math.IsNaN(n) || n < 0 || n > math.MaxInt32 {
+		return nil
+	}
+	i := int(math.Floor(n))
+	if i >= len(arr) {
 		return nil
 	}
 	return normalize(arr[i])
+}
+
+func isPrimitive(v any) bool {
+	switch normalize(v).(type) {
+	case nil, bool, float64, string:
+		return true
+	}
+	return false
 }

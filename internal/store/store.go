@@ -105,8 +105,13 @@ type Steps interface {
 // QueuedJob is a job waiting for a runner, with the fields the dispatcher needs
 // without loading the whole job.
 type QueuedJob struct {
-	JobID    int64
-	RunID    int64
+	JobID int64
+	RunID int64
+	// Attempt states the attempt being enqueued. It is stated rather than read
+	// back off the job row because it is half of the dispatch idempotency key:
+	// inferring it would silently point the key at the wrong attempt whenever a
+	// caller enqueues before writing the new attempt number.
+	Attempt  int
 	Labels   []string
 	Group    string
 	QueuedAt time.Time

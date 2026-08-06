@@ -1,0 +1,11 @@
+name: Unknown event
+
+on:
+  pushh:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo hi

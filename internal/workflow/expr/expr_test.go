@@ -3,7 +3,10 @@ package expr
 import (
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
+	"io/fs"
 	"math"
+	"strings"
 	"testing"
 	"testing/fstest"
 
@@ -54,10 +57,8 @@ func TestLiterals(t *testing.T) {
 		want any
 	}{
 		{"true", true},
-		{"TRUE", true},
 		{"false", false},
 		{"null", nil},
-		{"NULL", nil},
 		{"1", 1.0},
 		{"0", 0.0},
 		{"-3", -3.0},
@@ -227,8 +228,13 @@ func TestWildcard(t *testing.T) {
 
 	require.Equal(t, true, evalOK(t, "contains(github.event.commits.*.message, 'second')"))
 	require.Equal(t, "first,second", evalOK(t, "join(github.event.commits.*.message)"))
-	require.Equal(t, "first", evalOK(t, "github.event.commits.*.message[0]"))
-	require.Nil(t, evalOK(t, "github.ref_name.*"))
+
+	// Indexing a filtered array applies the index to each ELEMENT, so this is
+	// not "first": a string has no element 0.
+	require.Equal(t, filtered{}, evalOK(t, "github.event.commits.*.message[0]"))
+	// A wildcard on a non-collection is an empty array, never null.
+	require.Equal(t, filtered{}, evalOK(t, "github.ref_name.*"))
+	require.Equal(t, filtered{}, evalOK(t, "github.nope.*"))
 }
 
 func TestFunctions(t *testing.T) {
@@ -536,3 +542,115 @@ func TestStringifyNumbers(t *testing.T) {
 
 func nan() float64      { return math.NaN() }
 func inf(s int) float64 { return math.Inf(s) }
+
+func TestValidateSyntaxOnly(t *testing.T) {
+	// Validate checks syntax without resolving names, so an unknown context is
+	// fine here but a malformed body is not.
+	require.NoError(t, Validate("plain text"))
+	require.NoError(t, Validate("a ${{ nosuchcontext.x }} b"))
+	require.NoError(t, Validate("${{ format('{0}', 1) }}${{ 2 }}"))
+	require.ErrorContains(t, Validate("${{ 1 == }}"), "unexpected end of expression")
+	require.ErrorContains(t, Validate("ok ${{ github. }}"), "expected a property name")
+	require.ErrorContains(t, Validate("${{ 1 "), "unterminated expression")
+}
+
+func TestValidateCondition(t *testing.T) {
+	require.NoError(t, ValidateCondition(""))
+	require.NoError(t, ValidateCondition("   "))
+	require.NoError(t, ValidateCondition("always()"))
+	require.NoError(t, ValidateCondition("${{ always() }}"))
+	require.NoError(t, ValidateCondition("nosuchcontext.x == 1"))
+	require.ErrorContains(t, ValidateCondition("a &&"), "unexpected end of expression")
+	require.ErrorContains(t, ValidateCondition("${{ a && }}"), "unexpected end of expression")
+	// A mixed template is validated per ${{ }} body.
+	require.NoError(t, ValidateCondition("${{ a }} extra"))
+	require.ErrorContains(t, ValidateCondition("${{ a"), "unterminated expression")
+}
+
+func TestFilteredArrayIndexing(t *testing.T) {
+	ctx := Context{"data": map[string]any{
+		"rows": []any{
+			map[string]any{"cells": []any{"a1", "a2"}, "id": 1},
+			map[string]any{"cells": []any{"b1"}, "id": 2},
+			"not a collection",
+		},
+	}}
+	e := New(ctx)
+	// A string index reaches into each object element.
+	require.Equal(t, filtered{1.0, 2.0}, mustEval(t, e, "data.rows.*.id"))
+	// An integer index reaches into each array element.
+	require.Equal(t, filtered{"a1", "b1"}, mustEval(t, e, "data.rows.*.cells[0]"))
+	require.Equal(t, filtered{"a2"}, mustEval(t, e, "data.rows.*.cells[1]"))
+	// A second wildcard flattens the nested arrays.
+	require.Equal(t, filtered{"a1", "a2", "b1"}, mustEval(t, e, "data.rows.*.cells.*"))
+	// The whole object's values, per element.
+	require.Equal(t, filtered{[]any{"a1", "a2"}, 1.0, []any{"b1"}, 2.0}, mustEval(t, e, "data.rows.*.*"))
+}
+
+func TestObjectIndexedByNonString(t *testing.T) {
+	e := New(Context{"m": map[string]any{"0": "zero", "true": "yes", "": "blank"}})
+	require.Equal(t, "zero", mustEval(t, e, "m[0]"))
+	require.Equal(t, "yes", mustEval(t, e, "m[true]"))
+	require.Equal(t, "blank", mustEval(t, e, "m[null]"))
+	require.Nil(t, mustEval(t, e, "m[fromJSON('[1]')]"))
+}
+
+func TestNormalizeUnusualTypes(t *testing.T) {
+	s := "pointed at"
+	e := New(Context{
+		"ptr":   &s,
+		"nilp":  (*string)(nil),
+		"chan":  make(chan int),
+		"badky": map[int]string{1: "x"},
+		"arr":   [2]int{4, 5},
+	})
+	require.Equal(t, "pointed at", mustEval(t, e, "ptr"))
+	require.Nil(t, mustEval(t, e, "nilp"))
+	require.Equal(t, 4.0, mustEval(t, e, "arr[0]"))
+	// Anything with no expression-language equivalent becomes its printed form
+	// rather than silently vanishing.
+	require.IsType(t, "", mustEval(t, e, "chan"))
+	require.IsType(t, "", mustEval(t, e, "badky"))
+}
+
+func TestJSONNumberContextValue(t *testing.T) {
+	e := New(Context{"n": json.Number("42"), "bad": json.Number("nope")})
+	require.Equal(t, 42.0, mustEval(t, e, "n"))
+	require.Equal(t, "nope", mustEval(t, e, "bad"))
+}
+
+func TestToJSONShape(t *testing.T) {
+	e := New(Context{"m": map[string]any{"b": 1, "a": []any{true, nil}}})
+	got, err := e.Eval("toJSON(m)")
+	require.NoError(t, err)
+	require.Equal(t, "{\n  \"a\": [\n    true,\n    null\n  ],\n  \"b\": 1\n}", got)
+
+	// NaN and Infinity have no JSON spelling and are written as null.
+	got, err = e.Eval("toJSON(NaN)")
+	require.NoError(t, err)
+	require.Equal(t, "null", got)
+}
+
+func TestFromJSONTruncatesLongInputInErrors(t *testing.T) {
+	long := strings.Repeat("x", 200)
+	_, err := New(testCtx()).Eval("fromJSON('" + long + "')")
+	require.ErrorContains(t, err, "...")
+	require.Less(t, len(err.Error()), 200)
+}
+
+func TestHashFilesUnreadableFile(t *testing.T) {
+	e := New(testCtx()).WithFS(brokenFS{}, "")
+	_, err := e.Eval("hashFiles('*.txt')")
+	require.ErrorContains(t, err, "could not read")
+}
+
+// brokenFS lists one file and then refuses to open it, which is what a
+// permissions problem looks like from hashFiles' side.
+type brokenFS struct{}
+
+func (brokenFS) Open(name string) (fs.File, error) {
+	if name == "." {
+		return fstest.MapFS{"a.txt": {Data: []byte("x")}}.Open(".")
+	}
+	return nil, fs.ErrPermission
+}

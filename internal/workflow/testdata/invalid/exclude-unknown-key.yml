@@ -1,0 +1,14 @@
+name: Exclude names a key the matrix does not have
+
+on: push
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        exclude:
+          - platform: windows
+    steps:
+      - run: echo hi

@@ -2,7 +2,9 @@ package expr
 
 import "fmt"
 
-type node interface{ isNode() }
+// node is one AST node: litNode, nameNode, propNode, indexNode, callNode,
+// unaryNode or binNode.
+type node any
 
 type litNode struct{ v any }
 type nameNode struct{ name string }
@@ -30,14 +32,6 @@ type binNode struct {
 	op   string
 	l, r node
 }
-
-func (litNode) isNode()   {}
-func (nameNode) isNode()  {}
-func (propNode) isNode()  {}
-func (indexNode) isNode() {}
-func (callNode) isNode()  {}
-func (unaryNode) isNode() {}
-func (binNode) isNode()   {}
 
 type parser struct {
 	toks []token

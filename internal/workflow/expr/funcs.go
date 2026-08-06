@@ -55,9 +55,9 @@ func (e *Evaluator) call(c callNode) (any, error) {
 	case "contains":
 		return fnContains(args[0], args[1]), nil
 	case "startswith":
-		return strings.HasPrefix(strings.ToLower(stringify(args[0])), strings.ToLower(stringify(args[1]))), nil
+		return affix(args[0], args[1], strings.HasPrefix), nil
 	case "endswith":
-		return strings.HasSuffix(strings.ToLower(stringify(args[0])), strings.ToLower(stringify(args[1]))), nil
+		return affix(args[0], args[1], strings.HasSuffix), nil
 	case "format":
 		return fnFormat(stringify(args[0]), args[1:])
 	case "join":
@@ -86,8 +86,10 @@ func wantArgs(a arity) string {
 	return fmt.Sprintf("%d to %d arguments", a.min, a.max)
 }
 
-// fnContains is array membership when the haystack is an array, and a
-// case-insensitive substring test otherwise.
+// fnContains is array membership when the haystack is an array and a
+// case-insensitive substring test when both operands are primitives. An object
+// haystack, or a non-primitive needle in a string search, is false: the
+// reference never stringifies a container to satisfy these.
 func fnContains(search, item any) bool {
 	if arr, ok := asArray(search); ok {
 		for _, e := range arr {
@@ -97,7 +99,14 @@ func fnContains(search, item any) bool {
 		}
 		return false
 	}
-	return strings.Contains(strings.ToLower(stringify(search)), strings.ToLower(stringify(item)))
+	return affix(search, item, strings.Contains)
+}
+
+func affix(left, right any, test func(string, string) bool) bool {
+	if !isPrimitive(left) || !isPrimitive(right) {
+		return false
+	}
+	return test(strings.ToUpper(stringify(left)), strings.ToUpper(stringify(right)))
 }
 
 // fnFormat expands {0}-style placeholders; {{ and }} are literal braces.
@@ -117,6 +126,9 @@ func fnFormat(f string, args []any) (string, error) {
 				return "", fmt.Errorf("expression error: format() has an unclosed '{' at offset %d", i)
 			}
 			idxText := f[i+1 : i+j]
+			if strings.Contains(idxText, ":") {
+				return "", fmt.Errorf("unsupported: format() alignment and format specifiers (%q) are not implemented", "{"+idxText+"}")
+			}
 			n, err := strconv.Atoi(idxText)
 			if err != nil {
 				return "", fmt.Errorf("expression error: format() placeholder %q is not a number", "{"+idxText+"}")
@@ -140,14 +152,22 @@ func fnFormat(f string, args []any) (string, error) {
 	return b.String(), nil
 }
 
+// fnJoin joins an array; a primitive is returned as its own string and an
+// object yields "". A non-primitive separator falls back to the default.
 func fnJoin(args []any) string {
-	sep := ","
-	if len(args) == 2 {
-		sep = stringify(args[1])
+	arr, isArr := asArray(args[0])
+	if !isArr {
+		if isPrimitive(args[0]) {
+			return stringify(args[0])
+		}
+		return ""
 	}
-	arr, ok := asArray(args[0])
-	if !ok {
-		return stringify(args[0])
+	if len(arr) == 0 {
+		return ""
+	}
+	sep := ","
+	if len(args) == 2 && isPrimitive(args[1]) {
+		sep = stringify(args[1])
 	}
 	parts := make([]string, len(arr))
 	for i, e := range arr {

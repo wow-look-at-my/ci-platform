@@ -155,3 +155,5 @@ func cancelFrom(actor, sentence, triggeredBy string) *model.CancelReason {
 		TriggeredBy: triggeredBy,
 	}
 }
+
+var _ store.Store = (*Store)(nil)

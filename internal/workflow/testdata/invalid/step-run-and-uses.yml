@@ -1,0 +1,12 @@
+name: Both run and uses
+
+on: push
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo hi
+      - name: cannot be both
+        uses: actions/checkout@v4
+        run: echo also

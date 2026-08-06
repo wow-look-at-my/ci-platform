@@ -1,0 +1,10 @@
+name: Bad expression
+
+on: push
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo hi
+        if: github.ref == 'refs/heads/main' &&

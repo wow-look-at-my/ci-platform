@@ -1,0 +1,28 @@
+name: Retry policy
+
+on: push
+
+jobs:
+  flaky:
+    runs-on: ubuntu-latest
+    retry:
+      attempts: 3
+      on: [infra]
+      backoff: exponential
+      initial: 5s
+      max: 2m
+      jitter: true
+    steps:
+      - name: pull an image
+        run: docker pull alpine
+        retry:
+          attempts: 5
+          on: [infra, config]
+          backoff: linear
+          initial: 1s
+          max: 30s
+          jitter: false
+      - name: inherits the default policy for everything but attempts
+        run: make
+        retry:
+          attempts: 2

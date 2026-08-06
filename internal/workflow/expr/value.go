@@ -86,11 +86,6 @@ func asArray(v any) ([]any, bool) {
 	return nil, false
 }
 
-func asMap(v any) (map[string]any, bool) {
-	m, ok := normalize(v).(map[string]any)
-	return m, ok
-}
-
 // truthy follows the GHA loose rules: only null, false, 0, NaN and "" are false.
 func truthy(v any) bool {
 	switch x := normalize(v).(type) {
@@ -120,19 +115,38 @@ func toNumber(v any) float64 {
 	case float64:
 		return x
 	case string:
-		s := strings.TrimSpace(x)
-		if s == "" {
-			return 0
-		}
-		if n, err := strconv.ParseFloat(s, 64); err == nil {
-			return n
-		}
-		if len(s) > 2 && (strings.HasPrefix(s, "0x") || strings.HasPrefix(s, "0X")) {
-			if n, err := strconv.ParseUint(s[2:], 16, 64); err == nil {
+		return parseNumber(x)
+	}
+	return math.NaN()
+}
+
+// parseNumber follows the reference's string-to-number rules: trim, then
+// decimal, then 0x hex, then 0o octal, then the two infinity spellings.
+func parseNumber(s string) float64 {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return 0
+	}
+	if n, err := strconv.ParseFloat(s, 64); err == nil && !math.IsInf(n, 0) {
+		return n
+	}
+	if len(s) > 2 && s[0] == '0' {
+		switch s[1] {
+		case 'x':
+			if n, err := strconv.ParseInt(s[2:], 16, 64); err == nil {
+				return float64(n)
+			}
+		case 'o':
+			if n, err := strconv.ParseInt(s[2:], 8, 64); err == nil {
 				return float64(n)
 			}
 		}
-		return math.NaN()
+	}
+	switch s {
+	case "Infinity":
+		return math.Inf(1)
+	case "-Infinity":
+		return math.Inf(-1)
 	}
 	return math.NaN()
 }
@@ -200,7 +214,10 @@ func compareValues(a, b any) (int, bool) {
 	as, aIsStr := a.(string)
 	bs, bIsStr := b.(string)
 	if aIsStr && bIsStr {
-		return strings.Compare(strings.ToLower(as), strings.ToLower(bs)), true
+		// Upper-casing, not lower-casing: the reference compares
+		// OrdinalIgnoreCase, and the two disagree on the punctuation that sits
+		// between 'Z' and 'a'.
+		return strings.Compare(strings.ToUpper(as), strings.ToUpper(bs)), true
 	}
 	an, bn := toNumber(a), toNumber(b)
 	if math.IsNaN(an) || math.IsNaN(bn) {
@@ -216,7 +233,8 @@ func compareValues(a, b any) (int, bool) {
 }
 
 // stringify renders a value for interpolation. Containers render as JSON, which
-// is a deliberate divergence from GHA's literal "Object"/"Array".
+// is a deliberate divergence from GHA's literal "Object"/"Array"; every
+// workflow that reaches it records a model.Deviation.
 func stringify(v any) string {
 	switch x := normalize(v).(type) {
 	case nil:
@@ -246,10 +264,9 @@ func formatNumber(f float64) string {
 		return "Infinity"
 	case math.IsInf(f, -1):
 		return "-Infinity"
-	case f == math.Trunc(f) && math.Abs(f) < 1e21:
-		return strconv.FormatFloat(f, 'f', -1, 64)
 	}
-	return strconv.FormatFloat(f, 'g', -1, 64)
+	// The reference formats every number with .NET's "G15".
+	return strconv.FormatFloat(f, 'G', 15, 64)
 }
 
 // jsonable converts a value into something encoding/json renders the way GHA
