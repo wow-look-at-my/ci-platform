@@ -29,7 +29,7 @@ import (
 	"github.com/wow-look-at-my/ci-platform/internal/scheduler"
 	"github.com/wow-look-at-my/ci-platform/internal/store"
 	"github.com/wow-look-at-my/ci-platform/internal/store/mem"
-	"github.com/wow-look-at-my/ci-platform/internal/store/pg"
+	"github.com/wow-look-at-my/ci-platform/internal/store/sqlite"
 	"github.com/wow-look-at-my/ci-platform/internal/webui"
 	"github.com/wow-look-at-my/ci-platform/internal/workflow/expr"
 )
@@ -54,7 +54,7 @@ func newApp(ctx context.Context, cfg *config.Config, log *slog.Logger) (*app, er
 	}
 	a.store = st
 	if err := st.Migrate(ctx); err != nil {
-		return nil, fmt.Errorf("apply migrations: %w", err)
+		return nil, fmt.Errorf("apply schema: %w", err)
 	}
 
 	if a.blobs, err = openBlobs(cfg); err != nil {
@@ -309,12 +309,12 @@ func openStore(ctx context.Context, cfg *config.Config, log *slog.Logger) (store
 	if cfg.DatabaseURL == "memory" {
 		if !cfg.AllowEphemeralStore {
 			return nil, fmt.Errorf("CIPLATFORM_DATABASE_URL=memory loses every run, job, and queued item on restart; " +
-				"set CIPLATFORM_ALLOW_EPHEMERAL_STORE=true to accept that, or point it at Postgres")
+				"set CIPLATFORM_ALLOW_EPHEMERAL_STORE=true to accept that, or point it at a SQLite file")
 		}
 		log.Warn("using the in-memory store: nothing survives a restart")
 		return mem.New(), nil
 	}
-	st, err := pg.Open(ctx, cfg.DatabaseURL)
+	st, err := sqlite.Open(ctx, cfg.DatabaseURL)
 	if err != nil {
 		return nil, fmt.Errorf("open database: %w", err)
 	}

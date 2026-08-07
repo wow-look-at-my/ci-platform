@@ -1,4 +1,4 @@
-// Package e2e starts the real control-plane binary against a real Postgres and
+// Package e2e starts the real control-plane binary against a real SQLite file and
 // a fake GitHub, and drives events through it.
 //
 // It runs the shipped binary rather than wiring the packages up in-process, so
@@ -30,8 +30,6 @@ import (
 	"github.com/wow-look-at-my/ci-platform/test/fakes"
 )
 
-const dbEnv = "CIPLATFORM_TEST_DATABASE_URL"
-
 // operatorToken is what the suite signs its API reads with. The control plane
 // refuses to start without one.
 const operatorToken = "e2e-operator-token-0123456789"
@@ -42,20 +40,14 @@ type controlPlane struct {
 	GitHub *fakes.GitHub
 	cmd    *exec.Cmd
 	out    *bytes.Buffer
-	// repo is unique per test: the suite shares one Postgres, so a test that
-	// listed every run would see its neighbours.
+	// repo is unique per test: each control plane gets its own database file,
+	// but distinct repositories keep a failure legible.
 	repoID   int64
 	repoName string
 }
 
 func start(t *testing.T, workflows map[string]string) *controlPlane {
 	t.Helper()
-	dsn := os.Getenv(dbEnv)
-	if dsn == "" {
-		t.Skipf("set %s to run the end-to-end suite, e.g. %s=postgres://postgres:postgres@127.0.0.1:5432/ciplatform?sslmode=disable",
-			dbEnv, dbEnv)
-	}
-
 	gh := fakes.NewGitHub()
 	t.Cleanup(gh.Close)
 	for path, body := range workflows {
@@ -75,7 +67,7 @@ func start(t *testing.T, workflows map[string]string) *controlPlane {
 		"CIPLATFORM_LISTEN=127.0.0.1:"+port,
 		// The hostname must satisfy the artifact client's isGhes() test.
 		"CIPLATFORM_PUBLIC_URL=http://ci.localhost:"+port,
-		"CIPLATFORM_DATABASE_URL="+dsn,
+		"CIPLATFORM_DATABASE_URL="+filepath.Join(dir, "ciplatform.db"),
 		"CIPLATFORM_GITHUB_API_URL="+gh.URL(),
 		"CIPLATFORM_WEBHOOK_SECRET="+gh.WebhookSecret,
 		"CIPLATFORM_APP_ID=12345",
@@ -310,7 +302,7 @@ func TestHealthEndpoints(t *testing.T) {
 		} `json:"subsystems"`
 	}
 	require.NoError(t, json.NewDecoder(hz.Body).Decode(&health))
-	assert.True(t, health.StoreDurable, "the e2e suite runs against Postgres")
+	assert.True(t, health.StoreDurable, "the e2e suite runs against the durable store, not the in-memory one")
 	assert.NotEmpty(t, health.Subsystems)
 }
 

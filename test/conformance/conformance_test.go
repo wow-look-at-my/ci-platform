@@ -152,27 +152,22 @@ func TestEveryCorpusWorkflowIsSupportedOrExplicitlyRefused(t *testing.T) {
 	}
 }
 
-// This platform cannot yet run its own CI, and this test pins exactly why so
-// the gap is a recorded fact rather than a surprise.
+// This platform can run its own CI, and this test is what keeps that true.
 //
-// Our CI uses service containers for Postgres, which are Phase 2. The point of
-// the test is that the refusal is explicit and names the feature and the job:
-// that is the difference between "we do not support this" and a workflow that
-// quietly half-runs. When service containers land, this expectation flips, and
-// having to change it is the prompt to re-check docs/compatibility.md.
-func TestThisRepositoryOwnWorkflowIsRefusedForANamedReason(t *testing.T) {
+// It stopped needing service containers when the store moved to SQLite: the
+// tests now bring their own database, so no job declares a `services:` block.
+// Adding any key this platform does not implement to our own workflow fails
+// here, which is the difference between eating our own cooking and claiming to.
+func TestThisRepositoryOwnWorkflowIsFullySupported(t *testing.T) {
 	src, err := os.ReadFile("../../.github/workflows/ci.yml")
 	require.NoError(t, err)
 
 	got := analyse(".github/workflows/ci.yml", src)
-	require.Empty(t, got.ParseError, "our own CI must at least parse")
-
-	require.False(t, got.Supported)
-
-	joined := strings.Join(got.Unsupported, "\n")
-	assert.Contains(t, joined, "service containers is not implemented")
-	assert.Contains(t, joined, "jobs.e2e.services.postgres",
-		"the refusal must name the exact job and key, not just the feature")
+	require.Empty(t, got.ParseError, "our own CI must parse")
+	require.True(t, got.Supported,
+		"our own CI uses something this platform cannot run: %v", got.Unsupported)
+	assert.Contains(t, got.JobNames, "test")
+	assert.Contains(t, got.JobNames, "e2e")
 }
 
 // The parts of our own CI that do not use Phase 2 features plan correctly, so

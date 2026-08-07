@@ -37,7 +37,6 @@ download the `.pem`, and note the App ID.
 then write a `.env`:
 
 ```sh
-POSTGRES_PASSWORD=$(openssl rand -hex 16)
 CIPLATFORM_WEBHOOK_SECRET=<the secret you invented>
 CIPLATFORM_APP_ID=<your app id>
 CIPLATFORM_JOB_TOKEN_SECRET=$(openssl rand -hex 32)
@@ -67,6 +66,9 @@ docker compose up -d --build
 there; the check runs appear on the commit.
 
 Add capacity with `docker compose up -d --scale runner=4`.
+
+There is no database to provision: everything lives in one SQLite file on the
+`ciplatform-data` volume, created on first start. Back it up by copying it.
 
 ## Docs
 

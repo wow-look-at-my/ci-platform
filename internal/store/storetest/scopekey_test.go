@@ -6,7 +6,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/wow-look-at-my/ci-platform/internal/store/mem"
-	"github.com/wow-look-at-my/ci-platform/internal/store/pg"
+	"github.com/wow-look-at-my/ci-platform/internal/store/sqlite"
 )
 
 // The two stores must agree on the key ResolveSecrets reads, or a secret stored
@@ -27,17 +27,17 @@ func TestScopeKeyAgreesAcrossStores(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.scope+"/"+tc.want+tc.wantErr, func(t *testing.T) {
-			gotPG, errPG := pg.ScopeKey(tc.scope, tc.owner, tc.repo, tc.env)
+			gotSQL, errSQL := sqlite.ScopeKey(tc.scope, tc.owner, tc.repo, tc.env)
 			gotMem, errMem := mem.ScopeKey(tc.scope, tc.owner, tc.repo, tc.env)
-			require.Equal(t, gotPG, gotMem)
+			require.Equal(t, gotSQL, gotMem)
 			if tc.wantErr != "" {
-				require.ErrorContains(t, errPG, tc.wantErr)
+				require.ErrorContains(t, errSQL, tc.wantErr)
 				require.ErrorContains(t, errMem, tc.wantErr)
 				return
 			}
-			require.NoError(t, errPG)
+			require.NoError(t, errSQL)
 			require.NoError(t, errMem)
-			require.Equal(t, tc.want, gotPG)
+			require.Equal(t, tc.want, gotSQL)
 		})
 	}
 }

@@ -79,11 +79,13 @@ Three mechanisms, each of which is a type rather than a convention:
 
 ## Storage
 
-Postgres holds run, job, and step metadata plus the durable queue; the schema is
-migration-driven and forward-only, and a migration whose checksum changed is
-refused rather than silently reapplied. Logs, artifacts, and cache objects go to
-a blob store — `internal/blob/disk` for single-node, `internal/blob/s3` for
-anything larger. Cache eviction is always logged with what was removed.
+One SQLite file holds run, job, and step metadata plus the durable queue. The
+schema is a single file applied to an empty database and fingerprinted; a
+database built from a different one is a hard stop, not a silent reapply. Logs,
+artifacts, and cache objects go to a blob store — `internal/blob/disk` for
+single-node, `internal/blob/s3` for anything larger. Cache eviction is always
+logged with what was removed. See [storage.md](storage.md) for the choices that
+are load-bearing, and the single-node limit.
 
 `internal/store/mem` exists for tests and reports `Durable() false`, which the
 control plane logs loudly at startup and surfaces in `/healthz`.

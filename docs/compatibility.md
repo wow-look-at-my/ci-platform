@@ -125,17 +125,18 @@ Absent, the default applies: infra failures retry three times with exponential
 backoff, user failures never retry, and config errors never retry because
 retrying cannot help.
 
-## Known gap: this platform cannot yet run its own CI
+## This platform can run its own CI
 
-Our own `.github/workflows/ci.yml` uses service containers for Postgres, and
-service containers are Phase 2. Running it here today fails the run with
-`unsupported: jobs.e2e.services.postgres service containers is not
-implemented (postgres:16)`.
+Our own `.github/workflows/ci.yml` uses nothing this platform does not
+implement. It stopped needing service containers when the store moved to SQLite:
+the tests bring their own database, so no job declares a `services:` block.
 
-That is stated rather than smoothed over because it is the obvious question to
-ask of a CI platform, and `test/conformance` pins it: the test asserts the
-refusal names the exact job and key, and fails the day the workflow becomes
-supported so this note gets revisited.
+`test/conformance` keeps it that way — it parses our workflow and fails if any
+job uses an unimplemented key, so the day someone adds one is the day CI says
+so, rather than the day somebody notices we do not eat our own cooking.
+
+Service containers themselves are still unsupported, and still Phase 2; a
+workflow that declares one is refused by name.
 
 ## Known behavioural differences
 

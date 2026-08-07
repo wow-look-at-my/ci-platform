@@ -25,8 +25,8 @@ conclusion and a sentence explaining itself. Read `docs/incidents.md` first -- t
 ## Layout
 
 - `internal/model` -- the shared vocabulary: status, conclusion, failure class, cancel reason, and the IR the parser targets. Imports nothing of ours.
-- `internal/store` -- persistence contract: durable queue, lease protocol. Implementations in `store/pg` (production) and `store/mem` (tests, reports
-  `Durable() false`).
+- `internal/store` -- persistence contract: durable queue, lease protocol. Implementations in `store/sqlite` (production, one file) and
+  `store/mem` (tests, reports `Durable() false`). Depth: docs/storage.md.
 - `internal/protocol` -- the runner wire contract. HTTP+JSON long-poll; cancellation always carries its reason.
 - `internal/classify` -- the user/infra/config classifier and its rule set.
 - `internal/config` -- startup configuration; reports every problem at once and refuses a public URL the artifact client would reject.
@@ -42,10 +42,8 @@ conclusion and a sentence explaining itself. Read `docs/incidents.md` first -- t
 - `internal/api`, `internal/webui`, `web-src`, `cmd/buildweb` -- REST + SSE, and the embedded UI.
 - `internal/operatorauth` -- the gate in front of the REST API and the UI. Job containers can reach this listener, so it is credentialed.
 - `internal/runner`, `cmd/ci-runner` -- the agent, the DinD sandbox, the step executor.
-- - `migrations` -- forward-only numbered SQL, `go:embed`ed and applied by the runner in `internal/store/pg`; an edited applied file is a hard stop,
-  not a
-  silent divergence.
-- `internal/store/storetest` -- one conformance suite both stores run, so "works in memory, breaks in Postgres" is a test failure.
+- `internal/store/storetest` -- one conformance suite both stores run, so "works in memory, breaks on disk" is a test failure. It needs no
+  service container, so it always runs.
 - `test/fakes`, `test/chaos`, `test/e2e`, `test/conformance` -- test doubles and the suites that hold the non-negotiables up.
 
 ## Docs
@@ -56,6 +54,7 @@ conclusion and a sentence explaining itself. Read `docs/incidents.md` first -- t
 - `docs/deviations.md` -- every deliberate difference from GHA, and the client-imposed constraints we verified rather than assumed.
 - `docs/security.md` -- what credential guards each route, and the boundaries this deliberately does not hold.
 - `docs/format-trajectory.md` -- why the parser targets an IR and what a native frontend would fix.
+- `docs/storage.md` -- the SQLite store: why one file is enough, the load-bearing pragmas, and how the schema changes.
 
 ## Working here
 
