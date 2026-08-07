@@ -2,37 +2,39 @@
    1. Tokens
    ============================================================ */
 
+/* Dark is the palette, light is the exception. The toggle's "System" setting
+   is a choice a viewer makes, never what they get for making none. */
 :root {
-	color-scheme: light dark;
+	color-scheme: dark;
 
-	--bg: #f7f8fa;
-	--surface: #ffffff;
-	--surface-2: #f0f2f5;
-	--text: #16191d;
-	--text-muted: #5c6673;
-	--border: #d7dce3;
-	--accent: #2d6cdf;
-	--accent-contrast: #ffffff;
-	--focus: #2d6cdf;
+	--bg: #14171b;
+	--surface: #1b1f24;
+	--surface-2: #22272e;
+	--text: #e4e8ee;
+	--text-muted: #9aa4b1;
+	--border: #303740;
+	--accent: #6ea8fe;
+	--accent-contrast: #10131a;
+	--focus: #6ea8fe;
 
 	/* Tones. Infra and config are deliberately NOT the failure red: a red
 	   build must mean the user's code is broken and nothing else. */
-	--tone-success: #1a7f45;
-	--tone-failure: #c0392b;
-	--tone-infra: #b26a00;
-	--tone-config: #7b3fbf;
-	--tone-cancelled: #6b7280;
+	--tone-success: #4cc98a;
+	--tone-failure: #ff6b5e;
+	--tone-infra: #e6a23c;
+	--tone-config: #b98bf0;
+	--tone-cancelled: #98a2b0;
 	--tone-skipped: #8a929c;
-	--tone-neutral: #6b7280;
-	--tone-running: #2d6cdf;
-	--tone-queued: #7a8290;
-	--tone-waiting: #8a6d1f;
+	--tone-neutral: #98a2b0;
+	--tone-running: #6ea8fe;
+	--tone-queued: #97a1ae;
+	--tone-waiting: #d9a942;
 
 	--timing-queued: #8a929c;
-	--timing-setup: #b26a00;
-	--timing-execute: #2d6cdf;
+	--timing-setup: #e6a23c;
+	--timing-execute: #6ea8fe;
 
-	--log-bg: #1c1f24;
+	--log-bg: #0f1216;
 	--log-text: #d6dae0;
 	--log-gutter: #6d7784;
 	--log-selected: #33405c;
@@ -61,25 +63,8 @@
 	--sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
 }
 
-@media (prefers-color-scheme: dark) {
-	:root {
-		--bg: #14171b;
-		--surface: #1b1f24;
-		--surface-2: #22272e;
-		--text: #e4e8ee;
-		--text-muted: #9aa4b1;
-		--border: #303740;
-		--accent: #6ea8fe;
-		--accent-contrast: #10131a;
-		--focus: #6ea8fe;
-		--tone-success: #4cc98a;
-		--tone-failure: #ff6b5e;
-		--tone-infra: #e6a23c;
-		--tone-config: #b98bf0;
-		--log-bg: #0f1216;
-	}
-}
-
+/* Only what differs. data-theme is always resolved to a concrete palette by
+   applyStoredTheme, so there is no media query to keep in step with this. */
 :root[data-theme="light"] {
 	color-scheme: light;
 	--bg: #f7f8fa;
@@ -90,28 +75,19 @@
 	--border: #d7dce3;
 	--accent: #2d6cdf;
 	--accent-contrast: #ffffff;
+	--focus: #2d6cdf;
 	--tone-success: #1a7f45;
 	--tone-failure: #c0392b;
 	--tone-infra: #b26a00;
 	--tone-config: #7b3fbf;
+	--tone-cancelled: #6b7280;
+	--tone-neutral: #6b7280;
+	--tone-running: #2d6cdf;
+	--tone-queued: #7a8290;
+	--tone-waiting: #8a6d1f;
+	--timing-setup: #b26a00;
+	--timing-execute: #2d6cdf;
 	--log-bg: #1c1f24;
-}
-
-:root[data-theme="dark"] {
-	color-scheme: dark;
-	--bg: #14171b;
-	--surface: #1b1f24;
-	--surface-2: #22272e;
-	--text: #e4e8ee;
-	--text-muted: #9aa4b1;
-	--border: #303740;
-	--accent: #6ea8fe;
-	--accent-contrast: #10131a;
-	--tone-success: #4cc98a;
-	--tone-failure: #ff6b5e;
-	--tone-infra: #e6a23c;
-	--tone-config: #b98bf0;
-	--log-bg: #0f1216;
 }
 
 /* ============================================================
@@ -642,7 +618,9 @@ tr[class*="tone-"] td:first-child {
 	gap: 6px;
 }
 
-.attempt.selected {
+/* A chip that is the current selection, in an attempt list or a window picker. */
+.attempt.selected,
+.window-picker .selected {
 	border-color: var(--accent);
 	color: var(--accent);
 }
@@ -854,11 +832,6 @@ tr[class*="tone-"] td:first-child {
 	margin-bottom: var(--gap);
 }
 
-.window-picker .selected {
-	border-color: var(--accent);
-	color: var(--accent);
-}
-
 /* ============================================================
    10. Health, heartbeat, toasts
    ============================================================ */
@@ -878,11 +851,6 @@ tr[class*="tone-"] td:first-child {
 .health-degraded {
 	border-color: var(--tone-infra);
 	color: var(--tone-infra);
-}
-
-.health-down {
-	border-color: var(--tone-failure);
-	color: var(--tone-failure);
 }
 
 .heartbeat {
@@ -927,7 +895,9 @@ tr[class*="tone-"] td:first-child {
 	filter: brightness(1.08);
 }
 
-.danger {
+/* Failure red, on the button that causes one and on the badge that reports one. */
+.danger,
+.health-down {
 	border-color: var(--tone-failure);
 	color: var(--tone-failure);
 }
