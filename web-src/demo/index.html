@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<meta name="color-scheme" content="light dark" />
+		<title>CI — demo</title>
+		<link rel="stylesheet" href="./app.css" />
+		<link rel="icon" href="data:," />
+		<style>
+			/* The banner is part of the demo, not of the product, so it lives
+			   here rather than in the shipped stylesheet. */
+			.demo-note {
+				display: flex;
+				flex-wrap: wrap;
+				gap: 4px 10px;
+				align-items: baseline;
+				padding: 8px 16px;
+				border-bottom: 1px solid var(--border);
+				background: var(--surface-2);
+				font-size: 0.85rem;
+			}
+			.demo-note strong {
+				font-weight: 650;
+			}
+			.demo-note .muted {
+				color: var(--text-muted);
+			}
+			/* There is no session in the demo, so the control that ends one
+			   would do nothing but reload the page. */
+			.signout {
+				display: none;
+			}
+		</style>
+	</head>
+	<body>
+		<div class="demo-note">
+			<strong>Demo.</strong>
+			<span>These runs are a captured snapshot, not a live instance — nothing is executing, and cancel and re-run will refuse.</span>
+			<span class="muted">Recorded from the real API by <code>cmd/demofixtures</code> at 2026-08-06 15:04 UTC, which is what the relative times are relative to.</span>
+			<a href="https://github.com/wow-look-at-my/ci-platform">Source</a>
+		</div>
+		<main id="view">
+			<p class="loading">Loading…</p>
+		</main>
+		<noscript>
+			<p class="panel">This dashboard needs JavaScript. The REST API under <code>/api/v1/</code> works without it.</p>
+		</noscript>
+		<script type="module" src="./app.mjs"></script>
+	</body>
+</html>

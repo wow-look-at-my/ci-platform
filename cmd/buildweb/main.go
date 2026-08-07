@@ -33,13 +33,14 @@ func run(args []string, out io.Writer) error {
 		outDir  = fs.String("out", "web", "bundle output directory")
 		dev     = fs.Bool("dev", false, "unminified, with sourcemaps")
 		check   = fs.Bool("check", false, "re-bundle and fail if the committed output differs")
+		demo    = fs.Bool("demo", false, "build the standalone demo against the captured snapshot")
 		verbose = fs.Bool("v", false, "list every emitted file")
 	)
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
 
-	opts := webbuild.BuildOptions{SrcDir: *srcDir, OutDir: *outDir, Dev: *dev}
+	opts := webbuild.BuildOptions{SrcDir: *srcDir, OutDir: *outDir, Dev: *dev, Demo: *demo}
 	if *check {
 		if err := runCheck(opts); err != nil {
 			return err

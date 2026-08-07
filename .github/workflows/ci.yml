@@ -29,6 +29,34 @@ jobs:
           go-version-file: go.mod
       - run: go run ./cmd/buildweb -check
 
+  # The demo site: the real UI against a snapshot captured from the real API.
+  # Published per branch, so a UI change can be looked at before it is merged.
+  demo:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      # A stale snapshot would show shapes the API no longer returns, which is
+      # the one thing a demo of this platform must not do.
+      - run: go run ./cmd/demofixtures -check
+      - run: go run ./cmd/buildweb -demo -out demo-site
+      - name: Site branch name
+        id: sitename
+        uses: wow-look-at-my/actions@typescript#latest
+        with:
+          script: |
+            // buildhost serves a site under one path segment, so anything
+            // outside [A-Za-z0-9._-] is flattened out of the branch name.
+            core.setOutput('branch', (github.ref_name || 'branch').replace(/[^A-Za-z0-9._-]/g, '-'));
+      - uses: wow-look-at-my/buildhost/.github/actions/buildhost-publish-site@master
+        with:
+          server: https://pazer.build
+          project: ci-platform
+          branch: ${{ steps.sitename.outputs.branch }}
+          source_dir: demo-site
+
   # Reads every workflow in the corpus and asserts each is either fully
   # supported or explicitly refused, and that job names still match GitHub's.
   # A job name is what branch protection matches on, so a change here breaks

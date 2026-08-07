@@ -21,6 +21,10 @@ conclusion and a sentence explaining themselves.
 - **You can see where the time went** — queued, setting up, executing — instead
   of inferring it from timestamps.
 
+**See it**: [a demo of the web UI](https://sites.pazer.build/ci-platform/), running
+against a snapshot captured from the real API — including a run that failed on
+infrastructure and is not coloured like a build failure.
+
 ## Run one in ten minutes
 
 You need Docker with Compose, and a GitHub App. The App is not optional: check
@@ -81,6 +85,8 @@ There is no database to provision: everything lives in one SQLite file on the
   client-imposed constraints we verified rather than assumed.
 - [docs/security.md](docs/security.md) — what guards each route, and what this
   deliberately does not defend against.
+- [docs/demo.md](docs/demo.md) — the demo site: what it shows, and what it
+  deliberately cannot do.
 
 ## Scope
 

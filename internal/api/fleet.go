@@ -54,13 +54,44 @@ type QueueHistoryDTO struct {
 	Samples []store.QueueSample `json:"samples"`
 }
 
+// QueueStatsDTO is the queue page's headline numbers.
+//
+// It exists for one field: OldestWaiting is a time.Duration, and a Duration
+// marshals to nanoseconds. Serving the store's struct directly sent 2.2e12 to
+// a UI that reads every other duration in this API as seconds, which rendered
+// a 37-minute wait as "616666666h 40m" -- the queue's own starvation signal,
+// unreadable.
+type QueueStatsDTO struct {
+	Depth          int            `json:"depth"`
+	DepthByLabel   map[string]int `json:"depth_by_label"`
+	OldestWaiting  float64        `json:"oldest_waiting"`
+	OldestJobID    int64          `json:"oldest_job_id,omitempty"`
+	RunnersByLabel map[string]int `json:"runners_by_label"`
+	IdleByLabel    map[string]int `json:"idle_by_label"`
+	StarvedLabels  []string       `json:"starved_labels"`
+	At             time.Time      `json:"at"`
+}
+
+func queueStatsDTO(s *store.QueueStats) QueueStatsDTO {
+	return QueueStatsDTO{
+		Depth:          s.Depth,
+		DepthByLabel:   nonNilMap(s.DepthByLabel),
+		OldestWaiting:  s.OldestWaiting.Seconds(),
+		OldestJobID:    s.OldestJobID,
+		RunnersByLabel: nonNilMap(s.RunnersByLabel),
+		IdleByLabel:    nonNilMap(s.IdleByLabel),
+		StarvedLabels:  nonNil(s.StarvedLabels),
+		At:             s.At,
+	}
+}
+
 func (s *Server) getQueue(w http.ResponseWriter, r *http.Request) {
 	stats, err := s.cfg.Store.QueueStats(r.Context(), s.now())
 	if err != nil {
 		storeErr(w, "queue stats", err)
 		return
 	}
-	writeJSON(w, http.StatusOK, stats)
+	writeJSON(w, http.StatusOK, queueStatsDTO(stats))
 }
 
 // parseSince accepts either an RFC3339 instant or a Go duration ("30m") meaning

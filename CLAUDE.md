@@ -40,6 +40,7 @@ conclusion and a sentence explaining itself. Read `docs/incidents.md` first -- t
   actions
   talk to.
 - `internal/api`, `internal/webui`, `web-src`, `cmd/buildweb` -- REST + SSE, and the embedded UI.
+- `internal/demoseed`, `cmd/demofixtures`, `web-src/demo` -- the demo site's data, captured from the real API rather than written by hand.
 - `internal/operatorauth` -- the gate in front of the REST API and the UI. Job containers can reach this listener, so it is credentialed.
 - `internal/runner`, `cmd/ci-runner` -- the agent, the DinD sandbox, the step executor.
 - `internal/store/storetest` -- one conformance suite both stores run, so "works in memory, breaks on disk" is a test failure. It needs no
@@ -55,6 +56,7 @@ conclusion and a sentence explaining itself. Read `docs/incidents.md` first -- t
 - `docs/security.md` -- what credential guards each route, and the boundaries this deliberately does not hold.
 - `docs/format-trajectory.md` -- why the parser targets an IR and what a native frontend would fix.
 - `docs/storage.md` -- the SQLite store: why one file is enough, the load-bearing pragmas, and how the schema changes.
+- `docs/demo.md` -- the published demo site: a snapshot captured from the real API, and the two modules the demo build swaps.
 
 ## Working here
 

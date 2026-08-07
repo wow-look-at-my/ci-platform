@@ -444,6 +444,10 @@ func TestQueueAndHistory(t *testing.T) {
 	for _, k := range []string{"depth", "depth_by_label", "oldest_waiting", "starved_labels", "runners_by_label", "idle_by_label"} {
 		assert.Contains(t, raw, k)
 	}
+	// Seconds, like every other duration this API reports. A time.Duration
+	// marshals to nanoseconds, and the UI reading that as seconds turned a
+	// 90-second wait into 2,569 years of it.
+	assert.InDelta(t, 90.0, raw["oldest_waiting"], 0.001)
 
 	w = h.do(t, "GET", "/api/v1/queue/history?since=1h", "")
 	require.Equal(t, http.StatusOK, w.Code)

@@ -1,0 +1,2786 @@
+{
+  "/api/v1/jobs/1": {
+    "annotations": [],
+    "attempt": 1,
+    "awaiting_approval": false,
+    "completed_at": "2026-08-06T14:46:05Z",
+    "conclusion": "success",
+    "continue_on_error": false,
+    "created_at": "2026-08-06T14:42:05Z",
+    "events": [],
+    "failure_class": "",
+    "head_branch": "main",
+    "head_sha": "9f3c1ab7e5d24680bb51c0f2a7d3e9184c6b02fd",
+    "id": 1,
+    "infra_retry_count": 0,
+    "key": "build",
+    "labels": [
+      "self-hosted",
+      "linux"
+    ],
+    "logs_url": "/api/v1/jobs/1/logs",
+    "max_attempts": 3,
+    "name": "build",
+    "needs": [],
+    "outputs": {
+      "version": "v1.14.2"
+    },
+    "queued_at": "2026-08-06T14:42:05Z",
+    "repository": "acme/widget",
+    "requeue_count": 0,
+    "run_attempt": 1,
+    "run_id": 1,
+    "run_number": 412,
+    "runner_id": "runner-a1",
+    "started_at": "2026-08-06T14:43:45Z",
+    "status": "completed",
+    "steps": [
+      {
+        "attempt": 1,
+        "completed_at": "2026-08-06T14:44:25Z",
+        "conclusion": "success",
+        "continue_on_error": false,
+        "duration": 40,
+        "exit_code": 0,
+        "failure_class": "",
+        "id": 1,
+        "log_end": 6,
+        "log_start": 1,
+        "name": "Set up job",
+        "number": 1,
+        "started_at": "2026-08-06T14:43:45Z",
+        "status": "completed"
+      },
+      {
+        "attempt": 1,
+        "completed_at": "2026-08-06T14:44:29Z",
+        "conclusion": "success",
+        "continue_on_error": false,
+        "duration": 4,
+        "exit_code": 0,
+        "failure_class": "",
+        "id": 2,
+        "log_end": 12,
+        "log_start": 7,
+        "name": "actions/checkout@v4",
+        "number": 2,
+        "started_at": "2026-08-06T14:44:25Z",
+        "status": "completed"
+      },
+      {
+        "attempt": 1,
+        "completed_at": "2026-08-06T14:47:20Z",
+        "conclusion": "success",
+        "continue_on_error": false,
+        "duration": 171,
+        "exit_code": 0,
+        "failure_class": "",
+        "id": 3,
+        "log_end": 34,
+        "log_start": 13,
+        "name": "make build",
+        "number": 3,
+        "started_at": "2026-08-06T14:44:29Z",
+        "status": "completed"
+      },
+      {
+        "attempt": 1,
+        "completed_at": "2026-08-06T14:47:27Z",
+        "conclusion": "success",
+        "continue_on_error": false,
+        "duration": 7,
+        "exit_code": 0,
+        "failure_class": "",
+        "id": 4,
+        "log_end": 39,
+        "log_start": 35,
+        "name": "actions/upload-artifact@v4",
+        "number": 4,
+        "started_at": "2026-08-06T14:47:20Z",
+        "status": "completed"
+      }
+    ],
+    "timing": {
+      "execute_for": 180,
+      "queued_for": 100,
+      "setup_for": 0,
+      "total_for": 240
+    },
+    "url": "/api/v1/jobs/1",
+    "workflow_name": "CI"
+  },
+  "/api/v1/jobs/1/logs": {
+    "attempt": 1,
+    "count": 20,
+    "from_seq": 0,
+    "job_id": 1,
+    "lines": [
+      {
+        "seq": 1,
+        "step": 1,
+        "stream": "platform",
+        "text": "Job build assigned to runner-a1 (self-hosted, linux, x64).",
+        "ts": "2026-08-06T14:44:05Z"
+      },
+      {
+        "group": "Set up job",
+        "seq": 2,
+        "step": 1,
+        "stream": "platform",
+        "text": "Creating sandbox: docker:27-dind, private network, 2 CPU, 8 GiB.",
+        "ts": "2026-08-06T14:44:05.7Z"
+      },
+      {
+        "group": "Set up job",
+        "seq": 3,
+        "step": 1,
+        "stream": "platform",
+        "text": "Image docker:27-dind already present; not pulled.",
+        "ts": "2026-08-06T14:44:06.4Z"
+      },
+      {
+        "group": "Set up job",
+        "seq": 4,
+        "step": 1,
+        "stream": "platform",
+        "text": "Sandbox ready in 38.4s (image cache warm, workspace volume created).",
+        "ts": "2026-08-06T14:44:07.1Z"
+      },
+      {
+        "group": "Set up job",
+        "seq": 5,
+        "step": 1,
+        "stream": "stdout",
+        "text": "Runner version 0.4.1, workspace /workspace",
+        "ts": "2026-08-06T14:44:07.8Z"
+      },
+      {
+        "seq": 6,
+        "step": 1,
+        "stream": "platform",
+        "text": "Setup finished. Executing 4 steps.",
+        "ts": "2026-08-06T14:44:08.5Z"
+      },
+      {
+        "group": "actions/checkout@v4",
+        "seq": 7,
+        "step": 2,
+        "stream": "stdout",
+        "text": "Syncing repository: acme/widget",
+        "ts": "2026-08-06T14:44:09.2Z"
+      },
+      {
+        "group": "actions/checkout@v4",
+        "seq": 8,
+        "step": 2,
+        "stream": "stdout",
+        "text": "\u001b[36m/usr/bin/git\u001b[0m fetch --no-tags --prune --depth=1 origin +9f3c1ab:refs/remotes/origin/main",
+        "ts": "2026-08-06T14:44:09.9Z"
+      },
+      {
+        "group": "actions/checkout@v4",
+        "seq": 9,
+        "step": 2,
+        "stream": "stdout",
+        "text": "HEAD is now at 9f3c1ab build: pin the toolchain",
+        "ts": "2026-08-06T14:44:10.6Z"
+      },
+      {
+        "seq": 10,
+        "step": 2,
+        "stream": "stdout",
+        "text": "Checked out in 4.1s",
+        "ts": "2026-08-06T14:44:11.3Z"
+      },
+      {
+        "seq": 11,
+        "step": 3,
+        "stream": "stdout",
+        "text": "$ make build",
+        "ts": "2026-08-06T14:44:12Z"
+      },
+      {
+        "group": "make build",
+        "seq": 12,
+        "step": 3,
+        "stream": "stdout",
+        "text": "go build -trimpath -ldflags '-s -w' ./cmd/widget",
+        "ts": "2026-08-06T14:44:12.7Z"
+      },
+      {
+        "group": "make build",
+        "seq": 13,
+        "step": 3,
+        "stream": "stdout",
+        "text": "\u001b[32mok\u001b[0m   acme/widget/internal/api",
+        "ts": "2026-08-06T14:44:13.4Z"
+      },
+      {
+        "group": "make build",
+        "seq": 14,
+        "step": 3,
+        "stream": "stdout",
+        "text": "\u001b[32mok\u001b[0m   acme/widget/internal/store",
+        "ts": "2026-08-06T14:44:14.1Z"
+      },
+      {
+        "group": "make build",
+        "seq": 15,
+        "step": 3,
+        "stream": "stderr",
+        "text": "\u001b[33mwarning:\u001b[0m module golang.org/x/tools is 3 versions behind",
+        "ts": "2026-08-06T14:44:14.8Z"
+      },
+      {
+        "group": "make build",
+        "seq": 16,
+        "step": 3,
+        "stream": "stdout",
+        "text": "built build/widget-linux-amd64 (18.4 MB)",
+        "ts": "2026-08-06T14:44:15.5Z"
+      },
+      {
+        "seq": 17,
+        "step": 3,
+        "stream": "stdout",
+        "text": "make build finished in 2m51s",
+        "ts": "2026-08-06T14:44:16.2Z"
+      },
+      {
+        "group": "actions/upload-artifact@v4",
+        "seq": 18,
+        "step": 4,
+        "stream": "stdout",
+        "text": "Uploading widget-linux-amd64 (18.4 MB) in 3 chunks",
+        "ts": "2026-08-06T14:44:16.9Z"
+      },
+      {
+        "group": "actions/upload-artifact@v4",
+        "seq": 19,
+        "step": 4,
+        "stream": "stdout",
+        "text": "\u001b[32mArtifact widget-linux-amd64 uploaded\u001b[0m (sha256:2b1f0c8d…)",
+        "ts": "2026-08-06T14:44:17.6Z"
+      },
+      {
+        "seq": 20,
+        "step": 0,
+        "stream": "platform",
+        "text": "Job completed: success. 4 steps ran, none skipped.",
+        "ts": "2026-08-06T14:44:18.3Z"
+      }
+    ],
+    "next_seq": 21
+  },
+  "/api/v1/jobs/2": {
+    "annotations": [],
+    "attempt": 1,
+    "awaiting_approval": false,
+    "completed_at": "2026-08-06T14:50:05Z",
+    "conclusion": "success",
+    "continue_on_error": false,
+    "created_at": "2026-08-06T14:42:05Z",
+    "events": [],
+    "failure_class": "",
+    "head_branch": "main",
+    "head_sha": "9f3c1ab7e5d24680bb51c0f2a7d3e9184c6b02fd",
+    "id": 2,
+    "infra_retry_count": 0,
+    "key": "test",
+    "labels": [
+      "self-hosted",
+      "linux"
+    ],
+    "logs_url": "/api/v1/jobs/2/logs",
+    "matrix": {
+      "go": "1.25",
+      "os": "linux"
+    },
+    "matrix_key": "go=1.25,os=linux",
+    "max_attempts": 3,
+    "name": "test (1.25, linux)",
+    "needs": [
+      "build"
+    ],
+    "queued_at": "2026-08-06T14:46:05Z",
+    "repository": "acme/widget",
+    "requeue_count": 0,
+    "run_attempt": 1,
+    "run_id": 1,
+    "run_number": 412,
+    "runner_id": "runner-a2",
+    "started_at": "2026-08-06T14:47:55Z",
+    "status": "completed",
+    "steps": [
+      {
+        "attempt": 1,
+        "completed_at": "2026-08-06T14:48:45Z",
+        "conclusion": "success",
+        "continue_on_error": false,
+        "duration": 50,
+        "exit_code": 0,
+        "failure_class": "",
+        "id": 5,
+        "log_end": 5,
+        "log_start": 1,
+        "name": "Set up job",
+        "number": 1,
+        "started_at": "2026-08-06T14:47:55Z",
+        "status": "completed"
+      },
+      {
+        "attempt": 1,
+        "completed_at": "2026-08-06T14:48:49Z",
+        "conclusion": "success",
+        "continue_on_error": false,
+        "duration": 4,
+        "exit_code": 0,
+        "failure_class": "",
+        "id": 6,
+        "log_end": 10,
+        "log_start": 6,
+        "name": "actions/checkout@v4",
+        "number": 2,
+        "started_at": "2026-08-06T14:48:45Z",
+        "status": "completed"
+      },
+      {
+        "attempt": 1,
+        "completed_at": "2026-08-06T14:49:00Z",
+        "conclusion": "success",
+        "continue_on_error": false,
+        "duration": 11,
+        "exit_code": 0,
+        "failure_class": "",
+        "id": 7,
+        "log_end": 16,
+        "log_start": 11,
+        "name": "actions/cache@v4",
+        "number": 3,
+        "started_at": "2026-08-06T14:48:49Z",
+        "status": "completed"
+      },
+      {
+        "attempt": 1,
+        "completed_at": "2026-08-06T14:51:45Z",
+        "conclusion": "success",
+        "continue_on_error": false,
+        "duration": 165,
+        "exit_code": 0,
+        "failure_class": "",
+        "id": 8,
+        "log_end": 40,
+        "log_start": 17,
+        "name": "go test ./...",
+        "number": 4,
+        "started_at": "2026-08-06T14:49:00Z",
+        "status": "completed"
+      }
+    ],
+    "timing": {
+      "execute_for": 180,
+      "queued_for": 110,
+      "setup_for": 0,
+      "total_for": 240
+    },
+    "url": "/api/v1/jobs/2",
+    "workflow_name": "CI"
+  },
+  "/api/v1/jobs/2/logs": {
+    "attempt": 1,
+    "count": 6,
+    "from_seq": 0,
+    "job_id": 2,
+    "lines": [
+      {
+        "seq": 1,
+        "step": 1,
+        "stream": "platform",
+        "text": "Job go test ./... assigned to a self-hosted runner.",
+        "ts": "2026-08-06T14:44:05Z"
+      },
+      {
+        "group": "Set up job",
+        "seq": 2,
+        "step": 1,
+        "stream": "platform",
+        "text": "Sandbox ready in 47.9s (image cache warm).",
+        "ts": "2026-08-06T14:44:05.7Z"
+      },
+      {
+        "group": "actions/checkout@v4",
+        "seq": 3,
+        "step": 2,
+        "stream": "stdout",
+        "text": "HEAD is now at 9f3c1ab build: pin the toolchain",
+        "ts": "2026-08-06T14:44:06.4Z"
+      },
+      {
+        "seq": 4,
+        "step": 3,
+        "stream": "stdout",
+        "text": "$ go test ./...",
+        "ts": "2026-08-06T14:44:07.1Z"
+      },
+      {
+        "group": "go test ./...",
+        "seq": 5,
+        "step": 3,
+        "stream": "stdout",
+        "text": "\u001b[32mok\u001b[0m   acme/widget/... (cached)",
+        "ts": "2026-08-06T14:44:07.8Z"
+      },
+      {
+        "seq": 6,
+        "step": 0,
+        "stream": "platform",
+        "text": "Job completed: success. 4 steps ran, none skipped.",
+        "ts": "2026-08-06T14:44:08.5Z"
+      }
+    ],
+    "next_seq": 7
+  },
+  "/api/v1/jobs/3": {
+    "annotations": [],
+    "attempt": 1,
+    "awaiting_approval": false,
+    "completed_at": "2026-08-06T14:49:05Z",
+    "conclusion": "success",
+    "continue_on_error": false,
+    "created_at": "2026-08-06T14:42:05Z",
+    "events": [],
+    "failure_class": "",
+    "head_branch": "main",
+    "head_sha": "9f3c1ab7e5d24680bb51c0f2a7d3e9184c6b02fd",
+    "id": 3,
+    "infra_retry_count": 0,
+    "key": "lint",
+    "labels": [
+      "self-hosted",
+      "linux"
+    ],
+    "logs_url": "/api/v1/jobs/3/logs",
+    "max_attempts": 3,
+    "name": "lint",
+    "needs": [
+      "build"
+    ],
+    "queued_at": "2026-08-06T14:46:05Z",
+    "repository": "acme/widget",
+    "requeue_count": 0,
+    "run_attempt": 1,
+    "run_id": 1,
+    "run_number": 412,
+    "runner_id": "runner-a1",
+    "started_at": "2026-08-06T14:47:05Z",
+    "status": "completed",
+    "steps": [],
+    "timing": {
+      "execute_for": 30,
+      "queued_for": 60,
+      "setup_for": 90,
+      "total_for": 180
+    },
+    "url": "/api/v1/jobs/3",
+    "workflow_name": "CI"
+  },
+  "/api/v1/jobs/3/logs": {
+    "attempt": 1,
+    "count": 6,
+    "from_seq": 0,
+    "job_id": 3,
+    "lines": [
+      {
+        "seq": 1,
+        "step": 1,
+        "stream": "platform",
+        "text": "Job golangci-lint run assigned to a self-hosted runner.",
+        "ts": "2026-08-06T14:44:05Z"
+      },
+      {
+        "group": "Set up job",
+        "seq": 2,
+        "step": 1,
+        "stream": "platform",
+        "text": "Sandbox ready in 47.9s (image cache warm).",
+        "ts": "2026-08-06T14:44:05.7Z"
+      },
+      {
+        "group": "actions/checkout@v4",
+        "seq": 3,
+        "step": 2,
+        "stream": "stdout",
+        "text": "HEAD is now at 9f3c1ab build: pin the toolchain",
+        "ts": "2026-08-06T14:44:06.4Z"
+      },
+      {
+        "seq": 4,
+        "step": 3,
+        "stream": "stdout",
+        "text": "$ golangci-lint run",
+        "ts": "2026-08-06T14:44:07.1Z"
+      },
+      {
+        "group": "golangci-lint run",
+        "seq": 5,
+        "step": 3,
+        "stream": "stdout",
+        "text": "\u001b[32mok\u001b[0m   acme/widget/... (cached)",
+        "ts": "2026-08-06T14:44:07.8Z"
+      },
+      {
+        "seq": 6,
+        "step": 0,
+        "stream": "platform",
+        "text": "Job completed: success. 3 steps ran, none skipped.",
+        "ts": "2026-08-06T14:44:08.5Z"
+      }
+    ],
+    "next_seq": 7
+  },
+  "/api/v1/jobs/4": {
+    "annotations": [],
+    "attempt": 2,
+    "awaiting_approval": false,
+    "classification_log": [
+      "rule cloudflare-524 matched on step 4 output: \"error parsing HTTP 524 response body\"",
+      "class=infra confident=true retry=1/3 backoff=30s",
+      "attempt 2 hit the same rule; the run is reported infra_failure, not failure"
+    ],
+    "classification_reason": "The registry closed the connection after 524 seconds while the image layers were uploading. That is Cloudflare's origin timeout in front of the registry, not a result your build produced, so this attempt is recorded as an infrastructure failure and was retried.",
+    "completed_at": "2026-08-06T14:33:05Z",
+    "conclusion": "infra_failure",
+    "continue_on_error": false,
+    "created_at": "2026-08-06T14:16:05Z",
+    "events": [
+      {
+        "at": "2026-08-06T14:25:05Z",
+        "detail": {
+          "attempt": 1,
+          "backoff": "30s",
+          "rule": "cloudflare-524"
+        },
+        "id": 1,
+        "job_id": 4,
+        "kind": "infra_retry",
+        "message": "Attempt 1 failed on an infrastructure fault (cloudflare-524) and was retried after 30s.",
+        "run_id": 2
+      }
+    ],
+    "failure_class": "infra",
+    "head_branch": "main",
+    "head_sha": "4d81be09c7a2f5136e0b8d47a91c25e0fa73b8c6",
+    "id": 4,
+    "infra_retry_count": 1,
+    "key": "publish",
+    "labels": [
+      "self-hosted",
+      "linux"
+    ],
+    "logs_url": "/api/v1/jobs/4/logs",
+    "max_attempts": 3,
+    "name": "publish",
+    "needs": [],
+    "queued_at": "2026-08-06T14:16:05Z",
+    "repository": "acme/widget",
+    "requeue_count": 0,
+    "run_attempt": 2,
+    "run_id": 2,
+    "run_number": 88,
+    "runner_id": "runner-b1",
+    "started_at": "2026-08-06T14:24:05Z",
+    "status": "completed",
+    "steps": [
+      {
+        "attempt": 2,
+        "completed_at": "2026-08-06T14:24:45Z",
+        "conclusion": "success",
+        "continue_on_error": false,
+        "duration": 40,
+        "exit_code": 0,
+        "failure_class": "",
+        "id": 9,
+        "log_end": 5,
+        "log_start": 1,
+        "name": "Set up job",
+        "number": 1,
+        "started_at": "2026-08-06T14:24:05Z",
+        "status": "completed"
+      },
+      {
+        "attempt": 2,
+        "completed_at": "2026-08-06T14:24:50Z",
+        "conclusion": "success",
+        "continue_on_error": false,
+        "duration": 5,
+        "exit_code": 0,
+        "failure_class": "",
+        "id": 10,
+        "log_end": 9,
+        "log_start": 6,
+        "name": "actions/checkout@v4",
+        "number": 2,
+        "started_at": "2026-08-06T14:24:45Z",
+        "status": "completed"
+      },
+      {
+        "attempt": 2,
+        "completed_at": "2026-08-06T14:28:02Z",
+        "conclusion": "success",
+        "continue_on_error": false,
+        "duration": 192,
+        "exit_code": 0,
+        "failure_class": "",
+        "id": 11,
+        "log_end": 22,
+        "log_start": 10,
+        "name": "docker build",
+        "number": 3,
+        "started_at": "2026-08-06T14:24:50Z",
+        "status": "completed"
+      },
+      {
+        "attempt": 2,
+        "completed_at": "2026-08-06T14:36:46Z",
+        "conclusion": "infra_failure",
+        "continue_on_error": false,
+        "duration": 524,
+        "exit_code": 1,
+        "failure_class": "infra",
+        "id": 12,
+        "log_end": 33,
+        "log_start": 23,
+        "name": "docker push",
+        "number": 4,
+        "started_at": "2026-08-06T14:28:02Z",
+        "status": "completed"
+      }
+    ],
+    "timing": {
+      "execute_for": 460,
+      "queued_for": 480,
+      "setup_for": 80,
+      "total_for": 1020
+    },
+    "url": "/api/v1/jobs/4",
+    "workflow_name": "Release"
+  },
+  "/api/v1/jobs/4/logs": {
+    "attempt": 2,
+    "count": 13,
+    "from_seq": 0,
+    "job_id": 4,
+    "lines": [
+      {
+        "seq": 1,
+        "step": 1,
+        "stream": "platform",
+        "text": "Attempt 2 of 3. Attempt 1 failed on an infrastructure fault (cloudflare-524).",
+        "ts": "2026-08-06T14:44:05Z"
+      },
+      {
+        "group": "Set up job",
+        "seq": 2,
+        "step": 1,
+        "stream": "platform",
+        "text": "Sandbox ready in 40.2s.",
+        "ts": "2026-08-06T14:44:05.7Z"
+      },
+      {
+        "group": "actions/checkout@v4",
+        "seq": 3,
+        "step": 2,
+        "stream": "stdout",
+        "text": "HEAD is now at 4d81be0 release: cut v1.14.2",
+        "ts": "2026-08-06T14:44:06.4Z"
+      },
+      {
+        "group": "docker build",
+        "seq": 4,
+        "step": 3,
+        "stream": "stdout",
+        "text": "#5 [builder 3/6] RUN go build -o /out/widget ./cmd/widget",
+        "ts": "2026-08-06T14:44:07.1Z"
+      },
+      {
+        "group": "docker build",
+        "seq": 5,
+        "step": 3,
+        "stream": "stdout",
+        "text": "#5 DONE 182.4s",
+        "ts": "2026-08-06T14:44:07.8Z"
+      },
+      {
+        "group": "docker build",
+        "seq": 6,
+        "step": 3,
+        "stream": "stdout",
+        "text": "\u001b[32m=\u003e exporting layers\u001b[0m 21.7s",
+        "ts": "2026-08-06T14:44:08.5Z"
+      },
+      {
+        "group": "docker push",
+        "seq": 7,
+        "step": 4,
+        "stream": "stdout",
+        "text": "The push refers to repository [registry.example.com/acme/widget]",
+        "ts": "2026-08-06T14:44:09.2Z"
+      },
+      {
+        "group": "docker push",
+        "seq": 8,
+        "step": 4,
+        "stream": "stdout",
+        "text": "a1c9f0d2e6b4: Pushing [==================\u003e    ]  412.9MB/512.1MB",
+        "ts": "2026-08-06T14:44:09.9Z"
+      },
+      {
+        "group": "docker push",
+        "seq": 9,
+        "step": 4,
+        "stream": "stderr",
+        "text": "\u001b[31merror parsing HTTP 524 response body\u001b[0m: unexpected end of JSON input: \"\"",
+        "ts": "2026-08-06T14:44:10.6Z"
+      },
+      {
+        "group": "docker push",
+        "seq": 10,
+        "step": 4,
+        "stream": "stderr",
+        "text": "failed to push registry.example.com/acme/widget:v1.14.2 after 524s",
+        "ts": "2026-08-06T14:44:11.3Z"
+      },
+      {
+        "seq": 11,
+        "step": 4,
+        "stream": "platform",
+        "text": "Classified as INFRA by rule cloudflare-524, matching \"error parsing HTTP 524 response body\".",
+        "ts": "2026-08-06T14:44:12Z"
+      },
+      {
+        "seq": 12,
+        "step": 4,
+        "stream": "platform",
+        "text": "A 524 is Cloudflare's origin timeout in front of the registry. Your build produced no failing result.",
+        "ts": "2026-08-06T14:44:12.7Z"
+      },
+      {
+        "seq": 13,
+        "step": 0,
+        "stream": "platform",
+        "text": "Job completed: infra_failure after 2 attempts. This is not reported as a build failure.",
+        "ts": "2026-08-06T14:44:13.4Z"
+      }
+    ],
+    "next_seq": 14
+  },
+  "/api/v1/jobs/5": {
+    "annotations": [
+      {
+        "annotation_level": "failure",
+        "end_line": 141,
+        "id": 1,
+        "job_id": 5,
+        "message": "expected an error for \"-5s\", got a duration of -5s: a negative timeout would make every job time out immediately.",
+        "path": "internal/config/config.go",
+        "start_line": 141,
+        "title": "TestParseTimeout/negative"
+      }
+    ],
+    "attempt": 1,
+    "awaiting_approval": false,
+    "classification_reason": "go test exited 1. The failure is in your code: no infrastructure rule matched its output.",
+    "completed_at": "2026-08-06T13:12:05Z",
+    "conclusion": "failure",
+    "continue_on_error": false,
+    "created_at": "2026-08-06T13:04:05Z",
+    "events": [],
+    "failure_class": "user",
+    "head_branch": "fix-timeout-parsing",
+    "head_sha": "c07e5b1d93a84f2016bd7e5c8a1409fb63d2e750",
+    "id": 5,
+    "infra_retry_count": 0,
+    "key": "test",
+    "labels": [
+      "self-hosted",
+      "linux"
+    ],
+    "logs_url": "/api/v1/jobs/5/logs",
+    "matrix": {
+      "go": "1.25",
+      "os": "linux"
+    },
+    "matrix_key": "go=1.25,os=linux",
+    "max_attempts": 3,
+    "name": "test (1.25, linux)",
+    "needs": [],
+    "queued_at": "2026-08-06T13:04:05Z",
+    "repository": "acme/widget",
+    "requeue_count": 0,
+    "run_attempt": 1,
+    "run_id": 3,
+    "run_number": 411,
+    "runner_id": "runner-a2",
+    "started_at": "2026-08-06T13:05:05Z",
+    "status": "completed",
+    "steps": [
+      {
+        "attempt": 1,
+        "completed_at": "2026-08-06T13:06:05Z",
+        "conclusion": "success",
+        "continue_on_error": false,
+        "duration": 60,
+        "exit_code": 0,
+        "failure_class": "",
+        "id": 13,
+        "log_end": 5,
+        "log_start": 1,
+        "name": "Set up job",
+        "number": 1,
+        "started_at": "2026-08-06T13:05:05Z",
+        "status": "completed"
+      },
+      {
+        "attempt": 1,
+        "completed_at": "2026-08-06T13:06:09Z",
+        "conclusion": "success",
+        "continue_on_error": false,
+        "duration": 4,
+        "exit_code": 0,
+        "failure_class": "",
+        "id": 14,
+        "log_end": 9,
+        "log_start": 6,
+        "name": "actions/checkout@v4",
+        "number": 2,
+        "started_at": "2026-08-06T13:06:05Z",
+        "status": "completed"
+      },
+      {
+        "attempt": 1,
+        "completed_at": "2026-08-06T13:11:59Z",
+        "conclusion": "failure",
+        "continue_on_error": false,
+        "duration": 350,
+        "exit_code": 1,
+        "failure_class": "user",
+        "id": 15,
+        "log_end": 28,
+        "log_start": 10,
+        "name": "go test ./...",
+        "number": 3,
+        "started_at": "2026-08-06T13:06:09Z",
+        "status": "completed"
+      }
+    ],
+    "timing": {
+      "execute_for": 360,
+      "queued_for": 60,
+      "setup_for": 60,
+      "total_for": 480
+    },
+    "url": "/api/v1/jobs/5",
+    "workflow_name": "CI"
+  },
+  "/api/v1/jobs/5/logs": {
+    "attempt": 1,
+    "count": 10,
+    "from_seq": 0,
+    "job_id": 5,
+    "lines": [
+      {
+        "seq": 1,
+        "step": 1,
+        "stream": "platform",
+        "text": "Job test (1.25, linux) assigned to runner-a2.",
+        "ts": "2026-08-06T14:44:05Z"
+      },
+      {
+        "group": "Set up job",
+        "seq": 2,
+        "step": 1,
+        "stream": "platform",
+        "text": "Sandbox ready in 55.1s.",
+        "ts": "2026-08-06T14:44:05.7Z"
+      },
+      {
+        "group": "actions/checkout@v4",
+        "seq": 3,
+        "step": 2,
+        "stream": "stdout",
+        "text": "HEAD is now at c07e5b1 fix: parse negative timeouts",
+        "ts": "2026-08-06T14:44:06.4Z"
+      },
+      {
+        "group": "go test ./...",
+        "seq": 4,
+        "step": 3,
+        "stream": "stdout",
+        "text": "\u001b[32mok\u001b[0m   acme/widget/internal/api\t0.412s",
+        "ts": "2026-08-06T14:44:07.1Z"
+      },
+      {
+        "group": "go test ./...",
+        "seq": 5,
+        "step": 3,
+        "stream": "stdout",
+        "text": "\u001b[32mok\u001b[0m   acme/widget/internal/store\t1.884s",
+        "ts": "2026-08-06T14:44:07.8Z"
+      },
+      {
+        "group": "go test ./...",
+        "seq": 6,
+        "step": 3,
+        "stream": "stderr",
+        "text": "--- FAIL: TestParseTimeout/negative (0.00s)",
+        "ts": "2026-08-06T14:44:08.5Z"
+      },
+      {
+        "group": "go test ./...",
+        "seq": 7,
+        "step": 3,
+        "stream": "stderr",
+        "text": "    config_test.go:141: expected an error for \"-5s\", got a duration of -5s",
+        "ts": "2026-08-06T14:44:09.2Z"
+      },
+      {
+        "group": "go test ./...",
+        "seq": 8,
+        "step": 3,
+        "stream": "stderr",
+        "text": "\u001b[31mFAIL\u001b[0m acme/widget/internal/config\t0.207s",
+        "ts": "2026-08-06T14:44:09.9Z"
+      },
+      {
+        "seq": 9,
+        "step": 3,
+        "stream": "platform",
+        "text": "No infrastructure rule matched this output; classified as USER.",
+        "ts": "2026-08-06T14:44:10.6Z"
+      },
+      {
+        "seq": 10,
+        "step": 0,
+        "stream": "platform",
+        "text": "Job completed: failure. The failing assertion is annotated on config_test.go:141.",
+        "ts": "2026-08-06T14:44:11.3Z"
+      }
+    ],
+    "next_seq": 11
+  },
+  "/api/v1/jobs/6": {
+    "annotations": [],
+    "attempt": 1,
+    "awaiting_approval": false,
+    "completed_at": "2026-08-06T11:04:05Z",
+    "conclusion": "success",
+    "continue_on_error": false,
+    "created_at": "2026-08-06T10:04:05Z",
+    "events": [
+      {
+        "at": "2026-08-06T10:12:05Z",
+        "detail": {
+          "actor": "runner_lost",
+          "requeue_count": 1,
+          "runner_id": "runner-b2"
+        },
+        "id": 2,
+        "job_id": 6,
+        "kind": "runner_lost",
+        "message": "Runner runner-b2 stopped reporting, so its lease on this job expired and the job was put back on the queue (requeue 1). Nothing your workflow did caused this.",
+        "run_id": 4
+      },
+      {
+        "at": "2026-08-06T10:23:05Z",
+        "detail": {
+          "attempt": 1,
+          "runner_id": "runner-c1"
+        },
+        "id": 3,
+        "job_id": 6,
+        "kind": "redispatched",
+        "message": "Redispatched to runner runner-c1 after the previous lease was lost.",
+        "run_id": 4
+      }
+    ],
+    "failure_class": "",
+    "head_branch": "main",
+    "head_sha": "1a7f4c0e88b2359dd6017ec4f5a92b3081de64cc",
+    "id": 6,
+    "infra_retry_count": 0,
+    "key": "soak",
+    "labels": [
+      "self-hosted",
+      "linux"
+    ],
+    "logs_url": "/api/v1/jobs/6/logs",
+    "max_attempts": 3,
+    "name": "soak",
+    "needs": [],
+    "queued_at": "2026-08-06T10:04:05Z",
+    "repository": "acme/widget",
+    "requeue_count": 1,
+    "run_attempt": 1,
+    "run_id": 4,
+    "run_number": 31,
+    "runner_id": "runner-c1",
+    "started_at": "2026-08-06T10:24:05Z",
+    "status": "completed",
+    "steps": [
+      {
+        "attempt": 1,
+        "completed_at": "2026-08-06T10:25:05Z",
+        "conclusion": "success",
+        "continue_on_error": false,
+        "duration": 60,
+        "exit_code": 0,
+        "failure_class": "",
+        "id": 16,
+        "log_end": 6,
+        "log_start": 1,
+        "name": "Set up job",
+        "number": 1,
+        "started_at": "2026-08-06T10:24:05Z",
+        "status": "completed"
+      },
+      {
+        "attempt": 1,
+        "completed_at": "2026-08-06T11:03:05Z",
+        "conclusion": "success",
+        "continue_on_error": false,
+        "duration": 2280,
+        "exit_code": 0,
+        "failure_class": "",
+        "id": 17,
+        "log_end": 24,
+        "log_start": 7,
+        "name": "make soak",
+        "number": 2,
+        "started_at": "2026-08-06T10:25:05Z",
+        "status": "completed"
+      }
+    ],
+    "timing": {
+      "execute_for": 2340,
+      "queued_for": 1200,
+      "setup_for": 60,
+      "total_for": 3600
+    },
+    "url": "/api/v1/jobs/6",
+    "workflow_name": "Nightly"
+  },
+  "/api/v1/jobs/6/logs": {
+    "attempt": 1,
+    "count": 6,
+    "from_seq": 0,
+    "job_id": 6,
+    "lines": [
+      {
+        "seq": 1,
+        "step": 1,
+        "stream": "platform",
+        "text": "Job make soak assigned to a self-hosted runner.",
+        "ts": "2026-08-06T14:44:05Z"
+      },
+      {
+        "group": "Set up job",
+        "seq": 2,
+        "step": 1,
+        "stream": "platform",
+        "text": "Sandbox ready in 47.9s (image cache warm).",
+        "ts": "2026-08-06T14:44:05.7Z"
+      },
+      {
+        "group": "actions/checkout@v4",
+        "seq": 3,
+        "step": 2,
+        "stream": "stdout",
+        "text": "HEAD is now at 9f3c1ab build: pin the toolchain",
+        "ts": "2026-08-06T14:44:06.4Z"
+      },
+      {
+        "seq": 4,
+        "step": 3,
+        "stream": "stdout",
+        "text": "$ make soak",
+        "ts": "2026-08-06T14:44:07.1Z"
+      },
+      {
+        "group": "make soak",
+        "seq": 5,
+        "step": 3,
+        "stream": "stdout",
+        "text": "\u001b[32mok\u001b[0m   acme/widget/... (cached)",
+        "ts": "2026-08-06T14:44:07.8Z"
+      },
+      {
+        "seq": 6,
+        "step": 0,
+        "stream": "platform",
+        "text": "Job completed: success, on its second dispatch after the first runner was lost.",
+        "ts": "2026-08-06T14:44:08.5Z"
+      }
+    ],
+    "next_seq": 7
+  },
+  "/api/v1/jobs/7": {
+    "annotations": [],
+    "attempt": 1,
+    "awaiting_approval": false,
+    "cancel": {
+      "actor": "concurrency_group",
+      "sentence": "Superseded by run #412 on the same branch: the workflow's concurrency group ci-main allows one run at a time and cancel-in-progress is set.",
+      "triggered_by": "ci-main"
+    },
+    "classification_reason": "Superseded by run #412 on the same branch: the workflow's concurrency group ci-main allows one run at a time and cancel-in-progress is set.",
+    "completed_at": "2026-08-06T14:41:05Z",
+    "conclusion": "cancelled",
+    "concurrency_group": "ci-main",
+    "continue_on_error": false,
+    "created_at": "2026-08-06T14:38:05Z",
+    "events": [
+      {
+        "at": "2026-08-06T14:41:05Z",
+        "detail": {
+          "actor": "concurrency_group",
+          "triggered_by": "ci-main"
+        },
+        "id": 4,
+        "job_id": 7,
+        "kind": "cancelled",
+        "message": "Superseded by run #412 on the same branch: the workflow's concurrency group ci-main allows one run at a time and cancel-in-progress is set.",
+        "run_id": 5
+      }
+    ],
+    "failure_class": "",
+    "head_branch": "main",
+    "head_sha": "77b0e2c419d8a53f6b1c04e29d7538ab60f1ca94",
+    "id": 7,
+    "infra_retry_count": 0,
+    "key": "build",
+    "labels": [
+      "self-hosted",
+      "linux"
+    ],
+    "logs_url": "/api/v1/jobs/7/logs",
+    "max_attempts": 3,
+    "name": "build",
+    "needs": [],
+    "queued_at": "2026-08-06T14:38:05Z",
+    "repository": "acme/widget",
+    "requeue_count": 0,
+    "run_attempt": 1,
+    "run_id": 5,
+    "run_number": 410,
+    "runner_id": "runner-a1",
+    "started_at": "2026-08-06T14:39:05Z",
+    "status": "completed",
+    "steps": [],
+    "timing": {
+      "execute_for": 30,
+      "queued_for": 60,
+      "setup_for": 90,
+      "total_for": 180
+    },
+    "url": "/api/v1/jobs/7",
+    "workflow_name": "CI"
+  },
+  "/api/v1/jobs/7/logs": {
+    "attempt": 1,
+    "count": 6,
+    "from_seq": 0,
+    "job_id": 7,
+    "lines": [
+      {
+        "seq": 1,
+        "step": 1,
+        "stream": "platform",
+        "text": "Job build assigned to runner-a1.",
+        "ts": "2026-08-06T14:44:05Z"
+      },
+      {
+        "group": "Set up job",
+        "seq": 2,
+        "step": 1,
+        "stream": "platform",
+        "text": "Sandbox ready in 44.2s.",
+        "ts": "2026-08-06T14:44:05.7Z"
+      },
+      {
+        "group": "actions/checkout@v4",
+        "seq": 3,
+        "step": 2,
+        "stream": "stdout",
+        "text": "HEAD is now at 77b0e2c chore: bump deps",
+        "ts": "2026-08-06T14:44:06.4Z"
+      },
+      {
+        "group": "make build",
+        "seq": 4,
+        "step": 3,
+        "stream": "stdout",
+        "text": "go build -trimpath ./cmd/widget",
+        "ts": "2026-08-06T14:44:07.1Z"
+      },
+      {
+        "seq": 5,
+        "step": 3,
+        "stream": "platform",
+        "text": "Cancellation received: superseded by run #412 on the same branch (concurrency group ci-main).",
+        "ts": "2026-08-06T14:44:07.8Z"
+      },
+      {
+        "seq": 6,
+        "step": 0,
+        "stream": "platform",
+        "text": "Job completed: cancelled. The sandbox was torn down; no partial artifact was published.",
+        "ts": "2026-08-06T14:44:08.5Z"
+      }
+    ],
+    "next_seq": 7
+  },
+  "/api/v1/queue": {
+    "at": "2026-08-06T15:04:05Z",
+    "depth": 1,
+    "depth_by_label": {
+      "gpu": 1,
+      "linux": 1,
+      "self-hosted": 1
+    },
+    "idle_by_label": {
+      "arm64": 1,
+      "linux": 2,
+      "self-hosted": 2,
+      "x64": 1
+    },
+    "oldest_job_id": 8,
+    "oldest_waiting": 2220,
+    "runners_by_label": {
+      "arm64": 1,
+      "linux": 3,
+      "self-hosted": 3,
+      "x64": 2
+    },
+    "starved_labels": [
+      "gpu"
+    ]
+  },
+  "/api/v1/queue/history?since=2026-08-06T09:04:05Z": {
+    "count": 13,
+    "samples": [
+      {
+        "at": "2026-08-06T09:04:05Z",
+        "busy": 1,
+        "depth": 3,
+        "depth_by_label": {
+          "gpu": 1,
+          "linux": 3
+        },
+        "idle": 2
+      },
+      {
+        "at": "2026-08-06T09:34:05Z",
+        "busy": 2,
+        "depth": 1,
+        "depth_by_label": {
+          "gpu": 1,
+          "linux": 1
+        },
+        "idle": 2
+      },
+      {
+        "at": "2026-08-06T10:04:05Z",
+        "busy": 1,
+        "depth": 1,
+        "depth_by_label": {
+          "gpu": 1,
+          "linux": 1
+        },
+        "idle": 2
+      },
+      {
+        "at": "2026-08-06T10:34:05Z",
+        "busy": 2,
+        "depth": 3,
+        "depth_by_label": {
+          "gpu": 1,
+          "linux": 3
+        },
+        "idle": 2
+      },
+      {
+        "at": "2026-08-06T11:04:05Z",
+        "busy": 1,
+        "depth": 1,
+        "depth_by_label": {
+          "gpu": 1,
+          "linux": 1
+        },
+        "idle": 2
+      },
+      {
+        "at": "2026-08-06T11:34:05Z",
+        "busy": 2,
+        "depth": 1,
+        "depth_by_label": {
+          "gpu": 1,
+          "linux": 1
+        },
+        "idle": 2
+      },
+      {
+        "at": "2026-08-06T12:04:05Z",
+        "busy": 1,
+        "depth": 3,
+        "depth_by_label": {
+          "gpu": 1,
+          "linux": 3
+        },
+        "idle": 2
+      },
+      {
+        "at": "2026-08-06T12:34:05Z",
+        "busy": 2,
+        "depth": 1,
+        "depth_by_label": {
+          "gpu": 1,
+          "linux": 1
+        },
+        "idle": 2
+      },
+      {
+        "at": "2026-08-06T13:04:05Z",
+        "busy": 1,
+        "depth": 1,
+        "depth_by_label": {
+          "gpu": 1,
+          "linux": 1
+        },
+        "idle": 2
+      },
+      {
+        "at": "2026-08-06T13:34:05Z",
+        "busy": 2,
+        "depth": 3,
+        "depth_by_label": {
+          "gpu": 1,
+          "linux": 3
+        },
+        "idle": 2
+      },
+      {
+        "at": "2026-08-06T14:04:05Z",
+        "busy": 1,
+        "depth": 1,
+        "depth_by_label": {
+          "gpu": 1,
+          "linux": 1
+        },
+        "idle": 2
+      },
+      {
+        "at": "2026-08-06T14:34:05Z",
+        "busy": 2,
+        "depth": 1,
+        "depth_by_label": {
+          "gpu": 1,
+          "linux": 1
+        },
+        "idle": 2
+      },
+      {
+        "at": "2026-08-06T15:04:05Z",
+        "busy": 1,
+        "depth": 3,
+        "depth_by_label": {
+          "gpu": 1,
+          "linux": 3
+        },
+        "idle": 2
+      }
+    ],
+    "since": "2026-08-06T09:04:05Z"
+  },
+  "/api/v1/repos/acme/widget/cache": {
+    "by_key": [
+      {
+        "evictions": 0,
+        "hit_rate": 1,
+        "hits": 1,
+        "key": "go-build-linux-9c04ab",
+        "misses": 0,
+        "stores": 0
+      },
+      {
+        "evictions": 0,
+        "hit_rate": 1,
+        "hits": 1,
+        "key": "go-mod-linux-8f21c0",
+        "misses": 0,
+        "stores": 0
+      },
+      {
+        "evictions": 0,
+        "hit_rate": 0,
+        "hits": 0,
+        "key": "node-modules-91b0e2",
+        "misses": 1,
+        "stores": 0
+      },
+      {
+        "evictions": 1,
+        "hit_rate": 0,
+        "hits": 0,
+        "key": "go-build-linux-71ce93",
+        "misses": 0,
+        "stores": 0
+      },
+      {
+        "evictions": 0,
+        "hit_rate": 0,
+        "hits": 0,
+        "key": "node-modules-2a7ff1",
+        "misses": 0,
+        "stores": 1
+      }
+    ],
+    "entries": [
+      {
+        "created_at": "2026-08-04T15:04:05Z",
+        "finalized": true,
+        "id": 3,
+        "key": "node-modules-2a7ff1",
+        "last_accessed": "2026-08-06T13:04:05Z",
+        "ref": "refs/heads/fix-timeout-parsing",
+        "size_bytes": 318552112,
+        "version": "v1"
+      },
+      {
+        "created_at": "2026-08-03T15:04:05Z",
+        "finalized": true,
+        "id": 2,
+        "key": "go-build-linux-8f21c0",
+        "last_accessed": "2026-08-06T14:49:05Z",
+        "ref": "refs/heads/main",
+        "size_bytes": 1204991233,
+        "version": "v1"
+      },
+      {
+        "created_at": "2026-08-03T15:04:05Z",
+        "finalized": true,
+        "id": 1,
+        "key": "go-mod-linux-8f21c0",
+        "last_accessed": "2026-08-06T14:50:05Z",
+        "ref": "refs/heads/main",
+        "size_bytes": 412884004,
+        "version": "v1"
+      }
+    ],
+    "events": [
+      {
+        "at": "2026-08-06T14:50:05Z",
+        "id": 1,
+        "key": "go-mod-linux-8f21c0",
+        "kind": "hit",
+        "matched_on": "go-mod-linux-8f21c0",
+        "repo_id": 4210,
+        "size_bytes": 412884004
+      },
+      {
+        "at": "2026-08-06T14:49:05Z",
+        "id": 2,
+        "key": "go-build-linux-9c04ab",
+        "kind": "hit",
+        "matched_on": "go-build-linux-",
+        "reason": "no exact match; restored from the newest entry under restore-key \"go-build-linux-\"",
+        "repo_id": 4210,
+        "size_bytes": 1204991233
+      },
+      {
+        "at": "2026-08-06T13:05:05Z",
+        "id": 4,
+        "key": "node-modules-2a7ff1",
+        "kind": "store",
+        "repo_id": 4210,
+        "size_bytes": 318552112
+      },
+      {
+        "at": "2026-08-06T13:04:05Z",
+        "id": 3,
+        "key": "node-modules-91b0e2",
+        "kind": "miss",
+        "reason": "no entry matched the key or any restore-key for version v1",
+        "repo_id": 4210
+      },
+      {
+        "at": "2026-08-06T06:04:05Z",
+        "id": 5,
+        "key": "go-build-linux-71ce93",
+        "kind": "evict",
+        "reason": "evicted to stay under the 10737418240 byte cache quota; it was the least recently used entry",
+        "repo_id": 4210,
+        "size_bytes": 1198233004
+      }
+    ],
+    "repository": "acme/widget",
+    "stats": {
+      "events_considered": 5,
+      "evictions": 1,
+      "hit_rate": 0.6666666666666666,
+      "hits": 2,
+      "misses": 1,
+      "stores": 1
+    },
+    "total_count": 3,
+    "usage_bytes": 1936427349
+  },
+  "/api/v1/runners": {
+    "at": "2026-08-06T15:04:05Z",
+    "busy": 1,
+    "capacity": 7,
+    "idle": 2,
+    "offline": 1,
+    "online": 3,
+    "runners": [
+      {
+        "arch": "amd64",
+        "capacity": 2,
+        "first_seen_at": "2026-07-06T15:04:05Z",
+        "heartbeat_age": 4,
+        "id": "runner-a1",
+        "labels": [
+          "self-hosted",
+          "linux",
+          "x64"
+        ],
+        "last_heartbeat": "2026-08-06T15:04:01Z",
+        "name": "build-01",
+        "os": "linux",
+        "state": "idle",
+        "version": "0.4.1"
+      },
+      {
+        "arch": "amd64",
+        "capacity": 2,
+        "current_job_id": 2,
+        "first_seen_at": "2026-07-06T15:04:05Z",
+        "heartbeat_age": 2,
+        "id": "runner-a2",
+        "labels": [
+          "self-hosted",
+          "linux",
+          "x64"
+        ],
+        "last_heartbeat": "2026-08-06T15:04:03Z",
+        "name": "build-02",
+        "os": "linux",
+        "state": "busy",
+        "version": "0.4.1"
+      },
+      {
+        "arch": "amd64",
+        "capacity": 2,
+        "first_seen_at": "2026-07-06T15:04:05Z",
+        "heartbeat_age": 17520,
+        "id": "runner-b2",
+        "labels": [
+          "self-hosted",
+          "linux",
+          "x64"
+        ],
+        "last_heartbeat": "2026-08-06T10:12:05Z",
+        "name": "build-03",
+        "os": "linux",
+        "state": "offline",
+        "version": "0.4.0"
+      },
+      {
+        "arch": "arm64",
+        "capacity": 1,
+        "first_seen_at": "2026-07-28T15:04:05Z",
+        "heartbeat_age": 6,
+        "id": "runner-c1",
+        "labels": [
+          "self-hosted",
+          "linux",
+          "arm64"
+        ],
+        "last_heartbeat": "2026-08-06T15:03:59Z",
+        "name": "arm-01",
+        "os": "linux",
+        "state": "idle",
+        "version": "0.4.1"
+      }
+    ],
+    "total_count": 4
+  },
+  "/api/v1/runs": {
+    "page": 1,
+    "per_page": 30,
+    "total_count": 6,
+    "workflow_runs": [
+      {
+        "actor": "alex",
+        "approved": false,
+        "attempt": 1,
+        "completed_at": "2026-08-06T14:50:05Z",
+        "conclusion": "success",
+        "created_at": "2026-08-06T14:42:05Z",
+        "event": "push",
+        "failure_class": "",
+        "head_branch": "main",
+        "head_sha": "9f3c1ab7e5d24680bb51c0f2a7d3e9184c6b02fd",
+        "id": 1,
+        "is_fork_pr": false,
+        "jobs_url": "/api/v1/runs/1/jobs",
+        "name": "CI",
+        "repository": "acme/widget",
+        "run_attempt": 1,
+        "run_number": 412,
+        "started_at": "2026-08-06T14:42:05Z",
+        "status": "completed",
+        "timing": {
+          "execute_for": 480,
+          "queued_for": 0,
+          "setup_for": 0,
+          "total_for": 480
+        },
+        "url": "/api/v1/runs/1",
+        "workflow_name": "CI",
+        "workflow_path": ".github/workflows/ci.yml"
+      },
+      {
+        "actor": "alex",
+        "approved": false,
+        "attempt": 1,
+        "cancel": {
+          "actor": "concurrency_group",
+          "sentence": "Superseded by run #412 on the same branch: the workflow's concurrency group ci-main allows one run at a time and cancel-in-progress is set.",
+          "triggered_by": "ci-main"
+        },
+        "classification_reason": "Superseded by run #412 on the same branch: the workflow's concurrency group ci-main allows one run at a time and cancel-in-progress is set.",
+        "completed_at": "2026-08-06T14:41:05Z",
+        "conclusion": "cancelled",
+        "created_at": "2026-08-06T14:38:05Z",
+        "event": "push",
+        "failure_class": "",
+        "head_branch": "main",
+        "head_sha": "77b0e2c419d8a53f6b1c04e29d7538ab60f1ca94",
+        "id": 5,
+        "is_fork_pr": false,
+        "jobs_url": "/api/v1/runs/5/jobs",
+        "name": "CI",
+        "repository": "acme/widget",
+        "run_attempt": 1,
+        "run_number": 410,
+        "started_at": "2026-08-06T14:38:05Z",
+        "status": "completed",
+        "timing": {
+          "execute_for": 180,
+          "queued_for": 0,
+          "setup_for": 0,
+          "total_for": 180
+        },
+        "url": "/api/v1/runs/5",
+        "workflow_name": "CI",
+        "workflow_path": ".github/workflows/ci.yml"
+      },
+      {
+        "actor": "sam",
+        "approved": false,
+        "attempt": 1,
+        "created_at": "2026-08-06T14:27:05Z",
+        "event": "workflow_dispatch",
+        "failure_class": "",
+        "head_branch": "main",
+        "head_sha": "e58c3a7d10b942f6ac83512d0eb47f9163ca25b8",
+        "id": 6,
+        "is_fork_pr": false,
+        "jobs_url": "/api/v1/runs/6/jobs",
+        "name": "Benchmarks",
+        "repository": "acme/widget",
+        "run_attempt": 1,
+        "run_number": 9,
+        "status": "queued",
+        "timing": {
+          "execute_for": 0,
+          "queued_for": 2220,
+          "setup_for": 0,
+          "total_for": 2220
+        },
+        "url": "/api/v1/runs/6",
+        "workflow_name": "Benchmarks",
+        "workflow_path": ".github/workflows/bench.yml"
+      },
+      {
+        "actor": "alex",
+        "approved": false,
+        "attempt": 1,
+        "completed_at": "2026-08-06T14:33:05Z",
+        "conclusion": "infra_failure",
+        "created_at": "2026-08-06T14:16:05Z",
+        "event": "push",
+        "failure_class": "infra",
+        "head_branch": "main",
+        "head_sha": "4d81be09c7a2f5136e0b8d47a91c25e0fa73b8c6",
+        "id": 2,
+        "is_fork_pr": false,
+        "jobs_url": "/api/v1/runs/2/jobs",
+        "name": "Release",
+        "repository": "acme/widget",
+        "run_attempt": 1,
+        "run_number": 88,
+        "started_at": "2026-08-06T14:16:05Z",
+        "status": "completed",
+        "timing": {
+          "execute_for": 1020,
+          "queued_for": 0,
+          "setup_for": 0,
+          "total_for": 1020
+        },
+        "url": "/api/v1/runs/2",
+        "workflow_name": "Release",
+        "workflow_path": ".github/workflows/release.yml"
+      },
+      {
+        "actor": "sam",
+        "approved": false,
+        "attempt": 1,
+        "base_branch": "main",
+        "completed_at": "2026-08-06T13:12:05Z",
+        "conclusion": "failure",
+        "created_at": "2026-08-06T13:04:05Z",
+        "event": "pull_request",
+        "failure_class": "user",
+        "head_branch": "fix-timeout-parsing",
+        "head_sha": "c07e5b1d93a84f2016bd7e5c8a1409fb63d2e750",
+        "id": 3,
+        "is_fork_pr": false,
+        "jobs_url": "/api/v1/runs/3/jobs",
+        "name": "CI",
+        "repository": "acme/widget",
+        "run_attempt": 1,
+        "run_number": 411,
+        "started_at": "2026-08-06T13:04:05Z",
+        "status": "completed",
+        "timing": {
+          "execute_for": 480,
+          "queued_for": 0,
+          "setup_for": 0,
+          "total_for": 480
+        },
+        "url": "/api/v1/runs/3",
+        "workflow_name": "CI",
+        "workflow_path": ".github/workflows/ci.yml"
+      },
+      {
+        "actor": "ci",
+        "approved": false,
+        "attempt": 1,
+        "completed_at": "2026-08-06T11:04:05Z",
+        "conclusion": "success",
+        "created_at": "2026-08-06T10:04:05Z",
+        "event": "schedule",
+        "failure_class": "",
+        "head_branch": "main",
+        "head_sha": "1a7f4c0e88b2359dd6017ec4f5a92b3081de64cc",
+        "id": 4,
+        "is_fork_pr": false,
+        "jobs_url": "/api/v1/runs/4/jobs",
+        "name": "Nightly",
+        "repository": "acme/widget",
+        "run_attempt": 1,
+        "run_number": 31,
+        "started_at": "2026-08-06T10:04:05Z",
+        "status": "completed",
+        "timing": {
+          "execute_for": 3600,
+          "queued_for": 0,
+          "setup_for": 0,
+          "total_for": 3600
+        },
+        "url": "/api/v1/runs/4",
+        "workflow_name": "Nightly",
+        "workflow_path": ".github/workflows/nightly.yml"
+      }
+    ]
+  },
+  "/api/v1/runs/1": {
+    "actor": "alex",
+    "approved": false,
+    "attempt": 1,
+    "attempts": [
+      {
+        "attempt": 1,
+        "current": true
+      }
+    ],
+    "completed_at": "2026-08-06T14:50:05Z",
+    "conclusion": "success",
+    "created_at": "2026-08-06T14:42:05Z",
+    "event": "push",
+    "events": [],
+    "failure_class": "",
+    "graph": {
+      "edges": [
+        {
+          "from": "build",
+          "to": "test"
+        },
+        {
+          "from": "build",
+          "to": "lint"
+        }
+      ],
+      "nodes": [
+        {
+          "conclusion": "success",
+          "depth": 0,
+          "failure_class": "",
+          "id": 1,
+          "key": "build",
+          "name": "build",
+          "needs": [],
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "depth": 1,
+          "failure_class": "",
+          "id": 2,
+          "key": "test",
+          "name": "test (1.25, linux)",
+          "needs": [
+            "build"
+          ],
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "depth": 1,
+          "failure_class": "",
+          "id": 3,
+          "key": "lint",
+          "name": "lint",
+          "needs": [
+            "build"
+          ],
+          "status": "completed"
+        }
+      ]
+    },
+    "head_branch": "main",
+    "head_sha": "9f3c1ab7e5d24680bb51c0f2a7d3e9184c6b02fd",
+    "id": 1,
+    "is_fork_pr": false,
+    "jobs": [
+      {
+        "attempt": 1,
+        "awaiting_approval": false,
+        "completed_at": "2026-08-06T14:46:05Z",
+        "conclusion": "success",
+        "continue_on_error": false,
+        "created_at": "2026-08-06T14:42:05Z",
+        "failure_class": "",
+        "id": 1,
+        "infra_retry_count": 0,
+        "key": "build",
+        "labels": [
+          "self-hosted",
+          "linux"
+        ],
+        "logs_url": "/api/v1/jobs/1/logs",
+        "max_attempts": 3,
+        "name": "build",
+        "needs": [],
+        "outputs": {
+          "version": "v1.14.2"
+        },
+        "queued_at": "2026-08-06T14:42:05Z",
+        "requeue_count": 0,
+        "run_attempt": 1,
+        "run_id": 1,
+        "runner_id": "runner-a1",
+        "started_at": "2026-08-06T14:43:45Z",
+        "status": "completed",
+        "timing": {
+          "execute_for": 180,
+          "queued_for": 100,
+          "setup_for": 0,
+          "total_for": 240
+        },
+        "url": "/api/v1/jobs/1"
+      },
+      {
+        "attempt": 1,
+        "awaiting_approval": false,
+        "completed_at": "2026-08-06T14:50:05Z",
+        "conclusion": "success",
+        "continue_on_error": false,
+        "created_at": "2026-08-06T14:42:05Z",
+        "failure_class": "",
+        "id": 2,
+        "infra_retry_count": 0,
+        "key": "test",
+        "labels": [
+          "self-hosted",
+          "linux"
+        ],
+        "logs_url": "/api/v1/jobs/2/logs",
+        "matrix": {
+          "go": "1.25",
+          "os": "linux"
+        },
+        "matrix_key": "go=1.25,os=linux",
+        "max_attempts": 3,
+        "name": "test (1.25, linux)",
+        "needs": [
+          "build"
+        ],
+        "queued_at": "2026-08-06T14:46:05Z",
+        "requeue_count": 0,
+        "run_attempt": 1,
+        "run_id": 1,
+        "runner_id": "runner-a2",
+        "started_at": "2026-08-06T14:47:55Z",
+        "status": "completed",
+        "timing": {
+          "execute_for": 180,
+          "queued_for": 110,
+          "setup_for": 0,
+          "total_for": 240
+        },
+        "url": "/api/v1/jobs/2"
+      },
+      {
+        "attempt": 1,
+        "awaiting_approval": false,
+        "completed_at": "2026-08-06T14:49:05Z",
+        "conclusion": "success",
+        "continue_on_error": false,
+        "created_at": "2026-08-06T14:42:05Z",
+        "failure_class": "",
+        "id": 3,
+        "infra_retry_count": 0,
+        "key": "lint",
+        "labels": [
+          "self-hosted",
+          "linux"
+        ],
+        "logs_url": "/api/v1/jobs/3/logs",
+        "max_attempts": 3,
+        "name": "lint",
+        "needs": [
+          "build"
+        ],
+        "queued_at": "2026-08-06T14:46:05Z",
+        "requeue_count": 0,
+        "run_attempt": 1,
+        "run_id": 1,
+        "runner_id": "runner-a1",
+        "started_at": "2026-08-06T14:47:05Z",
+        "status": "completed",
+        "timing": {
+          "execute_for": 30,
+          "queued_for": 60,
+          "setup_for": 90,
+          "total_for": 180
+        },
+        "url": "/api/v1/jobs/3"
+      }
+    ],
+    "jobs_url": "/api/v1/runs/1/jobs",
+    "name": "CI",
+    "repository": "acme/widget",
+    "run_attempt": 1,
+    "run_number": 412,
+    "started_at": "2026-08-06T14:42:05Z",
+    "status": "completed",
+    "timing": {
+      "execute_for": 480,
+      "queued_for": 0,
+      "setup_for": 0,
+      "total_for": 480
+    },
+    "url": "/api/v1/runs/1",
+    "workflow_name": "CI",
+    "workflow_path": ".github/workflows/ci.yml"
+  },
+  "/api/v1/runs/1/artifacts": {
+    "artifacts": [
+      {
+        "created_at": "2026-08-06T14:46:05Z",
+        "digest": "sha256:2b1f0c8d5a9e4713bb6c02fd8471e93a5c0d6b28f41a7e93c15d0248ab73e6f1",
+        "download_url": "/api/v1/artifacts/1/download",
+        "expired": false,
+        "expires_at": "2026-11-04T15:04:05Z",
+        "finalized": true,
+        "id": 1,
+        "job_id": 1,
+        "name": "widget-linux-amd64",
+        "run_id": 1,
+        "size_bytes": 18446120
+      }
+    ],
+    "size_bytes": 18446120,
+    "total_count": 1
+  },
+  "/api/v1/runs/1/jobs": {
+    "jobs": [
+      {
+        "attempt": 1,
+        "awaiting_approval": false,
+        "completed_at": "2026-08-06T14:46:05Z",
+        "conclusion": "success",
+        "continue_on_error": false,
+        "created_at": "2026-08-06T14:42:05Z",
+        "failure_class": "",
+        "id": 1,
+        "infra_retry_count": 0,
+        "key": "build",
+        "labels": [
+          "self-hosted",
+          "linux"
+        ],
+        "logs_url": "/api/v1/jobs/1/logs",
+        "max_attempts": 3,
+        "name": "build",
+        "needs": [],
+        "outputs": {
+          "version": "v1.14.2"
+        },
+        "queued_at": "2026-08-06T14:42:05Z",
+        "requeue_count": 0,
+        "run_attempt": 1,
+        "run_id": 1,
+        "runner_id": "runner-a1",
+        "started_at": "2026-08-06T14:43:45Z",
+        "status": "completed",
+        "timing": {
+          "execute_for": 180,
+          "queued_for": 100,
+          "setup_for": 0,
+          "total_for": 240
+        },
+        "url": "/api/v1/jobs/1"
+      },
+      {
+        "attempt": 1,
+        "awaiting_approval": false,
+        "completed_at": "2026-08-06T14:50:05Z",
+        "conclusion": "success",
+        "continue_on_error": false,
+        "created_at": "2026-08-06T14:42:05Z",
+        "failure_class": "",
+        "id": 2,
+        "infra_retry_count": 0,
+        "key": "test",
+        "labels": [
+          "self-hosted",
+          "linux"
+        ],
+        "logs_url": "/api/v1/jobs/2/logs",
+        "matrix": {
+          "go": "1.25",
+          "os": "linux"
+        },
+        "matrix_key": "go=1.25,os=linux",
+        "max_attempts": 3,
+        "name": "test (1.25, linux)",
+        "needs": [
+          "build"
+        ],
+        "queued_at": "2026-08-06T14:46:05Z",
+        "requeue_count": 0,
+        "run_attempt": 1,
+        "run_id": 1,
+        "runner_id": "runner-a2",
+        "started_at": "2026-08-06T14:47:55Z",
+        "status": "completed",
+        "timing": {
+          "execute_for": 180,
+          "queued_for": 110,
+          "setup_for": 0,
+          "total_for": 240
+        },
+        "url": "/api/v1/jobs/2"
+      },
+      {
+        "attempt": 1,
+        "awaiting_approval": false,
+        "completed_at": "2026-08-06T14:49:05Z",
+        "conclusion": "success",
+        "continue_on_error": false,
+        "created_at": "2026-08-06T14:42:05Z",
+        "failure_class": "",
+        "id": 3,
+        "infra_retry_count": 0,
+        "key": "lint",
+        "labels": [
+          "self-hosted",
+          "linux"
+        ],
+        "logs_url": "/api/v1/jobs/3/logs",
+        "max_attempts": 3,
+        "name": "lint",
+        "needs": [
+          "build"
+        ],
+        "queued_at": "2026-08-06T14:46:05Z",
+        "requeue_count": 0,
+        "run_attempt": 1,
+        "run_id": 1,
+        "runner_id": "runner-a1",
+        "started_at": "2026-08-06T14:47:05Z",
+        "status": "completed",
+        "timing": {
+          "execute_for": 30,
+          "queued_for": 60,
+          "setup_for": 90,
+          "total_for": 180
+        },
+        "url": "/api/v1/jobs/3"
+      }
+    ],
+    "total_count": 3
+  },
+  "/api/v1/runs/2": {
+    "actor": "alex",
+    "approved": false,
+    "attempt": 1,
+    "attempts": [
+      {
+        "attempt": 1,
+        "current": true
+      }
+    ],
+    "completed_at": "2026-08-06T14:33:05Z",
+    "conclusion": "infra_failure",
+    "created_at": "2026-08-06T14:16:05Z",
+    "event": "push",
+    "events": [
+      {
+        "at": "2026-08-06T14:25:05Z",
+        "detail": {
+          "attempt": 1,
+          "backoff": "30s",
+          "rule": "cloudflare-524"
+        },
+        "id": 1,
+        "job_id": 4,
+        "kind": "infra_retry",
+        "message": "Attempt 1 failed on an infrastructure fault (cloudflare-524) and was retried after 30s.",
+        "run_id": 2
+      }
+    ],
+    "failure_class": "infra",
+    "graph": {
+      "edges": [],
+      "nodes": [
+        {
+          "conclusion": "infra_failure",
+          "depth": 0,
+          "failure_class": "infra",
+          "id": 4,
+          "key": "publish",
+          "name": "publish",
+          "needs": [],
+          "status": "completed"
+        }
+      ]
+    },
+    "head_branch": "main",
+    "head_sha": "4d81be09c7a2f5136e0b8d47a91c25e0fa73b8c6",
+    "id": 2,
+    "is_fork_pr": false,
+    "jobs": [
+      {
+        "attempt": 2,
+        "awaiting_approval": false,
+        "classification_reason": "The registry closed the connection after 524 seconds while the image layers were uploading. That is Cloudflare's origin timeout in front of the registry, not a result your build produced, so this attempt is recorded as an infrastructure failure and was retried.",
+        "completed_at": "2026-08-06T14:33:05Z",
+        "conclusion": "infra_failure",
+        "continue_on_error": false,
+        "created_at": "2026-08-06T14:16:05Z",
+        "failure_class": "infra",
+        "id": 4,
+        "infra_retry_count": 1,
+        "key": "publish",
+        "labels": [
+          "self-hosted",
+          "linux"
+        ],
+        "logs_url": "/api/v1/jobs/4/logs",
+        "max_attempts": 3,
+        "name": "publish",
+        "needs": [],
+        "queued_at": "2026-08-06T14:16:05Z",
+        "requeue_count": 0,
+        "run_attempt": 2,
+        "run_id": 2,
+        "runner_id": "runner-b1",
+        "started_at": "2026-08-06T14:24:05Z",
+        "status": "completed",
+        "timing": {
+          "execute_for": 460,
+          "queued_for": 480,
+          "setup_for": 80,
+          "total_for": 1020
+        },
+        "url": "/api/v1/jobs/4"
+      }
+    ],
+    "jobs_url": "/api/v1/runs/2/jobs",
+    "name": "Release",
+    "repository": "acme/widget",
+    "run_attempt": 1,
+    "run_number": 88,
+    "started_at": "2026-08-06T14:16:05Z",
+    "status": "completed",
+    "timing": {
+      "execute_for": 1020,
+      "queued_for": 0,
+      "setup_for": 0,
+      "total_for": 1020
+    },
+    "url": "/api/v1/runs/2",
+    "workflow_name": "Release",
+    "workflow_path": ".github/workflows/release.yml"
+  },
+  "/api/v1/runs/2/artifacts": {
+    "artifacts": [],
+    "size_bytes": 0,
+    "total_count": 0
+  },
+  "/api/v1/runs/2/jobs": {
+    "jobs": [
+      {
+        "attempt": 2,
+        "awaiting_approval": false,
+        "classification_reason": "The registry closed the connection after 524 seconds while the image layers were uploading. That is Cloudflare's origin timeout in front of the registry, not a result your build produced, so this attempt is recorded as an infrastructure failure and was retried.",
+        "completed_at": "2026-08-06T14:33:05Z",
+        "conclusion": "infra_failure",
+        "continue_on_error": false,
+        "created_at": "2026-08-06T14:16:05Z",
+        "failure_class": "infra",
+        "id": 4,
+        "infra_retry_count": 1,
+        "key": "publish",
+        "labels": [
+          "self-hosted",
+          "linux"
+        ],
+        "logs_url": "/api/v1/jobs/4/logs",
+        "max_attempts": 3,
+        "name": "publish",
+        "needs": [],
+        "queued_at": "2026-08-06T14:16:05Z",
+        "requeue_count": 0,
+        "run_attempt": 2,
+        "run_id": 2,
+        "runner_id": "runner-b1",
+        "started_at": "2026-08-06T14:24:05Z",
+        "status": "completed",
+        "timing": {
+          "execute_for": 460,
+          "queued_for": 480,
+          "setup_for": 80,
+          "total_for": 1020
+        },
+        "url": "/api/v1/jobs/4"
+      }
+    ],
+    "total_count": 1
+  },
+  "/api/v1/runs/3": {
+    "actor": "sam",
+    "approved": false,
+    "attempt": 1,
+    "attempts": [
+      {
+        "attempt": 1,
+        "current": true
+      }
+    ],
+    "base_branch": "main",
+    "completed_at": "2026-08-06T13:12:05Z",
+    "conclusion": "failure",
+    "created_at": "2026-08-06T13:04:05Z",
+    "event": "pull_request",
+    "events": [],
+    "failure_class": "user",
+    "graph": {
+      "edges": [],
+      "nodes": [
+        {
+          "conclusion": "failure",
+          "depth": 0,
+          "failure_class": "user",
+          "id": 5,
+          "key": "test",
+          "name": "test (1.25, linux)",
+          "needs": [],
+          "status": "completed"
+        }
+      ]
+    },
+    "head_branch": "fix-timeout-parsing",
+    "head_sha": "c07e5b1d93a84f2016bd7e5c8a1409fb63d2e750",
+    "id": 3,
+    "is_fork_pr": false,
+    "jobs": [
+      {
+        "attempt": 1,
+        "awaiting_approval": false,
+        "classification_reason": "go test exited 1. The failure is in your code: no infrastructure rule matched its output.",
+        "completed_at": "2026-08-06T13:12:05Z",
+        "conclusion": "failure",
+        "continue_on_error": false,
+        "created_at": "2026-08-06T13:04:05Z",
+        "failure_class": "user",
+        "id": 5,
+        "infra_retry_count": 0,
+        "key": "test",
+        "labels": [
+          "self-hosted",
+          "linux"
+        ],
+        "logs_url": "/api/v1/jobs/5/logs",
+        "matrix": {
+          "go": "1.25",
+          "os": "linux"
+        },
+        "matrix_key": "go=1.25,os=linux",
+        "max_attempts": 3,
+        "name": "test (1.25, linux)",
+        "needs": [],
+        "queued_at": "2026-08-06T13:04:05Z",
+        "requeue_count": 0,
+        "run_attempt": 1,
+        "run_id": 3,
+        "runner_id": "runner-a2",
+        "started_at": "2026-08-06T13:05:05Z",
+        "status": "completed",
+        "timing": {
+          "execute_for": 360,
+          "queued_for": 60,
+          "setup_for": 60,
+          "total_for": 480
+        },
+        "url": "/api/v1/jobs/5"
+      }
+    ],
+    "jobs_url": "/api/v1/runs/3/jobs",
+    "name": "CI",
+    "repository": "acme/widget",
+    "run_attempt": 1,
+    "run_number": 411,
+    "started_at": "2026-08-06T13:04:05Z",
+    "status": "completed",
+    "timing": {
+      "execute_for": 480,
+      "queued_for": 0,
+      "setup_for": 0,
+      "total_for": 480
+    },
+    "url": "/api/v1/runs/3",
+    "workflow_name": "CI",
+    "workflow_path": ".github/workflows/ci.yml"
+  },
+  "/api/v1/runs/3/artifacts": {
+    "artifacts": [],
+    "size_bytes": 0,
+    "total_count": 0
+  },
+  "/api/v1/runs/3/jobs": {
+    "jobs": [
+      {
+        "attempt": 1,
+        "awaiting_approval": false,
+        "classification_reason": "go test exited 1. The failure is in your code: no infrastructure rule matched its output.",
+        "completed_at": "2026-08-06T13:12:05Z",
+        "conclusion": "failure",
+        "continue_on_error": false,
+        "created_at": "2026-08-06T13:04:05Z",
+        "failure_class": "user",
+        "id": 5,
+        "infra_retry_count": 0,
+        "key": "test",
+        "labels": [
+          "self-hosted",
+          "linux"
+        ],
+        "logs_url": "/api/v1/jobs/5/logs",
+        "matrix": {
+          "go": "1.25",
+          "os": "linux"
+        },
+        "matrix_key": "go=1.25,os=linux",
+        "max_attempts": 3,
+        "name": "test (1.25, linux)",
+        "needs": [],
+        "queued_at": "2026-08-06T13:04:05Z",
+        "requeue_count": 0,
+        "run_attempt": 1,
+        "run_id": 3,
+        "runner_id": "runner-a2",
+        "started_at": "2026-08-06T13:05:05Z",
+        "status": "completed",
+        "timing": {
+          "execute_for": 360,
+          "queued_for": 60,
+          "setup_for": 60,
+          "total_for": 480
+        },
+        "url": "/api/v1/jobs/5"
+      }
+    ],
+    "total_count": 1
+  },
+  "/api/v1/runs/4": {
+    "actor": "ci",
+    "approved": false,
+    "attempt": 1,
+    "attempts": [
+      {
+        "attempt": 1,
+        "current": true
+      }
+    ],
+    "completed_at": "2026-08-06T11:04:05Z",
+    "conclusion": "success",
+    "created_at": "2026-08-06T10:04:05Z",
+    "event": "schedule",
+    "events": [
+      {
+        "at": "2026-08-06T10:12:05Z",
+        "detail": {
+          "actor": "runner_lost",
+          "requeue_count": 1,
+          "runner_id": "runner-b2"
+        },
+        "id": 2,
+        "job_id": 6,
+        "kind": "runner_lost",
+        "message": "Runner runner-b2 stopped reporting, so its lease on this job expired and the job was put back on the queue (requeue 1). Nothing your workflow did caused this.",
+        "run_id": 4
+      },
+      {
+        "at": "2026-08-06T10:23:05Z",
+        "detail": {
+          "attempt": 1,
+          "runner_id": "runner-c1"
+        },
+        "id": 3,
+        "job_id": 6,
+        "kind": "redispatched",
+        "message": "Redispatched to runner runner-c1 after the previous lease was lost.",
+        "run_id": 4
+      }
+    ],
+    "failure_class": "",
+    "graph": {
+      "edges": [],
+      "nodes": [
+        {
+          "conclusion": "success",
+          "depth": 0,
+          "failure_class": "",
+          "id": 6,
+          "key": "soak",
+          "name": "soak",
+          "needs": [],
+          "status": "completed"
+        }
+      ]
+    },
+    "head_branch": "main",
+    "head_sha": "1a7f4c0e88b2359dd6017ec4f5a92b3081de64cc",
+    "id": 4,
+    "is_fork_pr": false,
+    "jobs": [
+      {
+        "attempt": 1,
+        "awaiting_approval": false,
+        "completed_at": "2026-08-06T11:04:05Z",
+        "conclusion": "success",
+        "continue_on_error": false,
+        "created_at": "2026-08-06T10:04:05Z",
+        "failure_class": "",
+        "id": 6,
+        "infra_retry_count": 0,
+        "key": "soak",
+        "labels": [
+          "self-hosted",
+          "linux"
+        ],
+        "logs_url": "/api/v1/jobs/6/logs",
+        "max_attempts": 3,
+        "name": "soak",
+        "needs": [],
+        "queued_at": "2026-08-06T10:04:05Z",
+        "requeue_count": 1,
+        "run_attempt": 1,
+        "run_id": 4,
+        "runner_id": "runner-c1",
+        "started_at": "2026-08-06T10:24:05Z",
+        "status": "completed",
+        "timing": {
+          "execute_for": 2340,
+          "queued_for": 1200,
+          "setup_for": 60,
+          "total_for": 3600
+        },
+        "url": "/api/v1/jobs/6"
+      }
+    ],
+    "jobs_url": "/api/v1/runs/4/jobs",
+    "name": "Nightly",
+    "repository": "acme/widget",
+    "run_attempt": 1,
+    "run_number": 31,
+    "started_at": "2026-08-06T10:04:05Z",
+    "status": "completed",
+    "timing": {
+      "execute_for": 3600,
+      "queued_for": 0,
+      "setup_for": 0,
+      "total_for": 3600
+    },
+    "url": "/api/v1/runs/4",
+    "workflow_name": "Nightly",
+    "workflow_path": ".github/workflows/nightly.yml"
+  },
+  "/api/v1/runs/4/artifacts": {
+    "artifacts": [],
+    "size_bytes": 0,
+    "total_count": 0
+  },
+  "/api/v1/runs/4/jobs": {
+    "jobs": [
+      {
+        "attempt": 1,
+        "awaiting_approval": false,
+        "completed_at": "2026-08-06T11:04:05Z",
+        "conclusion": "success",
+        "continue_on_error": false,
+        "created_at": "2026-08-06T10:04:05Z",
+        "failure_class": "",
+        "id": 6,
+        "infra_retry_count": 0,
+        "key": "soak",
+        "labels": [
+          "self-hosted",
+          "linux"
+        ],
+        "logs_url": "/api/v1/jobs/6/logs",
+        "max_attempts": 3,
+        "name": "soak",
+        "needs": [],
+        "queued_at": "2026-08-06T10:04:05Z",
+        "requeue_count": 1,
+        "run_attempt": 1,
+        "run_id": 4,
+        "runner_id": "runner-c1",
+        "started_at": "2026-08-06T10:24:05Z",
+        "status": "completed",
+        "timing": {
+          "execute_for": 2340,
+          "queued_for": 1200,
+          "setup_for": 60,
+          "total_for": 3600
+        },
+        "url": "/api/v1/jobs/6"
+      }
+    ],
+    "total_count": 1
+  },
+  "/api/v1/runs/5": {
+    "actor": "alex",
+    "approved": false,
+    "attempt": 1,
+    "attempts": [
+      {
+        "attempt": 1,
+        "current": true
+      }
+    ],
+    "cancel": {
+      "actor": "concurrency_group",
+      "sentence": "Superseded by run #412 on the same branch: the workflow's concurrency group ci-main allows one run at a time and cancel-in-progress is set.",
+      "triggered_by": "ci-main"
+    },
+    "classification_reason": "Superseded by run #412 on the same branch: the workflow's concurrency group ci-main allows one run at a time and cancel-in-progress is set.",
+    "completed_at": "2026-08-06T14:41:05Z",
+    "conclusion": "cancelled",
+    "created_at": "2026-08-06T14:38:05Z",
+    "event": "push",
+    "events": [
+      {
+        "at": "2026-08-06T14:41:05Z",
+        "detail": {
+          "actor": "concurrency_group",
+          "triggered_by": "ci-main"
+        },
+        "id": 4,
+        "job_id": 7,
+        "kind": "cancelled",
+        "message": "Superseded by run #412 on the same branch: the workflow's concurrency group ci-main allows one run at a time and cancel-in-progress is set.",
+        "run_id": 5
+      }
+    ],
+    "failure_class": "",
+    "graph": {
+      "edges": [],
+      "nodes": [
+        {
+          "conclusion": "cancelled",
+          "depth": 0,
+          "failure_class": "",
+          "id": 7,
+          "key": "build",
+          "name": "build",
+          "needs": [],
+          "status": "completed"
+        }
+      ]
+    },
+    "head_branch": "main",
+    "head_sha": "77b0e2c419d8a53f6b1c04e29d7538ab60f1ca94",
+    "id": 5,
+    "is_fork_pr": false,
+    "jobs": [
+      {
+        "attempt": 1,
+        "awaiting_approval": false,
+        "cancel": {
+          "actor": "concurrency_group",
+          "sentence": "Superseded by run #412 on the same branch: the workflow's concurrency group ci-main allows one run at a time and cancel-in-progress is set.",
+          "triggered_by": "ci-main"
+        },
+        "classification_reason": "Superseded by run #412 on the same branch: the workflow's concurrency group ci-main allows one run at a time and cancel-in-progress is set.",
+        "completed_at": "2026-08-06T14:41:05Z",
+        "conclusion": "cancelled",
+        "concurrency_group": "ci-main",
+        "continue_on_error": false,
+        "created_at": "2026-08-06T14:38:05Z",
+        "failure_class": "",
+        "id": 7,
+        "infra_retry_count": 0,
+        "key": "build",
+        "labels": [
+          "self-hosted",
+          "linux"
+        ],
+        "logs_url": "/api/v1/jobs/7/logs",
+        "max_attempts": 3,
+        "name": "build",
+        "needs": [],
+        "queued_at": "2026-08-06T14:38:05Z",
+        "requeue_count": 0,
+        "run_attempt": 1,
+        "run_id": 5,
+        "runner_id": "runner-a1",
+        "started_at": "2026-08-06T14:39:05Z",
+        "status": "completed",
+        "timing": {
+          "execute_for": 30,
+          "queued_for": 60,
+          "setup_for": 90,
+          "total_for": 180
+        },
+        "url": "/api/v1/jobs/7"
+      }
+    ],
+    "jobs_url": "/api/v1/runs/5/jobs",
+    "name": "CI",
+    "repository": "acme/widget",
+    "run_attempt": 1,
+    "run_number": 410,
+    "started_at": "2026-08-06T14:38:05Z",
+    "status": "completed",
+    "timing": {
+      "execute_for": 180,
+      "queued_for": 0,
+      "setup_for": 0,
+      "total_for": 180
+    },
+    "url": "/api/v1/runs/5",
+    "workflow_name": "CI",
+    "workflow_path": ".github/workflows/ci.yml"
+  },
+  "/api/v1/runs/5/artifacts": {
+    "artifacts": [],
+    "size_bytes": 0,
+    "total_count": 0
+  },
+  "/api/v1/runs/5/jobs": {
+    "jobs": [
+      {
+        "attempt": 1,
+        "awaiting_approval": false,
+        "cancel": {
+          "actor": "concurrency_group",
+          "sentence": "Superseded by run #412 on the same branch: the workflow's concurrency group ci-main allows one run at a time and cancel-in-progress is set.",
+          "triggered_by": "ci-main"
+        },
+        "classification_reason": "Superseded by run #412 on the same branch: the workflow's concurrency group ci-main allows one run at a time and cancel-in-progress is set.",
+        "completed_at": "2026-08-06T14:41:05Z",
+        "conclusion": "cancelled",
+        "concurrency_group": "ci-main",
+        "continue_on_error": false,
+        "created_at": "2026-08-06T14:38:05Z",
+        "failure_class": "",
+        "id": 7,
+        "infra_retry_count": 0,
+        "key": "build",
+        "labels": [
+          "self-hosted",
+          "linux"
+        ],
+        "logs_url": "/api/v1/jobs/7/logs",
+        "max_attempts": 3,
+        "name": "build",
+        "needs": [],
+        "queued_at": "2026-08-06T14:38:05Z",
+        "requeue_count": 0,
+        "run_attempt": 1,
+        "run_id": 5,
+        "runner_id": "runner-a1",
+        "started_at": "2026-08-06T14:39:05Z",
+        "status": "completed",
+        "timing": {
+          "execute_for": 30,
+          "queued_for": 60,
+          "setup_for": 90,
+          "total_for": 180
+        },
+        "url": "/api/v1/jobs/7"
+      }
+    ],
+    "total_count": 1
+  },
+  "/healthz": {
+    "at": "2026-08-06T15:04:05Z",
+    "status": "ok",
+    "store_durable": true,
+    "subsystems": [
+      {
+        "name": "store",
+        "state": "ok"
+      },
+      {
+        "name": "scheduler",
+        "state": "ok"
+      },
+      {
+        "name": "logs",
+        "state": "ok"
+      },
+      {
+        "name": "artifact_blobs",
+        "state": "ok"
+      }
+    ]
+  }
+}
