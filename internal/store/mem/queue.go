@@ -11,7 +11,7 @@ import (
 	"github.com/wow-look-at-my/ci-platform/internal/store"
 )
 
-// Event kinds written by the queue, identical to the Postgres store's.
+// Event kinds written by the queue, identical to the SQLite store's.
 const (
 	EventDispatched   = "dispatched"
 	EventRedispatched = "redispatched"

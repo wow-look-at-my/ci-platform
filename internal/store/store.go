@@ -2,7 +2,7 @@
 // job queue, and the lease protocol that makes a lost runner a requeue rather
 // than a failure.
 //
-// Two implementations exist: store/pg (Postgres, the production store) and
+// Two implementations exist: store/sqlite (the production store) and
 // store/mem (in-process, for tests and for a dev instance that says so loudly).
 package store
 

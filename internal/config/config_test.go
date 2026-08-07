@@ -13,7 +13,7 @@ import (
 func complete() map[string]string {
 	return map[string]string{
 		"CIPLATFORM_PUBLIC_URL":       "https://ci.example.localhost",
-		"CIPLATFORM_DATABASE_URL":     "postgres://u:p@h/db",
+		"CIPLATFORM_DATABASE_URL":     "/var/lib/ciplatform/ciplatform.db",
 		"CIPLATFORM_WEBHOOK_SECRET":   "s3cret",
 		"CIPLATFORM_APP_ID":           "12345",
 		"CIPLATFORM_APP_PRIVATE_KEY":  "-----BEGIN RSA PRIVATE KEY-----\n",

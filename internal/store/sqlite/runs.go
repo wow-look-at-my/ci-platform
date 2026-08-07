@@ -1,124 +1,149 @@
-package pg
+package sqlite
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"fmt"
-	"strconv"
 	"strings"
-
-	"github.com/jackc/pgx/v5"
 
 	"github.com/wow-look-at-my/ci-platform/internal/model"
 	"github.com/wow-look-at-my/ci-platform/internal/store"
 )
+
+// scanner is what QueryRow and Rows have in common.
+type scanner interface{ Scan(dest ...any) error }
 
 const runCols = `id, repo_id, repo_full_name, workflow_name, workflow_path, run_number, attempt,
 	event, head_sha, head_branch, base_branch, actor, is_fork_pr, approved, approved_by,
 	check_suite_id, status, conclusion, cancel_actor, cancel_sentence, cancel_triggered_by,
 	event_payload, inputs, created_at, started_at, completed_at`
 
-func scanRun(row pgx.Row) (*model.Run, error) {
+func scanRun(row scanner) (*model.Run, error) {
 	var r model.Run
-	var conclusion, cancelActor, cancelSentence, cancelBy string
-	var payload []byte
+	var conclusion, cancelActor, cancelSentence, cancelBy, inputs string
+	var payload, startedAt, completedAt sql.NullString
+	var createdAt string
 	if err := row.Scan(
 		&r.ID, &r.RepoID, &r.RepoFull, &r.WorkflowName, &r.WorkflowPath, &r.RunNumber, &r.Attempt,
 		&r.Event, &r.HeadSHA, &r.HeadBranch, &r.BaseBranch, &r.Actor, &r.IsForkPR, &r.Approved, &r.ApprovedBy,
 		&r.CheckSuiteID, &r.Status, &conclusion, &cancelActor, &cancelSentence, &cancelBy,
-		&payload, &r.Inputs, &r.CreatedAt, &r.StartedAt, &r.CompletedAt,
+		&payload, &inputs, &createdAt, &startedAt, &completedAt,
 	); err != nil {
 		return nil, err
 	}
 	r.Conclusion = model.Conclusion(conclusion)
 	r.Cancel = cancelFrom(cancelActor, cancelSentence, cancelBy)
-	if len(payload) > 0 {
-		r.EventPayload = json.RawMessage(payload)
+	if payload.Valid && payload.String != "" {
+		r.EventPayload = json.RawMessage(payload.String)
+	}
+	if err := jsonInto(inputs, &r.Inputs); err != nil {
+		return nil, err
 	}
 	r.Inputs = emptyMapToNil(r.Inputs)
-	r.CreatedAt = r.CreatedAt.UTC()
-	r.StartedAt = utcp(r.StartedAt)
-	r.CompletedAt = utcp(r.CompletedAt)
+
+	var err error
+	if r.CreatedAt, err = mustTime(createdAt); err != nil {
+		return nil, err
+	}
+	if r.StartedAt, err = nullTime(startedAt); err != nil {
+		return nil, err
+	}
+	if r.CompletedAt, err = nullTime(completedAt); err != nil {
+		return nil, err
+	}
 	return &r, nil
 }
 
 // CreateRun inserts a run and fills in the allocated id.
 func (s *Store) CreateRun(ctx context.Context, r *model.Run) error {
 	if r == nil {
-		return fmt.Errorf("pg: CreateRun: nil run")
+		return fmt.Errorf("sqlite: CreateRun: nil run")
 	}
 	if r.ID != 0 {
-		return fmt.Errorf("pg: CreateRun: id %d already set; the store allocates ids", r.ID)
+		return fmt.Errorf("sqlite: CreateRun: id %d already set; the store allocates ids", r.ID)
 	}
 	if !r.Status.Valid() {
-		return fmt.Errorf("pg: CreateRun: invalid status %q", r.Status)
+		return fmt.Errorf("sqlite: CreateRun: invalid status %q", r.Status)
 	}
 	if err := validCancel(r.Cancel); err != nil {
-		return fmt.Errorf("pg: CreateRun: %w", err)
+		return fmt.Errorf("sqlite: CreateRun: %w", err)
 	}
 	actor, sentence, by := cancelColumns(r.Cancel)
 	var payload any
 	if len(r.EventPayload) > 0 {
-		payload = []byte(r.EventPayload)
+		payload = string(r.EventPayload)
+	}
+	inputs, err := jsonText(r.Inputs)
+	if err != nil {
+		return err
 	}
 	const q = `
 INSERT INTO runs (repo_id, repo_full_name, workflow_name, workflow_path, run_number, attempt,
 	event, head_sha, head_branch, base_branch, actor, is_fork_pr, approved, approved_by,
 	check_suite_id, status, conclusion, cancel_actor, cancel_sentence, cancel_triggered_by,
 	event_payload, inputs, created_at, started_at, completed_at)
-VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25)
+VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
 RETURNING id`
-	err := s.pool.QueryRow(ctx, q,
+	err = s.db.QueryRowContext(ctx, q,
 		r.RepoID, r.RepoFull, r.WorkflowName, r.WorkflowPath, r.RunNumber, r.Attempt,
-		r.Event, r.HeadSHA, r.HeadBranch, r.BaseBranch, r.Actor, r.IsForkPR, r.Approved, r.ApprovedBy,
+		r.Event, r.HeadSHA, r.HeadBranch, r.BaseBranch, r.Actor, boolInt(r.IsForkPR), boolInt(r.Approved), r.ApprovedBy,
 		r.CheckSuiteID, string(r.Status), string(r.Conclusion), actor, sentence, by,
-		payload, nonNilAnyMap(r.Inputs), utc(r.CreatedAt), utcp(r.StartedAt), utcp(r.CompletedAt),
+		payload, inputs, ts(r.CreatedAt), tsp(r.StartedAt), tsp(r.CompletedAt),
 	).Scan(&r.ID)
-	return mapErr("pg: CreateRun", err)
+	return mapErr("sqlite: CreateRun", err)
 }
 
 func (s *Store) GetRun(ctx context.Context, id int64) (*model.Run, error) {
-	r, err := scanRun(s.pool.QueryRow(ctx, `SELECT `+runCols+` FROM runs WHERE id = $1`, id))
+	r, err := scanRun(s.db.QueryRowContext(ctx, `SELECT `+runCols+` FROM runs WHERE id = ?`, id))
 	if err != nil {
-		return nil, mapErr("pg: GetRun", err)
+		return nil, mapErr("sqlite: GetRun", err)
 	}
 	return r, nil
 }
 
 func (s *Store) UpdateRun(ctx context.Context, r *model.Run) error {
 	if r == nil {
-		return fmt.Errorf("pg: UpdateRun: nil run")
+		return fmt.Errorf("sqlite: UpdateRun: nil run")
 	}
 	if r.ID == 0 {
-		return fmt.Errorf("pg: UpdateRun: run has no id")
+		return fmt.Errorf("sqlite: UpdateRun: run has no id")
 	}
 	if !r.Status.Valid() {
-		return fmt.Errorf("pg: UpdateRun: invalid status %q", r.Status)
+		return fmt.Errorf("sqlite: UpdateRun: invalid status %q", r.Status)
 	}
 	if err := validCancel(r.Cancel); err != nil {
-		return fmt.Errorf("pg: UpdateRun: %w", err)
+		return fmt.Errorf("sqlite: UpdateRun: %w", err)
 	}
 	actor, sentence, by := cancelColumns(r.Cancel)
 	var payload any
 	if len(r.EventPayload) > 0 {
-		payload = []byte(r.EventPayload)
+		payload = string(r.EventPayload)
+	}
+	inputs, err := jsonText(r.Inputs)
+	if err != nil {
+		return err
 	}
 	const q = `
-UPDATE runs SET repo_id=$2, repo_full_name=$3, workflow_name=$4, workflow_path=$5, run_number=$6,
-	attempt=$7, event=$8, head_sha=$9, head_branch=$10, base_branch=$11, actor=$12, is_fork_pr=$13,
-	approved=$14, approved_by=$15, check_suite_id=$16, status=$17, conclusion=$18, cancel_actor=$19,
-	cancel_sentence=$20, cancel_triggered_by=$21, event_payload=$22, inputs=$23, created_at=$24,
-	started_at=$25, completed_at=$26
-WHERE id = $1`
-	tag, err := s.pool.Exec(ctx, q, r.ID,
+UPDATE runs SET repo_id=?, repo_full_name=?, workflow_name=?, workflow_path=?, run_number=?,
+	attempt=?, event=?, head_sha=?, head_branch=?, base_branch=?, actor=?, is_fork_pr=?,
+	approved=?, approved_by=?, check_suite_id=?, status=?, conclusion=?, cancel_actor=?,
+	cancel_sentence=?, cancel_triggered_by=?, event_payload=?, inputs=?, created_at=?,
+	started_at=?, completed_at=?
+WHERE id = ?`
+	res, err := s.db.ExecContext(ctx, q,
 		r.RepoID, r.RepoFull, r.WorkflowName, r.WorkflowPath, r.RunNumber, r.Attempt,
-		r.Event, r.HeadSHA, r.HeadBranch, r.BaseBranch, r.Actor, r.IsForkPR, r.Approved, r.ApprovedBy,
+		r.Event, r.HeadSHA, r.HeadBranch, r.BaseBranch, r.Actor, boolInt(r.IsForkPR), boolInt(r.Approved), r.ApprovedBy,
 		r.CheckSuiteID, string(r.Status), string(r.Conclusion), actor, sentence, by,
-		payload, nonNilAnyMap(r.Inputs), utc(r.CreatedAt), utcp(r.StartedAt), utcp(r.CompletedAt))
+		payload, inputs, ts(r.CreatedAt), tsp(r.StartedAt), tsp(r.CompletedAt), r.ID)
 	if err != nil {
-		return mapErr("pg: UpdateRun", err)
+		return mapErr("sqlite: UpdateRun", err)
 	}
-	if tag.RowsAffected() == 0 {
+	n, err := res.RowsAffected()
+	if err != nil {
+		return mapErr("sqlite: UpdateRun", err)
+	}
+	if n == 0 {
 		return store.ErrNotFound
 	}
 	return nil
@@ -128,9 +153,9 @@ WHERE id = $1`
 func runWhere(f store.RunFilter) (string, []any) {
 	var clauses []string
 	var args []any
-	add := func(expr string, v any) {
-		args = append(args, v)
-		clauses = append(clauses, strings.ReplaceAll(expr, "?", "$"+strconv.Itoa(len(args))))
+	add := func(expr string, vals ...any) {
+		args = append(args, vals...)
+		clauses = append(clauses, expr)
 	}
 	if f.RepoID != 0 {
 		add("repo_id = ?", f.RepoID)
@@ -151,11 +176,14 @@ func runWhere(f store.RunFilter) (string, []any) {
 		add("conclusion = ?", string(f.Conclusion))
 	}
 	if f.Workflow != "" {
-		add("(workflow_path = ? OR workflow_name = ?)", f.Workflow)
+		add("(workflow_path = ? OR workflow_name = ?)", f.Workflow, f.Workflow)
 	}
 	if f.Search != "" {
-		add("(workflow_name ILIKE ? OR head_branch ILIKE ? OR head_sha ILIKE ? OR actor ILIKE ?)",
-			"%"+f.Search+"%")
+		// SQLite's LIKE is already case-insensitive for ASCII, which is what
+		// Postgres needed ILIKE for.
+		like := "%" + f.Search + "%"
+		add("(workflow_name LIKE ? OR head_branch LIKE ? OR head_sha LIKE ? OR actor LIKE ?)",
+			like, like, like, like)
 	}
 	if len(clauses) == 0 {
 		return "", nil
@@ -168,64 +196,69 @@ func (s *Store) ListRuns(ctx context.Context, f store.RunFilter) ([]*model.Run, 
 	q := `SELECT ` + runCols + ` FROM runs` + where + ` ORDER BY created_at DESC, id DESC`
 	if f.Limit > 0 {
 		args = append(args, f.Limit)
-		q += fmt.Sprintf(" LIMIT $%d", len(args))
+		q += " LIMIT ?"
 	}
 	if f.Offset > 0 {
+		// SQLite has no bare OFFSET: it is only legal after a LIMIT, so an
+		// offset with no limit needs the "everything" sentinel.
+		if f.Limit <= 0 {
+			q += " LIMIT -1"
+		}
 		args = append(args, f.Offset)
-		q += fmt.Sprintf(" OFFSET $%d", len(args))
+		q += " OFFSET ?"
 	}
-	rows, err := s.pool.Query(ctx, q, args...)
+	rows, err := s.db.QueryContext(ctx, q, args...)
 	if err != nil {
-		return nil, mapErr("pg: ListRuns", err)
+		return nil, mapErr("sqlite: ListRuns", err)
 	}
 	defer rows.Close()
 	var out []*model.Run
 	for rows.Next() {
 		r, err := scanRun(rows)
 		if err != nil {
-			return nil, mapErr("pg: ListRuns", err)
+			return nil, mapErr("sqlite: ListRuns", err)
 		}
 		out = append(out, r)
 	}
-	return out, mapErr("pg: ListRuns", rows.Err())
+	return out, mapErr("sqlite: ListRuns", rows.Err())
 }
 
 func (s *Store) CountRuns(ctx context.Context, f store.RunFilter) (int, error) {
 	where, args := runWhere(f)
 	var n int
-	err := s.pool.QueryRow(ctx, `SELECT count(*) FROM runs`+where, args...).Scan(&n)
-	return n, mapErr("pg: CountRuns", err)
+	err := s.db.QueryRowContext(ctx, `SELECT count(*) FROM runs`+where, args...).Scan(&n)
+	return n, mapErr("sqlite: CountRuns", err)
 }
 
 func (s *Store) ListRunsForSHA(ctx context.Context, repoID int64, sha string) ([]*model.Run, error) {
-	rows, err := s.pool.Query(ctx,
-		`SELECT `+runCols+` FROM runs WHERE repo_id = $1 AND head_sha = $2 ORDER BY created_at DESC, id DESC`,
+	rows, err := s.db.QueryContext(ctx,
+		`SELECT `+runCols+` FROM runs WHERE repo_id = ? AND head_sha = ? ORDER BY created_at DESC, id DESC`,
 		repoID, sha)
 	if err != nil {
-		return nil, mapErr("pg: ListRunsForSHA", err)
+		return nil, mapErr("sqlite: ListRunsForSHA", err)
 	}
 	defer rows.Close()
 	var out []*model.Run
 	for rows.Next() {
 		r, err := scanRun(rows)
 		if err != nil {
-			return nil, mapErr("pg: ListRunsForSHA", err)
+			return nil, mapErr("sqlite: ListRunsForSHA", err)
 		}
 		out = append(out, r)
 	}
-	return out, mapErr("pg: ListRunsForSHA", rows.Err())
+	return out, mapErr("sqlite: ListRunsForSHA", rows.Err())
 }
 
 // NextRunNumber allocates the next per-(repo, workflow) number. The upsert
 // serializes concurrent allocations on the row, so no two runs share a number.
 func (s *Store) NextRunNumber(ctx context.Context, repoID int64, workflowPath string) (int64, error) {
 	const q = `
-INSERT INTO run_numbers (repo_id, workflow_path, current) VALUES ($1, $2, 1)
+INSERT INTO run_numbers (repo_id, workflow_path, current) VALUES (?, ?, 1)
 ON CONFLICT (repo_id, workflow_path) DO UPDATE SET current = run_numbers.current + 1
 RETURNING current`
 	var n int64
-	err := s.pool.QueryRow(ctx, q, repoID, workflowPath).Scan(&n)
-	return n, mapErr("pg: NextRunNumber", err)
+	err := s.db.QueryRowContext(ctx, q, repoID, workflowPath).Scan(&n)
+	return n, mapErr("sqlite: NextRunNumber", err)
 }
 
 // validCancel rejects a cancellation with no explanation before it reaches the

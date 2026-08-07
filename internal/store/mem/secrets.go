@@ -8,7 +8,7 @@ import (
 	"github.com/wow-look-at-my/ci-platform/internal/store"
 )
 
-// Scope names, matching the Postgres store's CHECK constraint.
+// Scope names, matching the SQLite store's CHECK constraint.
 const (
 	ScopeOrg         = "org"
 	ScopeRepo        = "repo"

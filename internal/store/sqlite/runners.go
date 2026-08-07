@@ -1,11 +1,9 @@
-package pg
+package sqlite
 
 import (
 	"context"
 	"fmt"
 	"time"
-
-	"github.com/jackc/pgx/v5"
 
 	"github.com/wow-look-at-my/ci-platform/internal/model"
 	"github.com/wow-look-at-my/ci-platform/internal/store"
@@ -14,15 +12,25 @@ import (
 const runnerCols = `id, name, labels, runner_group, state, current_job_id, capacity, version,
 	os, arch, first_seen_at, last_heartbeat`
 
-func scanRunner(row pgx.Row) (*model.Runner, error) {
+func scanRunner(row scanner) (*model.Runner, error) {
 	var r model.Runner
-	if err := row.Scan(&r.ID, &r.Name, &r.Labels, &r.Group, &r.State, &r.CurrentJobID,
-		&r.Capacity, &r.Version, &r.OS, &r.Arch, &r.FirstSeenAt, &r.LastHeartbeat); err != nil {
+	var labels, firstSeen, lastHeartbeat string
+	if err := row.Scan(&r.ID, &r.Name, &labels, &r.Group, &r.State, &r.CurrentJobID,
+		&r.Capacity, &r.Version, &r.OS, &r.Arch, &firstSeen, &lastHeartbeat); err != nil {
+		return nil, err
+	}
+	if err := jsonInto(labels, &r.Labels); err != nil {
 		return nil, err
 	}
 	r.Labels = emptyToNil(r.Labels)
-	r.FirstSeenAt = r.FirstSeenAt.UTC()
-	r.LastHeartbeat = r.LastHeartbeat.UTC()
+
+	var err error
+	if r.FirstSeenAt, err = mustTime(firstSeen); err != nil {
+		return nil, err
+	}
+	if r.LastHeartbeat, err = mustTime(lastHeartbeat); err != nil {
+		return nil, err
+	}
 	return &r, nil
 }
 
@@ -38,26 +46,30 @@ func validRunnerState(s model.RunnerState) bool {
 // re-registration; a restarting agent is the same host.
 func (s *Store) RegisterRunner(ctx context.Context, r *model.Runner) error {
 	if r == nil {
-		return fmt.Errorf("pg: RegisterRunner: nil runner")
+		return fmt.Errorf("sqlite: RegisterRunner: nil runner")
 	}
 	if r.ID == "" {
-		return fmt.Errorf("pg: RegisterRunner: runner has no id")
+		return fmt.Errorf("sqlite: RegisterRunner: runner has no id")
 	}
 	if !validRunnerState(r.State) {
-		return fmt.Errorf("pg: RegisterRunner: invalid state %q", r.State)
+		return fmt.Errorf("sqlite: RegisterRunner: invalid state %q", r.State)
+	}
+	labels, err := jsonText(r.Labels)
+	if err != nil {
+		return err
 	}
 	const q = `
 INSERT INTO runners (id, name, labels, runner_group, state, current_job_id, capacity, version,
 	os, arch, first_seen_at, last_heartbeat)
-VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
+VALUES (?,?,?,?,?,?,?,?,?,?,?,?)
 ON CONFLICT (id) DO UPDATE SET
-	name = EXCLUDED.name, labels = EXCLUDED.labels, runner_group = EXCLUDED.runner_group,
-	state = EXCLUDED.state, current_job_id = EXCLUDED.current_job_id,
-	capacity = EXCLUDED.capacity, version = EXCLUDED.version, os = EXCLUDED.os,
-	arch = EXCLUDED.arch, last_heartbeat = EXCLUDED.last_heartbeat`
-	_, err := s.pool.Exec(ctx, q, r.ID, r.Name, nonNilStrings(r.Labels), r.Group, string(r.State),
-		r.CurrentJobID, r.Capacity, r.Version, r.OS, r.Arch, utc(r.FirstSeenAt), utc(r.LastHeartbeat))
-	return mapErr("pg: RegisterRunner", err)
+	name = excluded.name, labels = excluded.labels, runner_group = excluded.runner_group,
+	state = excluded.state, current_job_id = excluded.current_job_id,
+	capacity = excluded.capacity, version = excluded.version, os = excluded.os,
+	arch = excluded.arch, last_heartbeat = excluded.last_heartbeat`
+	_, err = s.db.ExecContext(ctx, q, r.ID, r.Name, labels, r.Group, string(r.State),
+		r.CurrentJobID, r.Capacity, r.Version, r.OS, r.Arch, ts(r.FirstSeenAt), ts(r.LastHeartbeat))
+	return mapErr("sqlite: RegisterRunner", err)
 }
 
 // RunnerHeartbeat refreshes liveness and brings a runner back from offline: a
@@ -65,29 +77,33 @@ ON CONFLICT (id) DO UPDATE SET
 func (s *Store) RunnerHeartbeat(ctx context.Context, id string, at time.Time) error {
 	const q = `
 UPDATE runners
-SET last_heartbeat = $2,
+SET last_heartbeat = ?,
     state = CASE WHEN state = 'offline' THEN 'idle' ELSE state END
-WHERE id = $1`
-	tag, err := s.pool.Exec(ctx, q, id, utc(at))
+WHERE id = ?`
+	res, err := s.db.ExecContext(ctx, q, ts(at), id)
 	if err != nil {
-		return mapErr("pg: RunnerHeartbeat", err)
+		return mapErr("sqlite: RunnerHeartbeat", err)
 	}
-	if tag.RowsAffected() == 0 {
+	n, err := res.RowsAffected()
+	if err != nil {
+		return mapErr("sqlite: RunnerHeartbeat", err)
+	}
+	if n == 0 {
 		return store.ErrNotFound
 	}
 	return nil
 }
 
 func (s *Store) GetRunner(ctx context.Context, id string) (*model.Runner, error) {
-	r, err := scanRunner(s.pool.QueryRow(ctx, `SELECT `+runnerCols+` FROM runners WHERE id = $1`, id))
+	r, err := scanRunner(s.db.QueryRowContext(ctx, `SELECT `+runnerCols+` FROM runners WHERE id = ?`, id))
 	if err != nil {
-		return nil, mapErr("pg: GetRunner", err)
+		return nil, mapErr("sqlite: GetRunner", err)
 	}
 	return r, nil
 }
 
 func (s *Store) ListRunners(ctx context.Context) ([]*model.Runner, error) {
-	return s.queryRunners(ctx, "pg: ListRunners", `SELECT `+runnerCols+` FROM runners ORDER BY id`)
+	return s.queryRunners(ctx, "sqlite: ListRunners", `SELECT `+runnerCols+` FROM runners ORDER BY id`)
 }
 
 // MarkOfflineRunners flips stale runners offline and returns them so their
@@ -95,13 +111,13 @@ func (s *Store) ListRunners(ctx context.Context) ([]*model.Runner, error) {
 func (s *Store) MarkOfflineRunners(ctx context.Context, deadline time.Time) ([]*model.Runner, error) {
 	const q = `
 UPDATE runners SET state = 'offline'
-WHERE last_heartbeat < $1 AND state <> 'offline'
+WHERE last_heartbeat < ? AND state <> 'offline'
 RETURNING ` + runnerCols
-	return s.queryRunners(ctx, "pg: MarkOfflineRunners", q, utc(deadline))
+	return s.queryRunners(ctx, "sqlite: MarkOfflineRunners", q, ts(deadline))
 }
 
 func (s *Store) queryRunners(ctx context.Context, op, q string, args ...any) ([]*model.Runner, error) {
-	rows, err := s.pool.Query(ctx, q, args...)
+	rows, err := s.db.QueryContext(ctx, q, args...)
 	if err != nil {
 		return nil, mapErr(op, err)
 	}

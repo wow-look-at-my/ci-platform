@@ -97,7 +97,7 @@ type runNumberKey struct {
 // warning is unconditional and cannot be turned off.
 func New() *Store {
 	slog.Warn("using the IN-MEMORY store: all runs, jobs, and queued work are lost on restart. " +
-		"This store is unsuitable for production; configure Postgres instead.")
+		"This store is unsuitable for production; point CIPLATFORM_DATABASE_URL at a file instead.")
 	return &Store{
 		repos:      map[int64]*model.Repo{},
 		runs:       map[int64]*model.Run{},

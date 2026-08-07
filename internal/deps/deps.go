@@ -9,10 +9,8 @@ import (
 	// Workflow YAML parsing.
 	_ "gopkg.in/yaml.v3"
 
-	// Postgres, the production metadata store.
-	_ "github.com/jackc/pgx/v5"
-	_ "github.com/jackc/pgx/v5/pgxpool"
-	_ "github.com/jackc/pgx/v5/stdlib"
+	// SQLite, the production metadata store. The pure-Go driver keeps CGO off.
+	_ "modernc.org/sqlite"
 
 	// GitHub App JWTs and the OIDC tokens issued to jobs.
 	_ "github.com/golang-jwt/jwt/v5"

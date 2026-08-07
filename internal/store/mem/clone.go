@@ -14,7 +14,7 @@ import (
 // production; returning a copy makes that impossible.
 //
 // Empty collections normalize to nil so a value round-trips through this store
-// and the Postgres one identically.
+// and the SQLite one identically.
 
 func cloneTime(t *time.Time) *time.Time {
 	if t == nil {
@@ -61,10 +61,10 @@ func cloneAnyMap(m map[string]any) map[string]any {
 	}
 	b, err := json.Marshal(m)
 	if err != nil {
-		// The same values are stored as jsonb in Postgres, where this is a hard
+		// The same values are stored as JSON text in SQLite, where this is a hard
 		// write error. Panicking keeps the two stores honest about what they
 		// accept rather than quietly storing a value pg would reject.
-		panic("mem: value is not JSON-encodable, and the Postgres store would reject it: " + err.Error())
+		panic("mem: value is not JSON-encodable, and the SQLite store would reject it: " + err.Error())
 	}
 	var out map[string]any
 	if err := json.Unmarshal(b, &out); err != nil {

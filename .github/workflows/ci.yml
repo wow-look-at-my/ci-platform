@@ -29,32 +29,6 @@ jobs:
           go-version-file: go.mod
       - run: go run ./cmd/buildweb -check
 
-  # Postgres-backed store conformance. The same suite runs against the
-  # in-memory store in the unit tests; running it here proves the two agree.
-  store-conformance:
-    runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: postgres:16
-        env:
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: ciplatform
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
-        with:
-          go-version-file: go.mod
-      - env:
-          CIPLATFORM_TEST_DATABASE_URL: postgres://postgres:postgres@127.0.0.1:5432/ciplatform?sslmode=disable
-        run: go test ./internal/store/... -count=1
-
   # Reads every workflow in the corpus and asserts each is either fully
   # supported or explicitly refused, and that job names still match GitHub's.
   # A job name is what branch protection matches on, so a change here breaks
@@ -73,26 +47,12 @@ jobs:
   # the platform has lost the only thing it claims over GitHub Actions.
   chaos:
     runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: postgres:16
-        env:
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: ciplatform
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
       - env:
-          CIPLATFORM_TEST_DATABASE_URL: postgres://postgres:postgres@127.0.0.1:5432/ciplatform?sslmode=disable
           CIPLATFORM_TEST_DOCKER: "1"
         run: go test ./test/chaos/... -count=1 -timeout 20m
 
@@ -100,25 +60,11 @@ jobs:
   # unmodified actions/checkout, actions/cache, and actions/upload-artifact.
   e2e:
     runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: postgres:16
-        env:
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: ciplatform
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
       - env:
-          CIPLATFORM_TEST_DATABASE_URL: postgres://postgres:postgres@127.0.0.1:5432/ciplatform?sslmode=disable
           CIPLATFORM_TEST_DOCKER: "1"
         run: go test ./test/e2e/... -count=1 -timeout 30m

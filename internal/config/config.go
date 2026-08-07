@@ -26,6 +26,8 @@ type Config struct {
 	PublicURL *url.URL
 	Listen    string
 
+	// DatabaseURL is the SQLite file path, or the literal "memory" for the
+	// in-memory store.
 	DatabaseURL string
 	// AllowEphemeralStore permits the in-memory store, which loses everything
 	// on restart. Off by default so a production deploy cannot get it silently.
@@ -90,7 +92,7 @@ func LoadFrom(env Getenv) (*Config, error) {
 	l := &loader{env: env}
 	c := &Config{
 		Listen:              l.str("CIPLATFORM_LISTEN", ":8080"),
-		DatabaseURL:         l.required("CIPLATFORM_DATABASE_URL", "the Postgres DSN holding runs, jobs, and the durable queue"),
+		DatabaseURL:         l.required("CIPLATFORM_DATABASE_URL", "the path to the SQLite file holding runs, jobs, and the durable queue"),
 		AllowEphemeralStore: l.bool("CIPLATFORM_ALLOW_EPHEMERAL_STORE", false),
 		WebhookSecret:       l.required("CIPLATFORM_WEBHOOK_SECRET", "the shared secret GitHub signs webhook deliveries with"),
 		RunnerToken:         l.required("CIPLATFORM_RUNNER_TOKEN", "the shared secret runner agents authenticate with; it must differ from the job token signing key"),
