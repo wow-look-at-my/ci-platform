@@ -1,0 +1,28 @@
+name: Publish
+
+on:
+  push:
+    branches: [master]
+
+jobs:
+  publish:
+    runs-on: [self-hosted, linux]
+    strategy:
+      fail-fast: false
+      max-parallel: 3
+      matrix:
+        image:
+          - claude-host/agent-host
+          - claude-host/session-host
+        include:
+          - image: claude-host/agent-host
+            dockerfile: Dockerfile
+          - image: claude-host/session-host
+            dockerfile: Dockerfile.session
+        exclude:
+          - image: claude-host/session-host
+            dockerfile: Dockerfile
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -f ${{ matrix.dockerfile }} -t ${{ matrix.image }} .
+      - run: docker push ${{ matrix.image }}

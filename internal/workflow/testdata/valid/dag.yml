@@ -1,0 +1,36 @@
+name: Fan out and back in
+
+on:
+  push:
+
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.meta.outputs.tag }}
+      legs: ${{ steps.meta.outputs.legs }}
+    steps:
+      - id: meta
+        run: echo "tag=v1" >> "$GITHUB_OUTPUT"
+
+  lint:
+    needs: setup
+    runs-on: ubuntu-latest
+    steps:
+      - run: golangci-lint run
+
+  test:
+    needs: [setup]
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        shard: ${{ fromJSON(needs.setup.outputs.legs) }}
+    steps:
+      - run: go test ./... -shard ${{ matrix.shard }}
+
+  report:
+    needs: [lint, test, setup]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "tag ${{ needs.setup.outputs.tag }}, lint ${{ needs.lint.result }}"

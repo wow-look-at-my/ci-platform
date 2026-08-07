@@ -1,0 +1,10 @@
+name: Unknown step key
+
+on: push
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo hi
+        allow-failure: true

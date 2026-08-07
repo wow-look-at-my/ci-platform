@@ -1,0 +1,13 @@
+name: Anchors
+
+on: push
+
+env:
+  BASE: &base "one"
+  ALIAS: *base
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo hi

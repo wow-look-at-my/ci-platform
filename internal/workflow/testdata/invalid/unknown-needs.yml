@@ -1,0 +1,10 @@
+name: Dangling needs
+
+on: push
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    needs: [setup]
+    steps:
+      - run: echo hi

@@ -1,0 +1,13 @@
+name: Duplicate job id
+
+on: push
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo one
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo two

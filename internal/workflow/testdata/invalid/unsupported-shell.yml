@@ -1,0 +1,10 @@
+name: pwsh
+
+on: push
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - run: Write-Host hi
+        shell: pwsh

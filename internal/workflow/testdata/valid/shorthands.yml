@@ -1,0 +1,52 @@
+name: Shorthand forms
+
+on: [push, pull_request, workflow_dispatch]
+
+env:
+  GLOBAL: "1"
+  NUMERIC: 3
+
+defaults:
+  run:
+    shell: bash
+    working-directory: ./src
+
+concurrency: ci-${{ github.ref }}
+
+permissions: read-all
+
+jobs:
+  scalar-runner:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    concurrency:
+      group: scalar-${{ github.ref }}
+      cancel-in-progress: true
+    steps:
+      - run: echo hi
+
+  list-runner:
+    runs-on: [self-hosted, linux, x64]
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: with a working directory
+        run: pwd
+        working-directory: /tmp
+        timeout-minutes: 5
+        continue-on-error: false
+
+  group-runner:
+    runs-on:
+      group: beefy
+      labels: [gpu]
+    defaults:
+      run:
+        shell: python
+    steps:
+      - id: s1
+        run: print("hi")
+      - name: node step
+        run: console.log(1)
+        shell: node

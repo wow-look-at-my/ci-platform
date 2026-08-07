@@ -1,0 +1,86 @@
+# Single-node deployment. See README.md for the ten-minute setup.
+#
+# CIPLATFORM_PUBLIC_URL must have a hostname ending in .localhost or .ghe.com,
+# or actions/upload-artifact@v4 refuses to run before issuing a request
+# (docs/deviations.md). The default below satisfies that.
+
+name: ciplatform
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ciplatform
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: ciplatform
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ciplatform -d ciplatform"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  control-plane:
+    build:
+      context: .
+      target: control-plane
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      CIPLATFORM_PUBLIC_URL: ${CIPLATFORM_PUBLIC_URL:-http://ci.localhost:8080}
+      CIPLATFORM_DATABASE_URL: postgres://ciplatform:${POSTGRES_PASSWORD}@postgres:5432/ciplatform?sslmode=disable
+      CIPLATFORM_WEBHOOK_SECRET: ${CIPLATFORM_WEBHOOK_SECRET:?set CIPLATFORM_WEBHOOK_SECRET in .env}
+      CIPLATFORM_APP_ID: ${CIPLATFORM_APP_ID:?set CIPLATFORM_APP_ID in .env}
+      CIPLATFORM_APP_PRIVATE_KEY_PATH: /run/secrets/app-private-key.pem
+      CIPLATFORM_JOB_TOKEN_SECRET: ${CIPLATFORM_JOB_TOKEN_SECRET:?set CIPLATFORM_JOB_TOKEN_SECRET in .env}
+      # Distinct from the signing key above, and checked at startup: this one
+      # is stored on every runner host.
+      CIPLATFORM_RUNNER_TOKEN: ${CI_RUNNER_TOKEN:?set CI_RUNNER_TOKEN in .env}
+      # Sign-in for the UI and the REST API. Job containers can reach this
+      # server, so the API is closed without it.
+      CIPLATFORM_OPERATOR_TOKEN: ${CIPLATFORM_OPERATOR_TOKEN:?set CIPLATFORM_OPERATOR_TOKEN in .env}
+      CIPLATFORM_BLOB_ROOT: /var/lib/ciplatform/blobs
+      CIPLATFORM_OIDC_KEY_PATH: /var/lib/ciplatform/oidc
+    ports:
+      - "8080:8080"
+    volumes:
+      - ciplatform-data:/var/lib/ciplatform
+      - ./app-private-key.pem:/run/secrets/app-private-key.pem:ro
+    healthcheck:
+      # Status-code only, body ignored, and 2xx while a subsystem is degraded:
+      # answering non-2xx here is what makes an orchestrator roll back a
+      # running release.
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:8080/.well-known/docker-updater/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+
+  runner:
+    build:
+      context: .
+      dockerfile: Dockerfile.runner
+      target: runner
+    depends_on:
+      control-plane:
+        condition: service_healthy
+    environment:
+      CI_RUNNER_SERVER_URL: http://control-plane:8080
+      CI_RUNNER_TOKEN: ${CI_RUNNER_TOKEN:?set CI_RUNNER_TOKEN in .env}
+      CI_RUNNER_LABELS: ${CI_RUNNER_LABELS:-self-hosted,linux,x64}
+      CI_RUNNER_STATE_DIR: /var/lib/ci-runner
+    volumes:
+      # The agent needs the host daemon to create each job's sandbox container.
+      # The job itself never sees this socket: it gets its own dockerd inside
+      # its own container.
+      - /var/run/docker.sock:/var/run/docker.sock
+      - runner-state:/var/lib/ci-runner
+      - image-cache:/var/lib/ci-runner/image-cache
+    # Scale with `docker compose up --scale runner=4`.
+
+volumes:
+  pgdata:
+  ciplatform-data:
+  runner-state:
+  image-cache:

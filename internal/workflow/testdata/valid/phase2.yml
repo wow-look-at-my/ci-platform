@@ -1,0 +1,40 @@
+name: Phase 2 surface
+
+on:
+  workflow_call:
+    inputs:
+      target:
+        type: string
+        required: true
+    secrets:
+      token:
+        required: true
+    outputs:
+      digest:
+        value: ${{ jobs.build.outputs.digest }}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: https://example.com
+    container:
+      image: golang:1.24
+      env:
+        CGO_ENABLED: "0"
+    services:
+      postgres:
+        image: postgres:16
+        ports: ["5432:5432"]
+        env:
+          POSTGRES_PASSWORD: hunter2
+      redis: redis:7
+    steps:
+      - run: go build ./...
+
+  call:
+    uses: ./.github/workflows/reusable.yml
+    with:
+      target: ${{ github.ref_name }}
+    secrets: inherit

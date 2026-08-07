@@ -1,0 +1,11 @@
+name: Bad cron
+
+on:
+  schedule:
+    - cron: "every tuesday"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo hi

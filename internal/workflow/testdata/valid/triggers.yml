@@ -1,0 +1,35 @@
+name: Every phase-1 trigger
+
+on:
+  push:
+    branches: [main]
+    tags-ignore:
+      - "v*"
+    paths-ignore: ["docs/**"]
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches-ignore: [wip]
+  schedule:
+    - cron: "0 3 * * *"
+    - cron: "*/15 * * * 1-5"
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Where to deploy
+        type: choice
+        required: true
+        options: [staging, production]
+      verbose:
+        type: boolean
+        default: "false"
+      count:
+        type: number
+        default: "1"
+  issues:
+    types: [opened]
+
+jobs:
+  noop:
+    runs-on: ubuntu-latest
+    steps:
+      - run: "true"

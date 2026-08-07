@@ -1,0 +1,10 @@
+name: Bad expression in a template
+
+on: push
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: broken
+        run: echo ${{ github. }}
