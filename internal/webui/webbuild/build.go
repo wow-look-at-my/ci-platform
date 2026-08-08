@@ -22,6 +22,11 @@ type BuildOptions struct {
 	OutDir string
 	// Dev keeps the output readable and emits sourcemaps.
 	Dev bool
+	// Demo builds the standalone demo: the API client and the sign-in module
+	// are swapped for the ones in web-src/demo, which answer from a captured
+	// snapshot. Every other module is the shipped one, so what the demo shows
+	// is the real UI and not a second implementation of it.
+	Demo bool
 }
 
 // Files maps an output file name to its bytes.
@@ -42,8 +47,14 @@ func Build(o BuildOptions) (Files, error) {
 		return nil, fmt.Errorf("entry point %s: %w", entry, err)
 	}
 
+	var plugins []api.Plugin
+	if o.Demo {
+		plugins = append(plugins, demoSwap(o.SrcDir))
+	}
+
 	result := api.Build(api.BuildOptions{
 		EntryPoints:       []string{entry, filepath.Join(o.SrcDir, "app.css")},
+		Plugins:           plugins,
 		Bundle:            true,
 		Format:            api.FormatESModule,
 		Target:            api.ES2022,
@@ -73,12 +84,49 @@ func Build(o BuildOptions) (Files, error) {
 		return nil, fmt.Errorf("bundling produced no app.css (got %v)", names(files))
 	}
 
-	html, err := os.ReadFile(filepath.Join(o.SrcDir, "index.html"))
+	htmlDir := o.SrcDir
+	if o.Demo {
+		htmlDir = filepath.Join(o.SrcDir, "demo")
+	}
+	html, err := os.ReadFile(filepath.Join(htmlDir, "index.html"))
 	if err != nil {
 		return nil, fmt.Errorf("read index.html: %w", err)
 	}
 	files["index.html"] = stampAssets(html, files)
 	return files, nil
+}
+
+// demoSwap redirects imports of the API client and the sign-in module to the
+// demo versions, for every importer outside web-src/demo.
+//
+// The alternative -- a runtime flag threaded through the shipped modules --
+// would put demo branches in the code the product runs, and a demo hook nobody
+// exercises in production is exactly the kind of unreachable path this
+// codebase refuses elsewhere. Swapping at bundle time keeps the demo entirely
+// outside the shipped bundle.
+func demoSwap(srcDir string) api.Plugin {
+	demoDir, _ := filepath.Abs(filepath.Join(srcDir, "demo"))
+	swap := map[string]string{"api.js": "api.ts", "auth.js": "auth.ts"}
+
+	return api.Plugin{
+		Name: "demo-swap",
+		Setup: func(build api.PluginBuild) {
+			build.OnResolve(api.OnResolveOptions{Filter: `^\.{1,2}/(api|auth)\.js$`},
+				func(args api.OnResolveArgs) (api.OnResolveResult, error) {
+					// An import from inside the demo directory is the demo
+					// module reaching for the real one; leave it alone or the
+					// swap would resolve to itself.
+					if strings.HasPrefix(args.Importer, demoDir+string(filepath.Separator)) {
+						return api.OnResolveResult{}, nil
+					}
+					target, ok := swap[filepath.Base(args.Path)]
+					if !ok {
+						return api.OnResolveResult{}, nil
+					}
+					return api.OnResolveResult{Path: filepath.Join(demoDir, target)}, nil
+				})
+		},
+	}
 }
 
 func sourcemapMode(dev bool) api.SourceMap {

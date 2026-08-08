@@ -21,6 +21,14 @@ conclusion and a sentence explaining themselves.
 - **You can see where the time went** — queued, setting up, executing — instead
   of inferring it from timestamps.
 
+**See it**: [a demo of the web UI](https://sites.pazer.build/ci-platform/), running
+against a snapshot captured from the real API — including a run that failed on
+infrastructure and is not coloured like a build failure.
+
+**Images**: `oci.pazer.build/ci-platform` (control plane) and
+`oci.pazer.build/ci-platform/runner` (agent). Every push publishes both, tagged
+with its commit and branch; `:latest` only ever moves on the default branch.
+
 ## Run one in ten minutes
 
 You need Docker with Compose, and a GitHub App. The App is not optional: check
@@ -58,8 +66,11 @@ server, not a preference of ours — see [docs/deviations.md](docs/deviations.md
 **3. Start it.**
 
 ```sh
-docker compose up -d --build
+docker compose pull && docker compose up -d
 ```
+
+That takes the images CI publishes. To run the source you have checked out
+instead, `docker compose up -d --build`.
 
 **4. Install the App** on a repository and push. Open
 `http://ci.localhost:8080`, sign in with the operator credential, and the run is
@@ -81,6 +92,8 @@ There is no database to provision: everything lives in one SQLite file on the
   client-imposed constraints we verified rather than assumed.
 - [docs/security.md](docs/security.md) — what guards each route, and what this
   deliberately does not defend against.
+- [docs/demo.md](docs/demo.md) — the demo site: what it shows, and what it
+  deliberately cannot do.
 
 ## Scope
 

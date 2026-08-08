@@ -8,6 +8,9 @@ name: ciplatform
 
 services:
   control-plane:
+    # Published by CI on every push. `docker compose pull` takes this image;
+    # `--build` ignores it and builds the source you have checked out.
+    image: oci.pazer.build/ci-platform:latest
     build:
       context: .
       target: control-plane
@@ -42,6 +45,7 @@ services:
       retries: 6
 
   runner:
+    image: oci.pazer.build/ci-platform/runner:latest
     build:
       context: .
       dockerfile: Dockerfile.runner

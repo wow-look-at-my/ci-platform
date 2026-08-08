@@ -4,6 +4,7 @@ import type { Timing } from "./api.js";
 import { el, svg } from "./dom.js";
 import { formatDuration, formatRelative, formatTimestamp } from "./format.js";
 import { isPlatformFault, toneExplanation, toneIcon, toneLabel, toneOf } from "./status.js";
+import { LABELS, nextPreference, paletteFor, type Preference, preferenceOf, THEME_KEY } from "./theme.js";
 
 /** The badge every status is rendered with. Icon plus text, never colour alone. */
 export function statusBadge(status: string, conclusion?: string): HTMLElement {
@@ -109,29 +110,30 @@ export function lineChart(points: { x: number; y: number }[], opts: { width?: nu
 	return root;
 }
 
-const THEME_KEY = "ci-theme";
+const lightSystem = () => matchMedia("(prefers-color-scheme: light)");
+
+const preference = () => preferenceOf(localStorage.getItem(THEME_KEY));
+
+function apply(pref: Preference): void {
+	document.documentElement.dataset.theme = paletteFor(pref, lightSystem().matches);
+}
 
 export function applyStoredTheme(): void {
-	const stored = localStorage.getItem(THEME_KEY);
-	if (stored === "light" || stored === "dark") document.documentElement.dataset.theme = stored;
+	apply(preference());
+	lightSystem().addEventListener("change", () => {
+		if (preference() === "system") apply("system");
+	});
 }
 
 export function themeToggle(): HTMLElement {
-	const button = el("button", { class: "ghost", type: "button", title: "Toggle light and dark theme" });
+	const button = el("button", { class: "ghost", type: "button", title: "Switch between dark, light and system theme" });
 	const paint = () => {
-		const current = document.documentElement.dataset.theme;
-		button.textContent = current === "dark" ? "☾ Dark" : current === "light" ? "☀ Light" : "◐ System";
+		button.textContent = LABELS[preference()];
 	};
 	button.addEventListener("click", () => {
-		const order = ["", "light", "dark"];
-		const next = order[(order.indexOf(document.documentElement.dataset.theme ?? "") + 1) % order.length];
-		if (next === "") {
-			delete document.documentElement.dataset.theme;
-			localStorage.removeItem(THEME_KEY);
-		} else {
-			document.documentElement.dataset.theme = next;
-			localStorage.setItem(THEME_KEY, next);
-		}
+		const next = nextPreference(preference());
+		localStorage.setItem(THEME_KEY, next);
+		apply(next);
 		paint();
 	});
 	paint();

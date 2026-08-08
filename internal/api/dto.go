@@ -468,4 +468,11 @@ func nonNil[T any](s []T) []T {
 	return s
 }
 
+func nonNilMap[K comparable, V any](m map[K]V) map[K]V {
+	if m == nil {
+		return map[K]V{}
+	}
+	return m
+}
+
 func itoa(n int64) string { return strconv.FormatInt(n, 10) }
