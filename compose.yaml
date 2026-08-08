@@ -45,7 +45,7 @@ services:
       retries: 6
 
   runner:
-    image: oci.pazer.build/ci-platform-runner:latest
+    image: oci.pazer.build/ci-platform/runner:latest
     build:
       context: .
       dockerfile: Dockerfile.runner

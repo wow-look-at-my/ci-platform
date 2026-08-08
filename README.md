@@ -26,7 +26,7 @@ against a snapshot captured from the real API — including a run that failed on
 infrastructure and is not coloured like a build failure.
 
 **Images**: `oci.pazer.build/ci-platform` (control plane) and
-`oci.pazer.build/ci-platform-runner` (agent). Every push publishes both, tagged
+`oci.pazer.build/ci-platform/runner` (agent). Every push publishes both, tagged
 with its commit and branch; `:latest` only ever moves on the default branch.
 
 ## Run one in ten minutes

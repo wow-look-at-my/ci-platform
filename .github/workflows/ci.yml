@@ -69,7 +69,11 @@ jobs:
         include:
           - project: ci-platform
             file: Dockerfile
-          - project: ci-platform-runner
+          # Namespaced under the repository's own project, not a sibling
+          # name: an Actions OIDC token is granted this repo's project and
+          # anything below it, so "ci-platform-runner" is a project this
+          # workflow has no right to create and buildhost answers 404.
+          - project: ci-platform/runner
             file: Dockerfile.runner
     steps:
       - uses: actions/checkout@v4
