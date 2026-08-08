@@ -64,3 +64,5 @@ conclusion and a sentence explaining itself. Read `docs/incidents.md` first -- t
 - Never name a job, workflow, or check run `all-builds` -- the org app owns that context and a job wearing the name only shadows it.
 - Never write a "not configured yet" mode that idles green. Missing config fails loudly at startup, naming the field.
 - `web/` is the committed esbuild output that `go:embed` ships; `go run ./cmd/buildweb -check` fails CI if it is stale.
+- Every push builds and publishes both images -- `oci.pazer.build/ci-platform` and `-runner` -- so a Dockerfile that stops building is a red build,
+  not a surprise at deploy time. `compose.yaml` names them, and `--build` still builds the checkout.
