@@ -146,9 +146,8 @@ func TestGitHubCallback_RefusesAnAccountThatIsNotAnAdmin(t *testing.T) {
 	assert.Contains(t, rec.Body.String(), "a-total-stranger")
 	assert.Contains(t, rec.Body.String(), "CIPLATFORM_ADMIN_LOGINS", "say how to fix it")
 	for _, c := range rec.Result().Cookies() {
-		if c.Name == CookieName {
-			t.Fatal("a session was minted for an account that is not an admin")
-		}
+		require.NotEqual(t, CookieName, c.Name)
+
 	}
 }
 

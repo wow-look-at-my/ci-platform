@@ -38,11 +38,11 @@ func TestSession_RejectsTampering(t *testing.T) {
 	tests := []string{
 		"",
 		"garbage",
-		encoded,                       // no signature
-		encoded + ".",                 // empty signature
-		encoded + "." + sig + "x",     // altered signature
-		"AAAA." + sig,                 // altered payload
-		forged,                        // signed with another key
+		encoded,                   // no signature
+		encoded + ".",             // empty signature
+		encoded + "." + sig + "x", // altered signature
+		"AAAA." + sig,             // altered payload
+		forged,                    // signed with another key
 	}
 	for _, tc := range tests {
 		_, err := s.parse(tc)

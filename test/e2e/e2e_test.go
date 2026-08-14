@@ -65,8 +65,14 @@ func start(t *testing.T, workflows map[string]string) *controlPlane {
 	cmd := exec.Command(bin)
 	cmd.Env = append(os.Environ(),
 		"CIPLATFORM_LISTEN=127.0.0.1:"+port,
-		// The hostname must satisfy the artifact client's isGhes() test.
 		"CIPLATFORM_PUBLIC_URL=http://ci.localhost:"+port,
+		// The stand-in GitHub is where the repositories are, so it is also
+		// where a browser would be sent to sign in.
+		"CIPLATFORM_GITHUB_SERVER_URL=http://github.localhost",
+		"CIPLATFORM_ALLOWED_OWNERS=acme",
+		"CIPLATFORM_ADMIN_LOGINS=PazerOP",
+		"CIPLATFORM_OAUTH_CLIENT_ID=Iv1.e2e",
+		"CIPLATFORM_OAUTH_CLIENT_SECRET=e2e-client-secret",
 		"CIPLATFORM_DATABASE_URL="+filepath.Join(dir, "ciplatform.db"),
 		"CIPLATFORM_GITHUB_API_URL="+gh.URL(),
 		"CIPLATFORM_WEBHOOK_SECRET="+gh.WebhookSecret,
@@ -130,11 +136,18 @@ func (c *controlPlane) waitReady(t *testing.T) {
 // push delivers a signed push webhook, as GitHub would.
 func (c *controlPlane) push(t *testing.T, ref, sha string, changed []string) {
 	t.Helper()
+	c.pushFrom(t, "acme", ref, sha, changed)
+}
+
+// pushFrom delivers a push from an arbitrary account, which is what a stranger
+// who installed the published App would produce.
+func (c *controlPlane) pushFrom(t *testing.T, owner, ref, sha string, changed []string) {
+	t.Helper()
 	payload := map[string]any{
 		"ref": ref, "after": sha, "before": "0000000",
 		"repository": map[string]any{
-			"id": c.repoID, "name": c.repoName, "full_name": "acme/" + c.repoName,
-			"default_branch": "main", "owner": map[string]any{"login": "acme"},
+			"id": c.repoID, "name": c.repoName, "full_name": owner + "/" + c.repoName,
+			"default_branch": "main", "owner": map[string]any{"login": owner},
 		},
 		"sender":       map[string]any{"login": "alex"},
 		"installation": map[string]any{"id": 99},
@@ -171,7 +184,19 @@ func (c *controlPlane) get(t *testing.T, path string) *http.Response {
 // runs reads the API the way a gh-alike client would.
 func (c *controlPlane) runs(t *testing.T) []map[string]any {
 	t.Helper()
-	resp := c.get(t, "/api/v1/runs?repo=acme/"+c.repoName)
+	return c.runsAt(t, "/api/v1/runs?repo=acme/"+c.repoName)
+}
+
+// allRuns asks without a repository filter, which is how a test proves nothing
+// was created anywhere rather than nothing was created for one repository.
+func (c *controlPlane) allRuns(t *testing.T) []map[string]any {
+	t.Helper()
+	return c.runsAt(t, "/api/v1/runs")
+}
+
+func (c *controlPlane) runsAt(t *testing.T, path string) []map[string]any {
+	t.Helper()
+	resp := c.get(t, path)
 	defer resp.Body.Close()
 	require.Equal(t, http.StatusOK, resp.StatusCode)
 
@@ -213,6 +238,23 @@ jobs:
     steps:
       - run: make test
 `
+
+// The App is published, so anybody can install it. An install by an account
+// the operator did not name must schedule nothing: this is the whole safety
+// property of publishing, checked against the real binary rather than a unit.
+func TestPushFromAnAccountThatIsNotServedCreatesNothing(t *testing.T) {
+	cp := start(t, map[string]string{".github/workflows/ci.yml": ciWorkflow})
+
+	cp.pushFrom(t, "a-total-stranger", "refs/heads/main",
+		"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", []string{"main.go"})
+
+	// A run would appear within a second or so; give it longer than that before
+	// concluding nothing happened.
+	time.Sleep(2 * time.Second)
+	assert.Empty(t, cp.allRuns(t), "a stranger's push scheduled work on the runners")
+	assert.Contains(t, cp.out.String(), "refused a webhook delivery",
+		"the refusal has to be visible to the operator, not silent")
+}
 
 // A push on a matching branch produces a run with the workflow's jobs.
 func TestPushCreatesARun(t *testing.T) {
