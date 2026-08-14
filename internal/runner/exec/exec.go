@@ -241,11 +241,13 @@ func (e *Executor) checkServerURL() {
 	if h, _, found := strings.Cut(host, ":"); found {
 		host = h
 	}
-	if strings.HasSuffix(host, ".ghe.com") || strings.HasSuffix(host, ".localhost") || host == "localhost" {
+	if host == "github.com" || strings.HasSuffix(host, ".ghe.com") ||
+		strings.HasSuffix(host, ".localhost") || host == "localhost" {
 		return
 	}
 	e.platform(0, fmt.Sprintf(
-		"warning: GITHUB_SERVER_URL is %q; actions/upload-artifact@v4 rejects any host not ending in .ghe.com or .localhost", u))
+		"warning: GITHUB_SERVER_URL is %q; actions/upload-artifact@v4 rejects any host that is not "+
+			"github.com and does not end in .ghe.com or .localhost", u))
 }
 
 func (e *Executor) platform(step int, text string) {

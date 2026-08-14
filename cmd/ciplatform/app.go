@@ -92,7 +92,7 @@ func newApp(ctx context.Context, cfg *config.Config, log *slog.Logger) (*app, er
 		SetupTimeout:        cfg.SetupTimeout,
 		DefaultJobTimeout:   6 * time.Hour,
 		RunTimeout:          cfg.RunTimeout,
-		ServerURL:           cfg.PublicURL.String(),
+		ServerURL:           cfg.GitHubServerURL.String(),
 		RequireForkApproval: cfg.RequireForkApproval,
 	})
 
@@ -103,12 +103,6 @@ func newApp(ctx context.Context, cfg *config.Config, log *slog.Logger) (*app, er
 }
 
 func (a *app) mount(ctx context.Context, cfg *config.Config, st store.Store, signer *jobtoken.Signer, ghApp *ghapp.App) error {
-	// The artifact client refuses to talk to a server whose hostname fails its
-	// isGhes() test, so check it here rather than inside somebody's upload.
-	if err := artifacts.ValidateServerURL(cfg.PublicURL.String()); err != nil {
-		return err
-	}
-
 	arts, err := artifacts.New(artifacts.Options{
 		Store: st, Blob: a.blobs, Signer: signer,
 		BaseURL:              cfg.PublicURL.String(),
@@ -166,18 +160,19 @@ func (a *app) mount(ctx context.Context, cfg *config.Config, st store.Store, sig
 	}
 
 	ing, err := ingest.New(ingest.Options{
-		Store:     st,
-		Files:     githubFiles{ghApp},
-		Starter:   a.sched,
-		NewEval:   newEvaluator,
-		ServerURL: cfg.PublicURL.String(),
-		Logger:    a.log,
+		Store:           st,
+		Files:           githubFiles{ghApp},
+		Starter:         a.sched,
+		NewEval:         newEvaluator,
+		GitHubServerURL: cfg.GitHubServerURL.String(),
+		GitHubAPIURL:    cfg.GitHubAPIURL.String(),
+		Logger:          a.log,
 	})
 	if err != nil {
 		return fmt.Errorf("ingest: %w", err)
 	}
 
-	hooks, err := newWebhookHandler(cfg.WebhookSecret, ing, a.sched, st, a.log)
+	hooks, err := newWebhookHandler(cfg.WebhookSecret, ing, a.sched, st, cfg.AllowedOwners, a.log)
 	if err != nil {
 		return fmt.Errorf("webhook handler: %w", err)
 	}
