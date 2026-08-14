@@ -37,7 +37,7 @@ func TestIncident2_ControlPlaneUnreachableIsInfraNotABuildFailure(t *testing.T) 
 
 	client, err := agent.NewClient(agent.ClientConfig{
 		BaseURL: srv.URL,
-		Token:   "runner-token",
+		Tokens:  agent.StaticToken("t"),
 		// Do not wait out the real backoff; the point is the classification.
 		Sleep: func(context.Context, time.Duration) error { return nil },
 	})
@@ -83,7 +83,7 @@ func TestControlPlaneRecoveryIsNotAFailure(t *testing.T) {
 	defer srv.Close()
 
 	client, err := agent.NewClient(agent.ClientConfig{
-		BaseURL: srv.URL, Token: "runner-token",
+		BaseURL: srv.URL, Tokens: agent.StaticToken("runner-token"),
 		Sleep: func(context.Context, time.Duration) error { return nil },
 	})
 	require.NoError(t, err)
@@ -116,7 +116,7 @@ func TestLeaseLostStopsTheRunnerWithoutAResult(t *testing.T) {
 	defer srv.Close()
 
 	client, err := agent.NewClient(agent.ClientConfig{
-		BaseURL: srv.URL, Token: "runner-token",
+		BaseURL: srv.URL, Tokens: agent.StaticToken("runner-token"),
 		Sleep: func(context.Context, time.Duration) error { return nil },
 	})
 	require.NoError(t, err)
@@ -142,7 +142,7 @@ func TestCancellationReachesTheRunnerWithItsReason(t *testing.T) {
 	defer srv.Close()
 
 	client, err := agent.NewClient(agent.ClientConfig{
-		BaseURL: srv.URL, Token: "runner-token",
+		BaseURL: srv.URL, Tokens: agent.StaticToken("runner-token"),
 		Sleep: func(context.Context, time.Duration) error { return nil },
 	})
 	require.NoError(t, err)

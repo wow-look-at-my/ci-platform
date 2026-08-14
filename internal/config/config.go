@@ -15,16 +15,25 @@ import (
 	"strings"
 	"time"
 
+	"github.com/wow-look-at-my/ci-platform/internal/artifacts"
+	"github.com/wow-look-at-my/ci-platform/internal/enrol"
+	"github.com/wow-look-at-my/ci-platform/internal/ghaccounts"
 	"github.com/wow-look-at-my/ci-platform/internal/operatorauth"
 )
 
 // Config is the control plane's resolved configuration.
 type Config struct {
 	// PublicURL is the base URL browsers and runners reach this instance on.
-	// Its host must satisfy the artifact client's isGhes() test, or
-	// actions/upload-artifact@v4 refuses to run; see docs/deviations.md.
+	// Any hostname is fine: it is served to clients as ACTIONS_RESULTS_URL and
+	// friends, which carry no host restriction.
 	PublicURL *url.URL
 	Listen    string
+
+	// GitHubServerURL is where the REPOSITORIES live, which is a different
+	// question from where this platform lives. actions/checkout builds its
+	// clone URL from it, and @actions/artifact's isGhes() reads it and refuses
+	// to run against a host it does not recognise; see docs/deviations.md.
+	GitHubServerURL *url.URL
 
 	// DatabaseURL is the SQLite file path, or the literal "memory" for the
 	// in-memory store.
@@ -38,11 +47,14 @@ type Config struct {
 	AppPrivateKey  []byte
 	WebhookSecret  string
 	JobTokenSecret []byte
-	// RunnerToken authenticates runner agents. It is deliberately NOT the job
-	// token signing key: the runner holds this value on disk and sends it to
-	// the control plane, so reusing the signing key would put the key that
-	// mints every job's credentials on every runner host.
-	RunnerToken string
+	// RunnerSessionTTL bounds a runner's session token. It is also the longest
+	// a revoked host keeps working, because approval is re-read on every
+	// renewal.
+	//
+	// There is no runner credential to configure: a host proves itself with a
+	// key it generated, and the key that signs these tokens is generated at
+	// startup. A restart costs every runner one silent re-authentication.
+	RunnerSessionTTL time.Duration
 	// OperatorToken gates the REST API and the UI. Every job container can
 	// route to this instance -- it has to, to upload artifacts -- so an
 	// ungated /api/v1 is reachable from inside any workflow, including a fork
@@ -51,6 +63,24 @@ type Config struct {
 	// RequireForkApproval holds a fork PR's jobs until a maintainer approves.
 	// On by default: a fork PR is a stranger's code on your runners.
 	RequireForkApproval bool
+
+	// AllowedOwners are the accounts whose repositories may run work here.
+	// A published App can be installed by anybody, and an install this list
+	// does not name gets nothing: no run, no token, no API call.
+	AllowedOwners *ghaccounts.Set
+	// AdminLogins are the accounts that may sign in to the dashboard.
+	AdminLogins *ghaccounts.Set
+	// OAuthClientID and OAuthClientSecret are the GitHub App's own OAuth
+	// credentials, used for the user-to-server flow behind "Sign in with
+	// GitHub". They are on the App's settings page; no second App is needed.
+	OAuthClientID     string
+	OAuthClientSecret string
+	// SessionSecret signs dashboard session cookies. Optional: a random key is
+	// generated at startup when it is unset, which ends every session on
+	// restart.
+	SessionSecret string
+	// SessionTTL bounds how long a signed-in dashboard session lasts.
+	SessionTTL time.Duration
 
 	BlobDriver string // disk | s3
 	BlobRoot   string
@@ -95,29 +125,41 @@ func LoadFrom(env Getenv) (*Config, error) {
 		DatabaseURL:         l.required("CIPLATFORM_DATABASE_URL", "the path to the SQLite file holding runs, jobs, and the durable queue"),
 		AllowEphemeralStore: l.bool("CIPLATFORM_ALLOW_EPHEMERAL_STORE", false),
 		WebhookSecret:       l.required("CIPLATFORM_WEBHOOK_SECRET", "the shared secret GitHub signs webhook deliveries with"),
-		RunnerToken:         l.required("CIPLATFORM_RUNNER_TOKEN", "the shared secret runner agents authenticate with; it must differ from the job token signing key"),
+		RunnerSessionTTL:    l.duration("CIPLATFORM_RUNNER_SESSION_TTL", enrol.DefaultSessionTTL),
 		OperatorToken:       l.required("CIPLATFORM_OPERATOR_TOKEN", "the credential for the REST API and the web UI; without it every job container could read every repository's logs"),
 		RequireForkApproval: l.bool("CIPLATFORM_REQUIRE_FORK_APPROVAL", true),
-		BlobDriver:          l.enum("CIPLATFORM_BLOB_DRIVER", "disk", "disk", "s3"),
-		BlobRoot:            l.str("CIPLATFORM_BLOB_ROOT", "/var/lib/ciplatform/blobs"),
-		S3Endpoint:          l.str("CIPLATFORM_S3_ENDPOINT", ""),
-		S3Bucket:            l.str("CIPLATFORM_S3_BUCKET", ""),
-		S3Region:            l.str("CIPLATFORM_S3_REGION", "us-east-1"),
-		S3KeyID:             l.str("CIPLATFORM_S3_KEY_ID", ""),
-		S3Secret:            l.str("CIPLATFORM_S3_SECRET", ""),
-		OIDCKeyPath:         l.str("CIPLATFORM_OIDC_KEY_PATH", "/var/lib/ciplatform/oidc"),
-		LeaseTTL:            l.duration("CIPLATFORM_LEASE_TTL", 90*time.Second),
-		HeartbeatInterval:   l.duration("CIPLATFORM_HEARTBEAT_INTERVAL", 20*time.Second),
-		SetupTimeout:        l.duration("CIPLATFORM_SETUP_TIMEOUT", 10*time.Minute),
-		RunTimeout:          l.duration("CIPLATFORM_RUN_TIMEOUT", 6*time.Hour),
-		CheckCoalesce:       l.duration("CIPLATFORM_CHECK_COALESCE", 2*time.Second),
-		ArtifactRetention:   l.duration("CIPLATFORM_ARTIFACT_RETENTION", 90*24*time.Hour),
-		ArtifactQuota:       l.bytes("CIPLATFORM_ARTIFACT_QUOTA", 50<<30),
-		CacheQuota:          l.bytes("CIPLATFORM_CACHE_QUOTA", 10<<30),
+		OAuthClientID: l.required("CIPLATFORM_OAUTH_CLIENT_ID",
+			"the GitHub App's client ID, from its settings page; it is how the dashboard signs operators in"),
+		OAuthClientSecret: l.required("CIPLATFORM_OAUTH_CLIENT_SECRET",
+			"the GitHub App's client secret, generated on its settings page"),
+		SessionSecret:     l.str("CIPLATFORM_SESSION_SECRET", ""),
+		SessionTTL:        l.duration("CIPLATFORM_SESSION_TTL", 12*time.Hour),
+		BlobDriver:        l.enum("CIPLATFORM_BLOB_DRIVER", "disk", "disk", "s3"),
+		BlobRoot:          l.str("CIPLATFORM_BLOB_ROOT", "/var/lib/ciplatform/blobs"),
+		S3Endpoint:        l.str("CIPLATFORM_S3_ENDPOINT", ""),
+		S3Bucket:          l.str("CIPLATFORM_S3_BUCKET", ""),
+		S3Region:          l.str("CIPLATFORM_S3_REGION", "us-east-1"),
+		S3KeyID:           l.str("CIPLATFORM_S3_KEY_ID", ""),
+		S3Secret:          l.str("CIPLATFORM_S3_SECRET", ""),
+		OIDCKeyPath:       l.str("CIPLATFORM_OIDC_KEY_PATH", "/var/lib/ciplatform/oidc"),
+		LeaseTTL:          l.duration("CIPLATFORM_LEASE_TTL", 90*time.Second),
+		HeartbeatInterval: l.duration("CIPLATFORM_HEARTBEAT_INTERVAL", 20*time.Second),
+		SetupTimeout:      l.duration("CIPLATFORM_SETUP_TIMEOUT", 10*time.Minute),
+		RunTimeout:        l.duration("CIPLATFORM_RUN_TIMEOUT", 6*time.Hour),
+		CheckCoalesce:     l.duration("CIPLATFORM_CHECK_COALESCE", 2*time.Second),
+		ArtifactRetention: l.duration("CIPLATFORM_ARTIFACT_RETENTION", 90*24*time.Hour),
+		ArtifactQuota:     l.bytes("CIPLATFORM_ARTIFACT_QUOTA", 50<<30),
+		CacheQuota:        l.bytes("CIPLATFORM_CACHE_QUOTA", 10<<30),
 	}
 
 	c.PublicURL = l.url("CIPLATFORM_PUBLIC_URL", "", "the base URL runners and browsers reach this instance on")
 	c.GitHubAPIURL = l.url("CIPLATFORM_GITHUB_API_URL", "https://api.github.com", "")
+	c.GitHubServerURL = l.url("CIPLATFORM_GITHUB_SERVER_URL", "https://github.com", "")
+	c.AllowedOwners = l.accounts("CIPLATFORM_ALLOWED_OWNERS",
+		"the accounts whose repositories may run work here; anybody can install a published App, "+
+			"and an install this list does not name is inert")
+	c.AdminLogins = l.accounts("CIPLATFORM_ADMIN_LOGINS",
+		"the GitHub accounts that may sign in to the dashboard")
 	c.AppID = l.int64("CIPLATFORM_APP_ID", "the GitHub App's numeric ID; check runs cannot be written without App auth")
 	c.AppPrivateKey = l.file("CIPLATFORM_APP_PRIVATE_KEY", "CIPLATFORM_APP_PRIVATE_KEY_PATH",
 		"the GitHub App's PEM private key, used to mint installation tokens")
@@ -145,37 +187,32 @@ func LoadFrom(env Getenv) (*Config, error) {
 	return c, nil
 }
 
-// ErrGHESHostname is returned when the public URL would make the artifact
-// client refuse to run.
-var ErrGHESHostname = errors.New("config: public URL host must be github.com, or end in .ghe.com or .localhost")
-
 // Validate checks the cross-field constraints.
 func (c *Config) Validate() error {
 	if c.PublicURL == nil {
 		return errors.New("config: public URL is not set")
 	}
-	if !ArtifactClientAccepts(c.PublicURL.Hostname()) {
-		return fmt.Errorf("%w: %q would make actions/upload-artifact@v4 throw GHESNotSupportedError "+
-			"before issuing a request (see docs/deviations.md)", ErrGHESHostname, c.PublicURL.Hostname())
+	if c.GitHubServerURL == nil {
+		return errors.New("config: GitHub server URL is not set")
 	}
-	// The runner token travels to every runner host; the signing key must not.
-	if c.RunnerToken != "" && c.RunnerToken == string(c.JobTokenSecret) {
-		return errors.New("config: CIPLATFORM_RUNNER_TOKEN must differ from CIPLATFORM_JOB_TOKEN_SECRET; " +
-			"the runner token is stored on every runner host, and reusing the signing key there would let " +
-			"anyone holding it mint a job token for any repository")
+	// The isGhes() rule is about where the REPOSITORIES are, not where this
+	// platform is. Checking it against the public URL would reject a perfectly
+	// good deployment hostname and leave the real setting unchecked.
+	if err := artifacts.ValidateServerURL(c.GitHubServerURL.String()); err != nil {
+		return fmt.Errorf("config: CIPLATFORM_GITHUB_SERVER_URL: %w", err)
 	}
-	// The operator token is typed into a browser and pasted into scripts. Each
-	// of the other two reaches somewhere it must not: the runner token is on
-	// every runner host, and the signing key mints every job's credentials.
+	// The operator token is typed into a browser and pasted into scripts. The
+	// signing key mints every job's credentials, so one value serving as both
+	// means anything holding either one holds both.
 	if c.OperatorToken != "" {
-		for _, other := range []struct{ name, val string }{
-			{"CIPLATFORM_RUNNER_TOKEN", c.RunnerToken},
-			{"CIPLATFORM_JOB_TOKEN_SECRET", string(c.JobTokenSecret)},
-		} {
-			if c.OperatorToken == other.val {
-				return fmt.Errorf("config: CIPLATFORM_OPERATOR_TOKEN must differ from %s; "+
-					"sharing one value means anything holding either one holds both", other.name)
-			}
+		if c.OperatorToken == string(c.JobTokenSecret) {
+			return errors.New("config: CIPLATFORM_OPERATOR_TOKEN must differ from CIPLATFORM_JOB_TOKEN_SECRET; " +
+				"sharing one value means anything holding either one holds both")
+		}
+		if c.SessionSecret != "" && c.SessionSecret == c.OperatorToken {
+			return errors.New("config: CIPLATFORM_SESSION_SECRET must differ from CIPLATFORM_OPERATOR_TOKEN; " +
+				"the session key signs cookies that grant the API, so reusing the credential it protects " +
+				"means a leaked cookie key is the credential")
 		}
 		if len(c.OperatorToken) < operatorauth.MinTokenLen {
 			return fmt.Errorf("config: CIPLATFORM_OPERATOR_TOKEN is %d characters; at least %d are required, "+
@@ -188,15 +225,6 @@ func (c *Config) Validate() error {
 			"or every running job loses its lease and is requeued", c.HeartbeatInterval, c.LeaseTTL)
 	}
 	return nil
-}
-
-// ArtifactClientAccepts mirrors isGhes() in @actions/artifact: the client
-// refuses to run unless the server hostname is github.com, ends with .ghe.com,
-// or ends with .localhost. Reproduced here so the failure surfaces at startup
-// rather than inside somebody's first artifact upload.
-func ArtifactClientAccepts(hostname string) bool {
-	h := strings.ToUpper(strings.TrimRight(hostname, " "))
-	return h == "GITHUB.COM" || strings.HasSuffix(h, ".GHE.COM") || strings.HasSuffix(h, ".LOCALHOST")
 }
 
 type loader struct {
@@ -221,6 +249,23 @@ func (l *loader) required(name, why string) string {
 		l.missf("%s is required (%s)", name, why)
 	}
 	return v
+}
+
+// accounts builds a login set, reporting an unset or malformed list as a
+// startup problem alongside every other one.
+func (l *loader) accounts(name, why string) *ghaccounts.Set {
+	raw := l.env(name)
+	if raw == "" {
+		l.missf("%s is required (%s); list the accounts, or %q to serve anybody",
+			name, why, ghaccounts.Anyone)
+		return nil
+	}
+	set, err := ghaccounts.New(name, ghaccounts.Parse(raw))
+	if err != nil {
+		l.missf("%v", err)
+		return nil
+	}
+	return set
 }
 
 func (l *loader) enum(name, def string, allowed ...string) string {

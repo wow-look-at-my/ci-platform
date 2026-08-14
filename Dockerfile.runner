@@ -27,5 +27,9 @@ FROM alpine:3.21 AS runner
 RUN apk add --no-cache ca-certificates tzdata docker-cli git \
 	&& mkdir -p /var/lib/ci-runner
 COPY --from=build /out/ci-runner /usr/local/bin/ci-runner
-VOLUME /var/lib/ci-runner
+# /var/lib/ci-runner is deliberately NOT a declared VOLUME. Under runner-host it
+# is the container's own layer, so removing the container is what makes the next
+# runner's storage genuinely fresh. Run the image by hand and you want the
+# opposite -- mount something there, or the identity key is regenerated on every
+# restart and the host needs approving again.
 ENTRYPOINT ["/usr/local/bin/ci-runner"]

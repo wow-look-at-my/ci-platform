@@ -24,14 +24,23 @@ func TestValidateNamesEveryMissingFlag(t *testing.T) {
 	c := config{capacity: 1}
 	err := c.validate()
 	require.Error(t, err, "a runner with no control plane must fail at startup, never idle green")
-	for _, flag := range []string{"-url", "-token", "-state-dir", "-labels"} {
+	for _, flag := range []string{"-url", "-state-dir", "-labels"} {
 		assert.Contains(t, err.Error(), flag)
 	}
+	assert.NotContains(t, err.Error(), "-host-key", "the identity key is generated, never demanded")
+}
+
+// The host key defaults into the state dir, so a runner needs no key management
+// beyond keeping that directory.
+func TestValidateDefaultsTheHostKeyIntoTheStateDir(t *testing.T) {
+	c := config{url: "u", stateDir: "/var/lib/ci-runner", labels: "l", capacity: 1, name: "host"}
+	require.NoError(t, c.validate())
+	assert.Equal(t, "/var/lib/ci-runner/host.key", c.keyPath)
 }
 
 func TestValidateAcceptsACompleteConfig(t *testing.T) {
 	c := config{
-		url: "https://ci.example.com", token: "t",
+		url:      "https://ci.example.com",
 		stateDir: t.TempDir(), labels: "self-hosted", capacity: 2,
 	}
 	require.NoError(t, c.validate())
@@ -39,7 +48,7 @@ func TestValidateAcceptsACompleteConfig(t *testing.T) {
 }
 
 func TestValidateRejectsBadCapacity(t *testing.T) {
-	c := config{url: "u", token: "t", stateDir: "s", labels: "l", capacity: 0}
+	c := config{url: "u", stateDir: "s", labels: "l", capacity: 0}
 	err := c.validate()
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "-capacity")
@@ -147,12 +156,21 @@ func TestToAgentReport(t *testing.T) {
 
 func TestRunCommandWiresUpAndShutsDownCleanly(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == protocol.PathRegister {
+		switch r.URL.Path {
+		case protocol.PathEnrol:
+			_ = json.NewEncoder(w).Encode(protocol.EnrolResponse{
+				Fingerprint: "SHA256:test", State: "approved",
+			})
+		case protocol.PathSession:
+			_ = json.NewEncoder(w).Encode(protocol.SessionResponse{
+				Token: "session-token", ExpiresAt: time.Now().Add(time.Hour),
+			})
+		case protocol.PathRegister:
 			_ = json.NewEncoder(w).Encode(protocol.RegisterResponse{})
-			return
+		default:
+			// Every acquire poll comes back empty; the run ends on SIGTERM.
+			_ = json.NewEncoder(w).Encode(protocol.AcquireResponse{})
 		}
-		// Every acquire poll comes back empty; the run ends on SIGTERM.
-		_ = json.NewEncoder(w).Encode(protocol.AcquireResponse{})
 	}))
 	defer srv.Close()
 
@@ -163,7 +181,6 @@ func TestRunCommandWiresUpAndShutsDownCleanly(t *testing.T) {
 	fs.SetOutput(io.Discard)
 	err := runCommand(ctx, fs, []string{
 		"-url", srv.URL,
-		"-token", "tok",
 		"-labels", "self-hosted,linux",
 		"-state-dir", t.TempDir(),
 		"-poll-wait", "10ms",

@@ -157,8 +157,8 @@ func TestDockerTeardownRemovesTheWorkspaceVolume(t *testing.T) {
 	require.NoError(t, c.Close(ctx))
 
 	cli := &CLI{}
-	_, err = capture(ctx, cli, "inspect", c.Name())
+	_, err = Capture(ctx, cli, "inspect", c.Name())
 	assert.Error(t, err, "the container must be gone after teardown")
-	_, err = capture(ctx, cli, "volume", "inspect", c.workspace)
+	_, err = Capture(ctx, cli, "volume", "inspect", c.workspace)
 	assert.Error(t, err, "the workspace volume must be gone after teardown")
 }

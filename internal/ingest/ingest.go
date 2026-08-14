@@ -47,11 +47,14 @@ type Options struct {
 	Starter Starter
 	NewEval plan.EvaluatorFactory
 
-	// ServerURL is this control plane's public base URL, used to build the
-	// github context's server URLs.
-	ServerURL string
-	Logger    *slog.Logger
-	Now       func() time.Time
+	// GitHubServerURL and GitHubAPIURL fill the github context. They point at
+	// GitHub, not at this platform: a workflow reading github.server_url is
+	// building a repository or commit link, and github.api_url is what
+	// actions/github-script calls.
+	GitHubServerURL string
+	GitHubAPIURL    string
+	Logger          *slog.Logger
+	Now             func() time.Time
 }
 
 // Ingester implements webhook.Sink.
@@ -365,8 +368,8 @@ func (i *Ingester) contexts(repo *model.Repo, run *model.Run, t Trigger) map[str
 			"run_id":           fmt.Sprint(run.ID),
 			"run_number":       fmt.Sprint(run.RunNumber),
 			"run_attempt":      fmt.Sprint(run.Attempt),
-			"server_url":       i.opts.ServerURL,
-			"api_url":          i.opts.ServerURL + "/api/v1",
+			"server_url":       i.opts.GitHubServerURL,
+			"api_url":          i.opts.GitHubAPIURL,
 			"workspace":        "/workspace",
 		},
 		"inputs": inputs,

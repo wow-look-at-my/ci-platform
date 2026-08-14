@@ -1534,6 +1534,64 @@
     "total_count": 3,
     "usage_bytes": 1936427349
   },
+  "/api/v1/runner-hosts": {
+    "at": "2026-08-06T15:04:05Z",
+    "hosts": [
+      {
+        "arch": "amd64",
+        "enrolled_at": "2026-08-06T14:53:05Z",
+        "enrolled_from": "192.168.1.97",
+        "fingerprint": "SHA256:4mN8jH2bW7xK1qF5tZ9cR3vY6uD0gS4aE8pL2iO7nX1",
+        "labels": [
+          "self-hosted",
+          "linux",
+          "gpu"
+        ],
+        "name": "gpu-01",
+        "os": "linux",
+        "state": "pending",
+        "version": "0.4.1"
+      },
+      {
+        "approved_at": "2026-07-06T15:04:05Z",
+        "approved_by": "PazerOP",
+        "arch": "amd64",
+        "enrolled_at": "2026-07-06T15:04:05Z",
+        "enrolled_from": "192.168.1.84",
+        "fingerprint": "SHA256:0pQ8kZ2mB1nYcR7vX4tLwF6sJ3hD9gA5eN0uT8iK2yM",
+        "labels": [
+          "self-hosted",
+          "linux",
+          "x64"
+        ],
+        "last_seen_at": "2026-08-06T15:04:01Z",
+        "name": "build-01",
+        "os": "linux",
+        "state": "approved",
+        "version": "0.4.1"
+      },
+      {
+        "approved_at": "2026-07-28T15:04:05Z",
+        "approved_by": "PazerOP",
+        "arch": "arm64",
+        "enrolled_at": "2026-07-28T15:04:05Z",
+        "enrolled_from": "192.168.1.91",
+        "fingerprint": "SHA256:7bV3xQ9tR2mE5nK8wY1uJ4hG6dS0aZ3cF7pL9iX2oB4",
+        "labels": [
+          "self-hosted",
+          "linux",
+          "arm64"
+        ],
+        "last_seen_at": "2026-08-06T15:03:59Z",
+        "name": "arm-01",
+        "os": "linux",
+        "state": "approved",
+        "version": "0.4.1"
+      }
+    ],
+    "pending_count": 1,
+    "total_count": 3
+  },
   "/api/v1/runners": {
     "at": "2026-08-06T15:04:05Z",
     "busy": 1,

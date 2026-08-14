@@ -42,13 +42,13 @@ jobs:
       # the one thing a demo of this platform must not do.
       - run: go run ./cmd/demofixtures -check
       - run: go run ./cmd/buildweb -demo -out demo-site
+      # buildhost serves a site under one path segment, so anything outside
+      # [A-Za-z0-9._-] is flattened out of the branch name.
       - name: Site branch name
         id: sitename
         uses: wow-look-at-my/actions@typescript#latest
         with:
           script: |
-            // buildhost serves a site under one path segment, so anything
-            // outside [A-Za-z0-9._-] is flattened out of the branch name.
             core.setOutput('branch', (github.ref_name || 'branch').replace(/[^A-Za-z0-9._-]/g, '-'));
       - uses: wow-look-at-my/buildhost/.github/actions/buildhost-publish-site@master
         with:
@@ -75,6 +75,11 @@ jobs:
           # workflow has no right to create and buildhost answers 404.
           - project: ci-platform/runner
             file: Dockerfile.runner
+          # The supervisor an operator installs on a machine, and the one an
+          # image updater is pointed at. It keeps the runners current, so it is
+          # the only image on a runner machine anything else has to update.
+          - project: ci-platform/runner-host
+            file: Dockerfile.runner-host
     steps:
       - uses: actions/checkout@v4
       - uses: wow-look-at-my/buildhost/.github/actions/buildhost-publish-docker@master

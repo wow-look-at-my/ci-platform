@@ -29,7 +29,62 @@ const (
 	PathRelease   = "/runner/v1/release"
 	PathAnnotate  = "/runner/v1/annotate"
 	PathSetup     = "/runner/v1/setup"
+	// PathEnrol and PathSession are the only two routes on this surface that
+	// answer without a session token. They cannot require one: they are how a
+	// host gets one. Both are signature-verified instead.
+	PathEnrol   = "/runner/v1/enrol"
+	PathSession = "/runner/v1/session"
 )
+
+// EnrolRequest offers a host's public key. Everything except the key is
+// display-only: an unapproved host can claim anything, and nothing is
+// authorised on what it claims.
+type EnrolRequest struct {
+	APIVersion string   `json:"api_version"`
+	PublicKey  string   `json:"public_key"`
+	Name       string   `json:"name"`
+	OS         string   `json:"os,omitempty"`
+	Arch       string   `json:"arch,omitempty"`
+	Version    string   `json:"version,omitempty"`
+	Labels     []string `json:"labels,omitempty"`
+	// Timestamp, Nonce and Signature prove the sender holds the private half.
+	// Without them anybody could enrol somebody else's public key and leave the
+	// operator approving a fingerprint that belongs to a machine they do not
+	// control.
+	Timestamp int64  `json:"timestamp"`
+	Nonce     string `json:"nonce"`
+	Signature string `json:"signature"`
+}
+
+// EnrolResponse tells the host what to print for its operator.
+type EnrolResponse struct {
+	Fingerprint string `json:"fingerprint"`
+	State       string `json:"state"`
+	// Message is written for a human reading the runner's logs.
+	Message string `json:"message"`
+}
+
+// SessionRequest exchanges a signature for a short-lived token.
+type SessionRequest struct {
+	APIVersion  string `json:"api_version"`
+	Fingerprint string `json:"fingerprint"`
+	// RunnerID names which of the host's runners this token is for, so a host
+	// running several does not have them share one identity.
+	RunnerID  string `json:"runner_id"`
+	Timestamp int64  `json:"timestamp"`
+	Nonce     string `json:"nonce"`
+	Signature string `json:"signature"`
+}
+
+// SessionResponse carries the bearer token for the rest of this surface.
+type SessionResponse struct {
+	Token     string    `json:"token"`
+	ExpiresAt time.Time `json:"expires_at"`
+	// Labels are what the operator allows this host to serve. A runner
+	// registering with more than these has them dropped, so the answer is sent
+	// back rather than left to be discovered as jobs that never arrive.
+	Labels []string `json:"labels,omitempty"`
+}
 
 // RegisterRequest announces an agent to the control plane.
 type RegisterRequest struct {

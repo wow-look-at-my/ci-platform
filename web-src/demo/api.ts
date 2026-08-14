@@ -118,6 +118,7 @@ export const api = {
 	streamUrl: (id: number, opts: { from_seq?: number; attempt?: number } = {}) =>
 		`/api/v1/jobs/${id}/logs/stream${query(opts)}`,
 	runners: () => lookup<never>("/api/v1/runners"),
+	runnerHosts: () => lookup<never>("/api/v1/runner-hosts"),
 	queue: () => lookup<never>("/api/v1/queue"),
 	// The captured history is one window; the page's since= is ignored rather
 	// than answered with an empty graph.
@@ -127,6 +128,8 @@ export const api = {
 	cache: (owner: string, repo: string) => lookup<never>(`/api/v1/repos/${owner}/${repo}/cache`),
 	health: () => lookup<never>("/healthz"),
 
+	approveRunnerHost: (_fingerprint: string, _note: string) => refuse("approving a runner host"),
+	revokeRunnerHost: (_fingerprint: string, _note: string) => refuse("revoking a runner host"),
 	cancelRun: (_id: number, _reason: string) => refuse("cancelling a run"),
 	cancelJob: (_id: number, _reason: string) => refuse("cancelling a job"),
 	rerunRun: (_id: number) => refuse("re-running"),

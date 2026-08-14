@@ -32,6 +32,7 @@ type fakeStore struct {
 	anns     map[int64][]model.Annotation
 	events   []store.Event
 	runners  []*model.Runner
+	hosts    []*model.RunnerHost
 	arts     []*model.Artifact
 	cacheEvs map[int64][]model.CacheEvent
 	usage    map[int64]int64
@@ -224,6 +225,59 @@ func (f *fakeStore) MarkOfflineRunners(context.Context, time.Time) ([]*model.Run
 	return nil, errUnused
 }
 
+func (f *fakeStore) EnrolRunnerHost(context.Context, *model.RunnerHost) (*model.RunnerHost, error) {
+	return nil, errUnused
+}
+
+func (f *fakeStore) GetRunnerHost(_ context.Context, fingerprint string) (*model.RunnerHost, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	for _, h := range f.hosts {
+		if h.Fingerprint == fingerprint {
+			return h, nil
+		}
+	}
+	return nil, store.ErrNotFound
+}
+
+func (f *fakeStore) ListRunnerHosts(context.Context) ([]*model.RunnerHost, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.hosts, nil
+}
+
+func (f *fakeStore) SetRunnerHostState(_ context.Context, fingerprint string, state model.RunnerHostState, by, note string, at time.Time) (*model.RunnerHost, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	for _, h := range f.hosts {
+		if h.Fingerprint != fingerprint {
+			continue
+		}
+		h.State, h.Note = state, note
+		if state == model.RunnerHostApproved {
+			h.ApprovedBy, h.ApprovedAt = by, at
+		} else {
+			h.ApprovedBy, h.ApprovedAt = "", time.Time{}
+		}
+		return h, nil
+	}
+	return nil, store.ErrNotFound
+}
+
+func (f *fakeStore) SetRunnerHostLabels(_ context.Context, fingerprint string, labels []string) (*model.RunnerHost, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	for _, h := range f.hosts {
+		if h.Fingerprint == fingerprint {
+			h.Labels = labels
+			return h, nil
+		}
+	}
+	return nil, store.ErrNotFound
+}
+
+func (f *fakeStore) TouchRunnerHost(context.Context, string, time.Time) error { return errUnused }
+
 func (f *fakeStore) AddAnnotations(context.Context, int64, []model.Annotation) error {
 	return errUnused
 }
@@ -311,7 +365,12 @@ func (f *fakeStore) ResolveVars(context.Context, string, string, string) (map[st
 }
 func (f *fakeStore) DeleteVar(context.Context, string, string, string) error { return errUnused }
 
-func (f *fakeStore) RecordEvent(context.Context, store.Event) error { return errUnused }
+func (f *fakeStore) RecordEvent(_ context.Context, e store.Event) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.events = append(f.events, e)
+	return nil
+}
 
 func (f *fakeStore) ListEvents(_ context.Context, runID, jobID int64) ([]store.Event, error) {
 	var out []store.Event

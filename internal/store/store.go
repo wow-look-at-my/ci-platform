@@ -35,6 +35,7 @@ type Store interface {
 	Steps
 	Queue
 	Runners
+	RunnerHosts
 	Annotations
 	Artifacts
 	Caches
@@ -187,6 +188,25 @@ type Runners interface {
 	// MarkOfflineRunners flips runners past the deadline to offline and returns
 	// them, so their in-flight jobs can be requeued with a recorded reason.
 	MarkOfflineRunners(ctx context.Context, deadline time.Time) ([]*model.Runner, error)
+}
+
+// RunnerHosts stores the machines allowed to run runners, and their approval
+// state. A host is written on enrolment and read on every session request, so
+// revoking one takes effect on that host's next renewal.
+type RunnerHosts interface {
+	// EnrolRunnerHost records a first sighting. It never changes the state or
+	// the public key of a host that already exists: re-enrolling must not be a
+	// way to reset an approval, or to swap the key behind an approved
+	// fingerprint.
+	EnrolRunnerHost(ctx context.Context, h *model.RunnerHost) (*model.RunnerHost, error)
+	GetRunnerHost(ctx context.Context, fingerprint string) (*model.RunnerHost, error)
+	ListRunnerHosts(ctx context.Context) ([]*model.RunnerHost, error)
+	// SetRunnerHostState is approval and revocation. by names the operator.
+	SetRunnerHostState(ctx context.Context, fingerprint string, state model.RunnerHostState, by, note string, at time.Time) (*model.RunnerHost, error)
+	// SetRunnerHostLabels replaces the labels a host's runners may claim.
+	SetRunnerHostLabels(ctx context.Context, fingerprint string, labels []string) (*model.RunnerHost, error)
+	// TouchRunnerHost records that the host was seen.
+	TouchRunnerHost(ctx context.Context, fingerprint string, at time.Time) error
 }
 
 // Annotations stores file/line diagnostics for the PR diff view.

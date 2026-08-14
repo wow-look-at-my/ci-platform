@@ -452,7 +452,7 @@ func TestCaptureIncludesStderrInTheError(t *testing.T) {
 	d := &fakeDocker{respond: func(args []string, n int) (int, string, error) {
 		return 2, "", nil
 	}}
-	_, err := capture(context.Background(), d, "volume", "create", "x")
+	_, err := Capture(context.Background(), d, "volume", "create", "x")
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "exited 2")
 }

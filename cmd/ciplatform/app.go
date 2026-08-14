@@ -2,10 +2,12 @@ package main
 
 import (
 	"context"
+	"crypto/rand"
 	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/wow-look-at-my/ci-platform/internal/api"
@@ -92,7 +94,7 @@ func newApp(ctx context.Context, cfg *config.Config, log *slog.Logger) (*app, er
 		SetupTimeout:        cfg.SetupTimeout,
 		DefaultJobTimeout:   6 * time.Hour,
 		RunTimeout:          cfg.RunTimeout,
-		ServerURL:           cfg.PublicURL.String(),
+		ServerURL:           cfg.GitHubServerURL.String(),
 		RequireForkApproval: cfg.RequireForkApproval,
 	})
 
@@ -103,12 +105,6 @@ func newApp(ctx context.Context, cfg *config.Config, log *slog.Logger) (*app, er
 }
 
 func (a *app) mount(ctx context.Context, cfg *config.Config, st store.Store, signer *jobtoken.Signer, ghApp *ghapp.App) error {
-	// The artifact client refuses to talk to a server whose hostname fails its
-	// isGhes() test, so check it here rather than inside somebody's upload.
-	if err := artifacts.ValidateServerURL(cfg.PublicURL.String()); err != nil {
-		return err
-	}
-
 	arts, err := artifacts.New(artifacts.Options{
 		Store: st, Blob: a.blobs, Signer: signer,
 		BaseURL:              cfg.PublicURL.String(),
@@ -154,9 +150,17 @@ func (a *app) mount(ctx context.Context, cfg *config.Config, st store.Store, sig
 		return fmt.Errorf("oidc service: %w", err)
 	}
 
+	// Runner session tokens live for minutes and are renewed from a key the
+	// host holds, so a key generated per process costs a silent
+	// re-authentication on restart and saves an operator a secret to manage.
+	runnerSessionKey := make([]byte, 32)
+	if _, err := rand.Read(runnerSessionKey); err != nil {
+		return fmt.Errorf("generate runner session key: %w", err)
+	}
 	runnerSrv, err := runnerapi.New(runnerapi.Options{
 		Store: st, Scheduler: schedulerAdapter{a.sched}, Logs: a.logs,
-		Token:             cfg.RunnerToken,
+		SessionKey:        runnerSessionKey,
+		SessionTTL:        cfg.RunnerSessionTTL,
 		LeaseTTL:          cfg.LeaseTTL,
 		HeartbeatInterval: cfg.HeartbeatInterval,
 		Logger:            a.log,
@@ -166,18 +170,19 @@ func (a *app) mount(ctx context.Context, cfg *config.Config, st store.Store, sig
 	}
 
 	ing, err := ingest.New(ingest.Options{
-		Store:     st,
-		Files:     githubFiles{ghApp},
-		Starter:   a.sched,
-		NewEval:   newEvaluator,
-		ServerURL: cfg.PublicURL.String(),
-		Logger:    a.log,
+		Store:           st,
+		Files:           githubFiles{ghApp},
+		Starter:         a.sched,
+		NewEval:         newEvaluator,
+		GitHubServerURL: cfg.GitHubServerURL.String(),
+		GitHubAPIURL:    cfg.GitHubAPIURL.String(),
+		Logger:          a.log,
 	})
 	if err != nil {
 		return fmt.Errorf("ingest: %w", err)
 	}
 
-	hooks, err := newWebhookHandler(cfg.WebhookSecret, ing, a.sched, st, a.log)
+	hooks, err := newWebhookHandler(cfg.WebhookSecret, ing, a.sched, st, cfg.AllowedOwners, a.log)
 	if err != nil {
 		return fmt.Errorf("webhook handler: %w", err)
 	}
@@ -197,13 +202,30 @@ func (a *app) mount(ctx context.Context, cfg *config.Config, st store.Store, sig
 	// endpoints workflows legitimately call carry their own credentials: the
 	// webhook is HMAC-signed, the runner protocol takes the runner token, and
 	// artifacts, cache and OIDC take a per-job token.
+	sessionKey, err := sessionKey(cfg, a.log)
+	if err != nil {
+		return err
+	}
 	operator, err := operatorauth.New(operatorauth.Options{
-		Token:  cfg.OperatorToken,
-		Secure: cfg.PublicURL.Scheme == "https",
+		Token:      cfg.OperatorToken,
+		Admins:     cfg.AdminLogins,
+		SessionKey: sessionKey,
+		SessionTTL: cfg.SessionTTL,
+		Secure:     cfg.PublicURL.Scheme == "https",
+		Logger:     a.log,
+		OAuth: operatorauth.OAuthOptions{
+			ClientID:     cfg.OAuthClientID,
+			ClientSecret: cfg.OAuthClientSecret,
+			RedirectURL:  strings.TrimSuffix(cfg.PublicURL.String(), "/") + operatorauth.PathGitHubCallback,
+			AuthorizeURL: strings.TrimSuffix(cfg.GitHubServerURL.String(), "/") + "/login/oauth/authorize",
+			TokenURL:     strings.TrimSuffix(cfg.GitHubServerURL.String(), "/") + "/login/oauth/access_token",
+			APIBaseURL:   cfg.GitHubAPIURL.String(),
+		},
 	})
 	if err != nil {
 		return err
 	}
+	a.log.Info("dashboard sign-in is gated on GitHub", "admins", cfg.AdminLogins.String())
 	gated := operator.Middleware(apiSrv.Handler())
 
 	a.mux.Handle("/webhook", hooks)
@@ -226,6 +248,23 @@ func (a *app) mount(ctx context.Context, cfg *config.Config, st store.Store, sig
 	a.mux.Handle(cachesvc.PathDownload, caches.Handler())
 	a.mux.Handle("/", ui)
 	return nil
+}
+
+// sessionKey resolves the key that signs dashboard sessions. An unset secret
+// generates one, which is a real choice with a real consequence: every session
+// ends at restart. That is said out loud rather than left for an operator to
+// discover as an unexplained sign-out.
+func sessionKey(cfg *config.Config, log *slog.Logger) ([]byte, error) {
+	if cfg.SessionSecret != "" {
+		return []byte(cfg.SessionSecret), nil
+	}
+	key := make([]byte, 32)
+	if _, err := rand.Read(key); err != nil {
+		return nil, fmt.Errorf("generate session key: %w", err)
+	}
+	log.Warn("CIPLATFORM_SESSION_SECRET is unset, so a session key was generated; " +
+		"every dashboard session ends when this process restarts")
+	return key, nil
 }
 
 // Handler is the whole HTTP surface.
@@ -417,8 +456,13 @@ func (a *app) serviceEnv(runID, jobID int64, attempt int, token string) map[stri
 	base := a.cfg.PublicURL.String()
 	env := map[string]string{}
 
+	// Two different URLs, and this environment carries both. The artifact
+	// endpoints are this platform; GITHUB_SERVER_URL is where the repositories
+	// are. Passing base for both would put this host in front of every
+	// actions/checkout clone -- and this map is applied over the job's base
+	// environment, so it would win.
 	retentionDays := int(a.cfg.ArtifactRetention / (24 * time.Hour))
-	for k, v := range artifacts.RunnerEnv(base, base, runID, token, retentionDays) {
+	for k, v := range artifacts.RunnerEnv(base, a.cfg.GitHubServerURL.String(), runID, token, retentionDays) {
 		env[k] = v
 	}
 

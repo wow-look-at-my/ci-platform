@@ -1,6 +1,8 @@
 # Architecture
 
-Two binaries, both shipped as containers.
+Three binaries, all shipped as containers. The control plane and the runner
+agent are the platform; `runner-host` is the supervisor an operator installs on
+a machine, and the only one there that anything else has to keep updated.
 
 ```
 GitHub ──webhook──▶ control plane (cmd/ciplatform)
@@ -19,12 +21,13 @@ GitHub ──webhook──▶ control plane (cmd/ciplatform)
                       │  ├─ internal/api              REST + SSE
                       │  └─ internal/webui            embedded UI
                       │
-                      ▼ HTTP long-poll, mutually authenticated
-                   runner agent (cmd/ci-runner, one per host)
-                      └─ per job: fresh DinD container
-                           ├─ its own dockerd (isolated image cache + network)
-                           ├─ workspace volume
-                           └─ step executor
+                      ▼ HTTP long-poll; the runner signs in with its host's key
+                   runner-host (cmd/runner-host, one per machine)
+                      └─ N × runner agent (cmd/ci-runner, one container each)
+                           └─ per job: fresh DinD container
+                                ├─ its own dockerd (isolated image cache + network)
+                                ├─ workspace volume
+                                └─ step executor
 ```
 
 ## The layering rule
@@ -100,6 +103,9 @@ the runner process, and never written into the workspace. Fork PRs get no
 secrets and no OIDC, and need explicit approval — the same posture as GHA.
 
 That boundary runs both ways: because a job must be able to reach the control
-plane, the operator API and the UI sit behind `CIPLATFORM_OPERATOR_TOKEN`
-(`internal/operatorauth`) rather than relying on network position. Route by
-route, and what this does not defend against: [security.md](security.md).
+plane, the operator API and the UI sit behind `internal/operatorauth` rather
+than relying on network position — a GitHub sign-in for a person, a bearer
+token for a script. And because the App can be published, a webhook is gated on
+an account the operator named (`internal/installpolicy`) before any of this is
+reached. Route by route, and what this does not defend against:
+[security.md](security.md).

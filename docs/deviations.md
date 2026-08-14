@@ -44,7 +44,7 @@ in_progress forever.
 
 ## Artifacts and cache
 
-### `GITHUB_SERVER_URL` must end in `.ghe.com` or `.localhost`
+### `GITHUB_SERVER_URL` must be github.com, or end in `.ghe.com` or `.localhost`
 
 `actions/upload-artifact@v4` and `download-artifact@v4` call `isGhes()`
 (`@actions/artifact`, `src/internal/shared/config.ts`) and throw
@@ -52,9 +52,16 @@ in_progress forever.
 `GITHUB_SERVER_URL` hostname is `github.com`, ends with `.ghe.com`, or ends with
 `.localhost`. There is no override.
 
-So the platform's public URL must satisfy that test, and startup fails loudly if
-the configured URL would not. This is a constraint imposed by the client, not a
-choice; it is recorded here because it looks arbitrary from the outside.
+The trap is which URL that is. `GITHUB_SERVER_URL` is where the REPOSITORIES
+are — `actions/checkout` builds its clone URL from it — and for repositories on
+github.com it is `https://github.com`, which passes. The artifact endpoint is
+`ACTIONS_RESULTS_URL`, read by `getResultsServiceUrl()`, and carries no host
+restriction at all.
+
+So this platform's own public URL can be anything; `CIPLATFORM_GITHUB_SERVER_URL`
+is the one the rule applies to, and startup fails loudly if it would not pass.
+Conflating the two costs twice: it rejects a perfectly good deployment hostname,
+and it leaves the setting the rule actually governs unchecked.
 
 ### Artifacts speak Twirp-over-JSON, cache speaks the v1 REST API
 

@@ -12,14 +12,17 @@ import (
 
 func complete() map[string]string {
 	return map[string]string{
-		"CIPLATFORM_PUBLIC_URL":       "https://ci.example.localhost",
-		"CIPLATFORM_DATABASE_URL":     "/var/lib/ciplatform/ciplatform.db",
-		"CIPLATFORM_WEBHOOK_SECRET":   "s3cret",
-		"CIPLATFORM_APP_ID":           "12345",
-		"CIPLATFORM_APP_PRIVATE_KEY":  "-----BEGIN RSA PRIVATE KEY-----\n",
-		"CIPLATFORM_JOB_TOKEN_SECRET": "job-secret",
-		"CIPLATFORM_RUNNER_TOKEN":     "runner-secret",
-		"CIPLATFORM_OPERATOR_TOKEN":   "operator-secret-long-enough",
+		"CIPLATFORM_PUBLIC_URL":          "https://ci.example.localhost",
+		"CIPLATFORM_DATABASE_URL":        "/var/lib/ciplatform/ciplatform.db",
+		"CIPLATFORM_WEBHOOK_SECRET":      "s3cret",
+		"CIPLATFORM_APP_ID":              "12345",
+		"CIPLATFORM_APP_PRIVATE_KEY":     "-----BEGIN RSA PRIVATE KEY-----\n",
+		"CIPLATFORM_JOB_TOKEN_SECRET":    "job-secret",
+		"CIPLATFORM_OPERATOR_TOKEN":      "operator-secret-long-enough",
+		"CIPLATFORM_ALLOWED_OWNERS":      "PazerOP",
+		"CIPLATFORM_ADMIN_LOGINS":        "PazerOP",
+		"CIPLATFORM_OAUTH_CLIENT_ID":     "Iv1.0123456789abcdef",
+		"CIPLATFORM_OAUTH_CLIENT_SECRET": "oauth-client-secret",
 	}
 }
 
@@ -40,16 +43,16 @@ func TestLoad_Complete(t *testing.T) {
 	assert.True(t, c.RequireForkApproval, "a fork PR is a stranger's code, so the gate is on by default")
 }
 
-// The runner token is stored on every runner host and sent to the control
-// plane. Reusing the job-token signing key there would put the key that mints
-// every job's credentials on every runner.
-func TestLoad_RejectsAReusedSigningKey(t *testing.T) {
+// There is no runner credential to configure at all: a host proves itself with
+// a key it generated, so there is nothing here for an operator to reuse, leak,
+// or have to rotate across a fleet.
+func TestLoad_HasNoRunnerCredential(t *testing.T) {
 	m := complete()
-	m["CIPLATFORM_RUNNER_TOKEN"] = m["CIPLATFORM_JOB_TOKEN_SECRET"]
+	m["CIPLATFORM_RUNNER_TOKEN"] = "left-over-from-an-older-deployment"
 
-	_, err := LoadFrom(env(m))
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "must differ from CIPLATFORM_JOB_TOKEN_SECRET")
+	cfg, err := LoadFrom(env(m))
+	require.NoError(t, err, "a stale variable must not block startup")
+	assert.Equal(t, 10*time.Minute, cfg.RunnerSessionTTL)
 }
 
 // Every job container can route to the control plane, so the operator API's
@@ -59,7 +62,6 @@ func TestLoad_OperatorTokenConstraints(t *testing.T) {
 	tests := []struct {
 		name, val, want string
 	}{
-		{"reused runner token", "runner-secret", "must differ from CIPLATFORM_RUNNER_TOKEN"},
 		{"reused signing key", "job-secret", "must differ from CIPLATFORM_JOB_TOKEN_SECRET"},
 		{"too short", "hunter2", "at least 16 are required"},
 	}
@@ -87,8 +89,9 @@ func TestLoad_ReportsEveryMissingValueAtOnce(t *testing.T) {
 	msg := err.Error()
 	for _, name := range []string{
 		"CIPLATFORM_PUBLIC_URL", "CIPLATFORM_DATABASE_URL", "CIPLATFORM_WEBHOOK_SECRET",
-		"CIPLATFORM_APP_ID", "CIPLATFORM_JOB_TOKEN_SECRET", "CIPLATFORM_RUNNER_TOKEN",
-		"CIPLATFORM_OPERATOR_TOKEN",
+		"CIPLATFORM_APP_ID", "CIPLATFORM_JOB_TOKEN_SECRET",
+		"CIPLATFORM_OPERATOR_TOKEN", "CIPLATFORM_ALLOWED_OWNERS", "CIPLATFORM_ADMIN_LOGINS",
+		"CIPLATFORM_OAUTH_CLIENT_ID", "CIPLATFORM_OAUTH_CLIENT_SECRET",
 	} {
 		assert.Contains(t, msg, name)
 	}
@@ -96,24 +99,55 @@ func TestLoad_ReportsEveryMissingValueAtOnce(t *testing.T) {
 	assert.Contains(t, msg, "check runs cannot be written without App auth")
 }
 
-func TestLoad_RejectsAHostnameTheArtifactClientWillNotAccept(t *testing.T) {
+// The isGhes() rule governs where the repositories are, so an ordinary
+// deployment hostname is fine and a bad GITHUB_SERVER_URL is not.
+func TestLoad_AcceptsAnyPublicHostnameAndChecksTheGitHubServerURL(t *testing.T) {
 	m := complete()
-	m["CIPLATFORM_PUBLIC_URL"] = "https://ci.internal.example.com"
+	m["CIPLATFORM_PUBLIC_URL"] = "https://ci.pazer.build"
 
-	_, err := LoadFrom(env(m))
-	require.ErrorIs(t, err, ErrGHESHostname)
+	cfg, err := LoadFrom(env(m))
+	require.NoError(t, err)
+	assert.Equal(t, "https://ci.pazer.build", cfg.PublicURL.String())
+	assert.Equal(t, "https://github.com", cfg.GitHubServerURL.String(), "defaults to github.com")
+
+	m["CIPLATFORM_GITHUB_SERVER_URL"] = "https://ghe.internal.example.com"
+	_, err = LoadFrom(env(m))
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "GHESNotSupportedError")
+	assert.Contains(t, err.Error(), "CIPLATFORM_GITHUB_SERVER_URL")
 }
 
-func TestArtifactClientAccepts(t *testing.T) {
-	accepted := []string{"github.com", "GITHUB.COM", "foo.ghe.com", "ci.example.localhost", "localhost.localhost"}
-	for _, h := range accepted {
-		assert.True(t, ArtifactClientAccepts(h), h)
+// Anybody can install a published App, so the list of accounts served is a
+// decision the operator has to make out loud.
+func TestLoad_RequiresTheAccountAllowlists(t *testing.T) {
+	for _, name := range []string{"CIPLATFORM_ALLOWED_OWNERS", "CIPLATFORM_ADMIN_LOGINS"} {
+		m := complete()
+		delete(m, name)
+
+		_, err := LoadFrom(env(m))
+		require.Error(t, err, name)
+		assert.Contains(t, err.Error(), name)
 	}
-	rejected := []string{"ci.example.com", "localhost", "ghe.com.evil.net", "", "ci.internal"}
-	for _, h := range rejected {
-		assert.False(t, ArtifactClientAccepts(h), h)
-	}
+
+	m := complete()
+	m["CIPLATFORM_ALLOWED_OWNERS"] = "PazerOP/ci-platform"
+	_, err := LoadFrom(env(m))
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "not an account login")
+}
+
+func TestLoad_ParsesTheAccountAllowlists(t *testing.T) {
+	m := complete()
+	m["CIPLATFORM_ALLOWED_OWNERS"] = "PazerOP, wow-look-at-my"
+	m["CIPLATFORM_ADMIN_LOGINS"] = "PazerOP"
+
+	cfg, err := LoadFrom(env(m))
+	require.NoError(t, err)
+	assert.True(t, cfg.AllowedOwners.Contains("pazerop"))
+	assert.True(t, cfg.AllowedOwners.Contains("wow-look-at-my"))
+	assert.False(t, cfg.AllowedOwners.Contains("a-total-stranger"))
+	assert.True(t, cfg.AdminLogins.Contains("PazerOP"))
+	assert.False(t, cfg.AdminLogins.Contains("wow-look-at-my"), "serving an org is not administering it")
 }
 
 // A heartbeat slower than the lease means every running job loses its lease and

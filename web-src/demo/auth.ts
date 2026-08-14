@@ -4,8 +4,15 @@
 // (docs/security.md). A static snapshot has neither, so the demo reports an
 // open session rather than showing a credential prompt nothing would accept.
 
-export async function status(): Promise<boolean> {
-	return true;
+export interface AuthStatus {
+	authenticated: boolean;
+	login?: string;
+	method?: "github" | "token";
+	sign_in_url?: string;
+}
+
+export async function status(): Promise<AuthStatus> {
+	return { authenticated: true, login: "demo", method: "github" };
 }
 
 export async function login(_token: string): Promise<string | null> {

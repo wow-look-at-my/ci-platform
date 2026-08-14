@@ -161,14 +161,6 @@ func (h *Handler) putBlock(w http.ResponseWriter, r *http.Request, t Target) {
 	w.WriteHeader(http.StatusCreated)
 }
 
-// blockList is the body of a Put Block List request.
-type blockList struct {
-	XMLName     xml.Name `xml:"BlockList"`
-	Committed   []string `xml:"Committed"`
-	Uncommitted []string `xml:"Uncommitted"`
-	Latest      []string `xml:"Latest"`
-}
-
 // ordered returns the block ids in the order they appear in the document.
 // Azure orders the committed blob by document order across all three element
 // types, and the SDK writes Latest entries.

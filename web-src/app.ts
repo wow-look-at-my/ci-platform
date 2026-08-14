@@ -1,7 +1,7 @@
 // Entry point: chrome, routing table, and per-page teardown.
 
 import { api, onUnauthorized } from "./api.js";
-import { logout, renderSignIn, status } from "./auth.js";
+import { type AuthStatus, logout, renderSignIn, status } from "./auth.js";
 import { el, replace } from "./dom.js";
 import { notFound, route, start } from "./router.js";
 import { applyStoredTheme, themeToggle } from "./widgets.js";
@@ -34,7 +34,7 @@ function resetPage(): HTMLElement {
 const registerTimer = (id: number) => cleanups.push(() => clearInterval(id));
 const registerCleanup = (fn: () => void) => cleanups.push(fn);
 
-function chrome(): void {
+function chrome(auth: AuthStatus): void {
 	const nav = el("nav", { class: "nav" }, ...NAV.map((n) => el("a", { href: n.href }, n.label)));
 	const health = el("span", { class: "health", title: "control plane health" }, "…");
 	const signOut = el("button", {
@@ -44,12 +44,17 @@ function chrome(): void {
 			void logout().then(() => location.reload());
 		},
 	}, "Sign out");
+	// Who you are signed in as decides what a cancel is recorded against, so it
+	// belongs on screen rather than in a tooltip.
+	const who = el("span", { class: "whoami", title: auth.login ? `signed in as ${auth.login}` : "shared operator credential" },
+		auth.login || "operator");
 	const header = el("header", { class: "topbar" },
 		el("a", { class: "brand", href: "#/runs" }, "CI"),
 		nav,
 		el("div", { class: "spacer" }),
 		health,
 		themeToggle(),
+		who,
 		signOut,
 	);
 	document.body.insertBefore(header, document.body.firstChild);
@@ -101,13 +106,13 @@ function signIn(): void {
 
 applyStoredTheme();
 void status()
-	.then((authenticated) => {
-		if (!authenticated) {
+	.then((auth) => {
+		if (!auth.authenticated) {
 			signIn();
 			return;
 		}
 		onUnauthorized(signIn);
-		chrome();
+		chrome(auth);
 		routes();
 		start();
 	})

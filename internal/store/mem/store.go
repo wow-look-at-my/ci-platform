@@ -67,6 +67,7 @@ type Store struct {
 	queue      map[int64]*queueRow
 	dispatches map[dispatchKey]*dispatchRow
 	runners    map[string]*model.Runner
+	hosts      map[string]*model.RunnerHost
 	annots     map[int64][]model.Annotation
 	artifacts  map[int64]*model.Artifact
 	caches     map[int64]*model.CacheEntry
@@ -106,6 +107,7 @@ func New() *Store {
 		queue:      map[int64]*queueRow{},
 		dispatches: map[dispatchKey]*dispatchRow{},
 		runners:    map[string]*model.Runner{},
+		hosts:      map[string]*model.RunnerHost{},
 		annots:     map[int64][]model.Annotation{},
 		artifacts:  map[int64]*model.Artifact{},
 		caches:     map[int64]*model.CacheEntry{},

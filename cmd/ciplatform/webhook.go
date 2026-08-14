@@ -8,8 +8,10 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/wow-look-at-my/ci-platform/internal/ghaccounts"
 	"github.com/wow-look-at-my/ci-platform/internal/github/webhook"
 	"github.com/wow-look-at-my/ci-platform/internal/ingest"
+	"github.com/wow-look-at-my/ci-platform/internal/installpolicy"
 	"github.com/wow-look-at-my/ci-platform/internal/scheduler"
 	"github.com/wow-look-at-my/ci-platform/internal/store"
 )
@@ -23,8 +25,12 @@ type sink struct {
 	log   *slog.Logger
 }
 
-func newWebhookHandler(secret string, ing *ingest.Ingester, sched *scheduler.Scheduler, st store.Store, log *slog.Logger) (http.Handler, error) {
-	return webhook.NewHandler(secret, &sink{ing: ing, sched: sched, store: st, log: log}, webhook.WithLogger(log))
+// newWebhookHandler puts the account gate in front of the sink, so a delivery
+// from an account this instance does not serve never reaches ingest or the
+// scheduler.
+func newWebhookHandler(secret string, ing *ingest.Ingester, sched *scheduler.Scheduler, st store.Store, owners *ghaccounts.Set, log *slog.Logger) (http.Handler, error) {
+	routes := &sink{ing: ing, sched: sched, store: st, log: log}
+	return webhook.NewHandler(secret, installpolicy.NewGuard(routes, owners, log), webhook.WithLogger(log))
 }
 
 func (s *sink) Push(ctx context.Context, e *webhook.PushEvent) error {

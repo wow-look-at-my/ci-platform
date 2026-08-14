@@ -40,6 +40,9 @@ func seedFleet(ctx context.Context, st store.Store) error {
 			return err
 		}
 	}
+	if err := seedRunnerHosts(ctx, st); err != nil {
+		return err
+	}
 
 	// Queued work nobody can take: the gpu label has no online runner, which is
 	// what turns "the job just sat there" into a named alarm.
@@ -79,6 +82,55 @@ func seedFleet(ctx context.Context, st store.Store) error {
 			At: at, Depth: depth, DepthByLabel: map[string]int{"linux": depth, "gpu": 1},
 			Busy: 1 + i%2, Idle: 2,
 		}); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// seedRunnerHosts shows the approval flow in the state that matters: one
+// machine waiting for somebody to look at its fingerprint. A demo with only
+// approved hosts would hide the one thing an operator has to do.
+func seedRunnerHosts(ctx context.Context, st store.Store) error {
+	hosts := []struct {
+		host    *model.RunnerHost
+		approve bool
+	}{
+		{&model.RunnerHost{
+			Fingerprint: "SHA256:0pQ8kZ2mB1nYcR7vX4tLwF6sJ3hD9gA5eN0uT8iK2yM", PublicKey: "ZGVtby1rZXktb25l",
+			Name: "build-01", OS: "linux", Arch: "amd64", Version: "0.4.1",
+			Labels:       []string{"self-hosted", "linux", "x64"},
+			EnrolledFrom: "192.168.1.84", EnrolledAt: ago(31 * 24 * time.Hour),
+			LastSeenAt: ago(4 * time.Second),
+		}, true},
+		{&model.RunnerHost{
+			Fingerprint: "SHA256:7bV3xQ9tR2mE5nK8wY1uJ4hG6dS0aZ3cF7pL9iX2oB4", PublicKey: "ZGVtby1rZXktdHdv",
+			Name: "arm-01", OS: "linux", Arch: "arm64", Version: "0.4.1",
+			Labels:       []string{"self-hosted", "linux", "arm64"},
+			EnrolledFrom: "192.168.1.91", EnrolledAt: ago(9 * 24 * time.Hour),
+			LastSeenAt: ago(6 * time.Second),
+		}, true},
+		{&model.RunnerHost{
+			Fingerprint: "SHA256:4mN8jH2bW7xK1qF5tZ9cR3vY6uD0gS4aE8pL2iO7nX1", PublicKey: "ZGVtby1rZXktdGhyZWU=",
+			Name: "gpu-01", OS: "linux", Arch: "amd64", Version: "0.4.1",
+			Labels:       []string{"self-hosted", "linux", "gpu"},
+			EnrolledFrom: "192.168.1.97", EnrolledAt: ago(11 * time.Minute),
+		}, false},
+	}
+	for _, h := range hosts {
+		if _, err := st.EnrolRunnerHost(ctx, h.host); err != nil {
+			return err
+		}
+		if !h.approve {
+			// A host nobody has approved has never been seen, because being
+			// seen is something only an approved host gets to do.
+			continue
+		}
+		if _, err := st.SetRunnerHostState(ctx, h.host.Fingerprint,
+			model.RunnerHostApproved, "PazerOP", "", h.host.EnrolledAt); err != nil {
+			return err
+		}
+		if err := st.TouchRunnerHost(ctx, h.host.Fingerprint, h.host.LastSeenAt); err != nil {
 			return err
 		}
 	}
