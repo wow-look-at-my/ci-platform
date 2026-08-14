@@ -61,7 +61,14 @@ func (s *Server) enrol(w http.ResponseWriter, r *http.Request) {
 	// is actually approved, and clearing it is the same action the operator was
 	// going to take anyway.
 	if err := s.checkPendingCapacity(r.Context(), fingerprint); err != nil {
-		writeErr(w, http.StatusTooManyRequests, err.Error())
+		// A full queue and a broken store are different problems, and answering
+		// 429 for the second would have an operator hunting for hosts to
+		// approve that do not exist.
+		status := http.StatusInternalServerError
+		if errors.Is(err, errPendingFull) {
+			status = http.StatusTooManyRequests
+		}
+		writeErr(w, status, err.Error())
 		return
 	}
 
@@ -87,6 +94,10 @@ func (s *Server) enrol(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// errPendingFull marks a refusal the operator can clear, as opposed to one
+// that means the store is broken.
+var errPendingFull = errors.New("too many hosts are waiting for approval")
+
 // checkPendingCapacity refuses a NEW fingerprint once too many are already
 // waiting. A host that has enrolled before is always let through, so a runner
 // restarting is never turned away by somebody else's flood.
@@ -96,7 +107,7 @@ func (s *Server) checkPendingCapacity(ctx context.Context, fingerprint string) e
 	}
 	hosts, err := s.opts.Store.ListRunnerHosts(ctx)
 	if err != nil {
-		return fmt.Errorf("could not check how many hosts are pending: %v", err)
+		return fmt.Errorf("could not check how many hosts are pending: %w", err)
 	}
 	pending := 0
 	for _, h := range hosts {
@@ -109,8 +120,8 @@ func (s *Server) checkPendingCapacity(ctx context.Context, fingerprint string) e
 	}
 	s.log.Warn("refused an enrolment because too many hosts are already waiting for approval",
 		"pending", pending, "limit", s.opts.MaxPendingHosts, "fingerprint", fingerprint)
-	return fmt.Errorf("%d hosts are already waiting for approval, which is the limit; "+
-		"approve or revoke the pending ones before enrolling another", pending)
+	return fmt.Errorf("%w: %d, which is the limit; approve or revoke the pending ones "+
+		"before enrolling another", errPendingFull, pending)
 }
 
 func enrolMessage(h *model.RunnerHost) string {
