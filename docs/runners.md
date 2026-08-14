@@ -142,6 +142,26 @@ resolver, or in `/etc/hosts` on the runner machines. The symptom otherwise is
 narrow and obvious: jobs run, and `actions/upload-artifact` cannot reach the
 server.
 
+## Sandboxes: Docker only, today
+
+Every job runs in a fresh Docker-in-Docker container: its own dockerd, its own
+network, its own workspace, nothing shared with the next job but a per-runner
+image cache. `runner-host` passes the sandbox image through
+(`CI_RUNNER_SANDBOX_IMAGE`) and otherwise stays out of it.
+
+**There is no bwrap or seatbelt backend, and this does not pretend to have
+one.** Adding either is not a setting; it is a second execution model. A
+bubblewrap sandbox has no image to pull, no dockerd to talk to, and no
+`container:`/`services:` support, so the parts of the workflow surface that
+assume a container would have to either work differently or be refused by name.
+That is a design decision with real consequences for what a workflow can say,
+and it belongs to whoever is going to live with it rather than being picked
+quietly here.
+
+If you want one, the shape is a `sandbox.Backend` alongside the Docker one, with
+`runs-on` or a runner label choosing between them, and `docs/compatibility.md`
+gaining a column for what each backend does not support.
+
 ## Running a single runner without the supervisor
 
 `ci-runner run` works on its own, and generates and enrols its own key exactly
