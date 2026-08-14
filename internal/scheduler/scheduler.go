@@ -50,7 +50,10 @@ type Options struct {
 	// RunTimeout bounds a whole run.
 	RunTimeout time.Duration
 
-	// ServerURL is the control plane URL handed to runners.
+	// ServerURL is where the repositories are, handed to a job as
+	// GITHUB_SERVER_URL. It is NOT this platform's address: a job reads it to
+	// build a clone URL or a commit link, and the endpoints a job calls back on
+	// travel separately in ServiceEnv.
 	ServerURL string
 	// RequireForkApproval holds a fork PR's jobs until a maintainer approves.
 	RequireForkApproval bool

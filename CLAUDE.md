@@ -41,8 +41,12 @@ conclusion and a sentence explaining itself. Read `docs/incidents.md` first -- t
   talk to.
 - `internal/api`, `internal/webui`, `web-src`, `cmd/buildweb` -- REST + SSE, and the embedded UI.
 - `internal/demoseed`, `cmd/demofixtures`, `web-src/demo` -- the demo site's data, captured from the real API rather than written by hand.
-- `internal/operatorauth` -- the gate in front of the REST API and the UI. Job containers can reach this listener, so it is credentialed.
+- `internal/operatorauth` -- the gate in front of the REST API and the UI: GitHub sign-in for people, a bearer token for scripts.
+- `internal/ghaccounts` -- a named set of GitHub logins, used for both account allowlists so they cannot drift apart.
+- `internal/installpolicy` -- the account gate in front of every webhook handler. A published App can be installed by anyone; this is what makes that safe.
+- `internal/enrol`, `internal/signedvalue` -- runner host keys, fingerprints and signed requests; the HMAC envelope both session types share.
 - `internal/runner`, `cmd/ci-runner` -- the agent, the DinD sandbox, the step executor.
+- `internal/runnerhost`, `cmd/runner-host` -- supervises a pool of runners: fresh storage each, current image, drained before replacement.
 - `internal/store/storetest` -- one conformance suite both stores run, so "works in memory, breaks on disk" is a test failure. It needs no
   service container, so it always runs.
 - `test/fakes`, `test/chaos`, `test/e2e`, `test/conformance` -- test doubles and the suites that hold the non-negotiables up.
@@ -53,7 +57,8 @@ conclusion and a sentence explaining itself. Read `docs/incidents.md` first -- t
 - `docs/architecture.md` -- the two binaries, the request paths, the layering rule.
 - `docs/compatibility.md` -- the GHA compatibility matrix: supported, unsupported, deviating.
 - `docs/deviations.md` -- every deliberate difference from GHA, and the client-imposed constraints we verified rather than assumed.
-- `docs/security.md` -- what credential guards each route, and the boundaries this deliberately does not hold.
+- `docs/security.md` -- what credential guards each route, what a stranger's App install gets, and the boundaries this deliberately does not hold.
+- `docs/runners.md` -- runner identity by key and approval, and what runner-host guarantees about a pool.
 - `docs/format-trajectory.md` -- why the parser targets an IR and what a native frontend would fix.
 - `docs/storage.md` -- the SQLite store: why one file is enough, the load-bearing pragmas, and how the schema changes.
 - `docs/demo.md` -- the published demo site: a snapshot captured from the real API, and the two modules the demo build swaps.
@@ -64,6 +69,8 @@ conclusion and a sentence explaining itself. Read `docs/incidents.md` first -- t
 - Never name a job, workflow, or check run `all-builds` -- the org app owns that context and a job wearing the name only shadows it.
 - Never write a "not configured yet" mode that idles green. Missing config fails loudly at startup, naming the field.
 - `web/` is the committed esbuild output that `go:embed` ships; `go run ./cmd/buildweb -check` fails CI if it is stale.
-- Every push builds and publishes both images -- `oci.pazer.build/ci-platform` and `.../ci-platform/runner` -- so a Dockerfile that stops building is
-  a red build, not a surprise at deploy time. The runner is namespaced UNDER the repo's project because an Actions OIDC token may create only that
-  project and children of it. `compose.yaml` names both, and `--build` still builds the checkout.
+- Every push builds and publishes all three images -- `oci.pazer.build/ci-platform` and `.../ci-platform/{runner,runner-host}` -- so a Dockerfile that
+  stops building is a red build, not a surprise at deploy time. The runner images are namespaced UNDER the repo's project because an Actions OIDC token
+  may create only that project and children of it. `compose.yaml` names them, and `--build` still builds the checkout.
+- Anybody can install a published App, so a webhook handler is never the gate: `installpolicy` refuses an account the operator did not name, in front
+  of all seven of them.

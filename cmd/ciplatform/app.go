@@ -456,8 +456,13 @@ func (a *app) serviceEnv(runID, jobID int64, attempt int, token string) map[stri
 	base := a.cfg.PublicURL.String()
 	env := map[string]string{}
 
+	// Two different URLs, and this environment carries both. The artifact
+	// endpoints are this platform; GITHUB_SERVER_URL is where the repositories
+	// are. Passing base for both would put this host in front of every
+	// actions/checkout clone -- and this map is applied over the job's base
+	// environment, so it would win.
 	retentionDays := int(a.cfg.ArtifactRetention / (24 * time.Hour))
-	for k, v := range artifacts.RunnerEnv(base, base, runID, token, retentionDays) {
+	for k, v := range artifacts.RunnerEnv(base, a.cfg.GitHubServerURL.String(), runID, token, retentionDays) {
 		env[k] = v
 	}
 

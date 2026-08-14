@@ -114,7 +114,7 @@ func (s *Scheduler) dispatch(ctx context.Context, runnerID string, j *model.Job,
 // any stranger read them. That is enforced here rather than trusted to callers.
 func (s *Scheduler) buildAssignment(ctx context.Context, run *model.Run, repo *model.Repo, p *plan.Plan, pj *plan.PlannedJob, j *model.Job, needs needsState) (*protocol.Assignment, error) {
 	if s.opts.ServerURL == "" {
-		return nil, errors.New("scheduler: no server URL configured, so a runner would have nowhere to report to")
+		return nil, errors.New("scheduler: no GitHub server URL configured, so a job could not build a clone URL")
 	}
 	token, err := s.opts.MintJobToken(run.ID, j.ID, j.Attempt)
 	if err != nil {
