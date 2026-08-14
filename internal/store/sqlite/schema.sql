@@ -217,6 +217,31 @@ CREATE TABLE runners (
     last_heartbeat TEXT NOT NULL
 );
 
+-- A machine allowed to run runners. The key is the identity; everything the
+-- host says about itself is display-only until an operator approves the
+-- fingerprint. Revoked rows are kept, so a revoked key cannot re-enrol as a
+-- fresh pending host.
+CREATE TABLE runner_hosts (
+    fingerprint   TEXT PRIMARY KEY,
+    public_key    TEXT NOT NULL,
+    state         TEXT NOT NULL
+                  CHECK (state IN ('pending', 'approved', 'revoked')),
+    name          TEXT NOT NULL DEFAULT '',
+    os            TEXT NOT NULL DEFAULT '',
+    arch          TEXT NOT NULL DEFAULT '',
+    version       TEXT NOT NULL DEFAULT '',
+    labels        TEXT NOT NULL DEFAULT '[]'
+                  CHECK (json_type(labels) = 'array'),
+    enrolled_from TEXT NOT NULL DEFAULT '',
+    enrolled_at   TEXT NOT NULL,
+    approved_by   TEXT NOT NULL DEFAULT '',
+    approved_at   TEXT NOT NULL DEFAULT '',
+    last_seen_at  TEXT NOT NULL DEFAULT '',
+    note          TEXT NOT NULL DEFAULT ''
+);
+
+CREATE INDEX runner_hosts_state_idx ON runner_hosts (state);
+
 CREATE INDEX runners_state_idx ON runners (state);
 CREATE INDEX runners_heartbeat_idx ON runners (last_heartbeat) WHERE state <> 'offline';
 

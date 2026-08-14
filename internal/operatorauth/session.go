@@ -1,14 +1,13 @@
 package operatorauth
 
 import (
-	"crypto/hmac"
-	"crypto/sha256"
-	"encoding/base64"
 	"errors"
 	"fmt"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/wow-look-at-my/ci-platform/internal/signedvalue"
 )
 
 // Method is how somebody proved they are an operator.
@@ -51,40 +50,23 @@ func (i Identity) Actor() string {
 // session at once. Removing somebody from the admin list stops them signing in
 // again but does not cut a session already open.
 type signer struct {
-	key []byte
+	key signedvalue.Key
 	ttl time.Duration
 	now func() time.Time
 }
 
-// errNoSession distinguishes "no cookie" from "a cookie that does not verify".
-var errNoSession = errors.New("operatorauth: no session")
-
 func (s *signer) mint(login string, method Method) (string, Identity) {
 	id := Identity{Login: login, Method: method, Expires: s.now().Add(s.ttl)}
 	payload := fmt.Sprintf("v1|%s|%s|%d", method, login, id.Expires.Unix())
-	encoded := base64.RawURLEncoding.EncodeToString([]byte(payload))
-	return encoded + "." + s.sign(encoded), id
-}
-
-func (s *signer) sign(encoded string) string {
-	mac := hmac.New(sha256.New, s.key)
-	mac.Write([]byte(encoded))
-	return base64.RawURLEncoding.EncodeToString(mac.Sum(nil))
+	return s.key.Sign([]byte(payload)), id
 }
 
 // parse verifies the signature before it reads anything out of the payload, so
 // no field of a forged cookie is ever acted on.
 func (s *signer) parse(raw string) (Identity, error) {
-	encoded, sig, ok := strings.Cut(raw, ".")
-	if !ok {
-		return Identity{}, errNoSession
-	}
-	if !hmac.Equal([]byte(sig), []byte(s.sign(encoded))) {
-		return Identity{}, errors.New("operatorauth: session signature does not verify")
-	}
-	payload, err := base64.RawURLEncoding.DecodeString(encoded)
+	payload, err := s.key.Open(raw)
 	if err != nil {
-		return Identity{}, fmt.Errorf("operatorauth: session payload is not base64: %w", err)
+		return Identity{}, err
 	}
 	parts := strings.Split(string(payload), "|")
 	if len(parts) != 4 || parts[0] != "v1" {

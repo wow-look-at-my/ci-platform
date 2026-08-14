@@ -2,6 +2,7 @@ package model
 
 import (
 	"encoding/json"
+	"strings"
 	"time"
 )
 
@@ -239,6 +240,68 @@ type Runner struct {
 
 // HeartbeatAge is how stale this runner's liveness signal is.
 func (r Runner) HeartbeatAge(now time.Time) time.Duration { return now.Sub(r.LastHeartbeat) }
+
+// RunnerHostState is where a machine sits in the approval flow.
+type RunnerHostState string
+
+// A host starts pending and stays inert there. Revoked is kept rather than
+// deleted so the same key cannot quietly re-enrol as a new pending host.
+const (
+	RunnerHostPending  RunnerHostState = "pending"
+	RunnerHostApproved RunnerHostState = "approved"
+	RunnerHostRevoked  RunnerHostState = "revoked"
+)
+
+// RunnerHost is one machine that runs runners, identified by a key it generated
+// itself and an operator approved by fingerprint.
+type RunnerHost struct {
+	// Fingerprint is SHA256:<base64> over the public key, the form ssh prints.
+	Fingerprint string `json:"fingerprint"`
+	// PublicKey is the Ed25519 public key, base64.
+	PublicKey string          `json:"public_key"`
+	State     RunnerHostState `json:"state"`
+	// Name, OS, Arch and Version are what the host says about itself. They are
+	// display only: nothing is authorised on their basis, because a machine
+	// that has not been approved yet can say anything.
+	Name    string `json:"name"`
+	OS      string `json:"os,omitempty"`
+	Arch    string `json:"arch,omitempty"`
+	Version string `json:"version,omitempty"`
+	// Labels are the job labels this host may serve. They start as what the
+	// host asked for and are the operator's to change; a runner registering
+	// under this host cannot claim a label outside them.
+	Labels []string `json:"labels"`
+	// EnrolledFrom is the address the enrolment arrived from, so an operator
+	// approving a fingerprint can see whether it came from where they expect.
+	EnrolledFrom string    `json:"enrolled_from,omitempty"`
+	EnrolledAt   time.Time `json:"enrolled_at"`
+	// ApprovedBy is the account that approved it. Approval is the one action
+	// here that hands out access, so it is the one that must name a person.
+	ApprovedBy string    `json:"approved_by,omitempty"`
+	ApprovedAt time.Time `json:"approved_at,omitzero"`
+	LastSeenAt time.Time `json:"last_seen_at,omitzero"`
+	// Note is the operator's own words: which machine this is, or why it was
+	// revoked.
+	Note string `json:"note,omitempty"`
+}
+
+// Approved reports whether this host may hold a session.
+func (h RunnerHost) Approved() bool { return h.State == RunnerHostApproved }
+
+// AllowsLabel reports whether a runner on this host may claim a label. An
+// approved host with no labels recorded serves anything, which is what a
+// single-host deployment wants and what enrolment defaults to.
+func (h RunnerHost) AllowsLabel(label string) bool {
+	if len(h.Labels) == 0 {
+		return true
+	}
+	for _, l := range h.Labels {
+		if strings.EqualFold(l, label) {
+			return true
+		}
+	}
+	return false
+}
 
 // LogLine is one line of job output. Lines are append-only and never rewritten,
 // including across retries: every attempt keeps its own log.

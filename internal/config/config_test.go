@@ -18,7 +18,6 @@ func complete() map[string]string {
 		"CIPLATFORM_APP_ID":              "12345",
 		"CIPLATFORM_APP_PRIVATE_KEY":     "-----BEGIN RSA PRIVATE KEY-----\n",
 		"CIPLATFORM_JOB_TOKEN_SECRET":    "job-secret",
-		"CIPLATFORM_RUNNER_TOKEN":        "runner-secret",
 		"CIPLATFORM_OPERATOR_TOKEN":      "operator-secret-long-enough",
 		"CIPLATFORM_ALLOWED_OWNERS":      "PazerOP",
 		"CIPLATFORM_ADMIN_LOGINS":        "PazerOP",
@@ -44,16 +43,16 @@ func TestLoad_Complete(t *testing.T) {
 	assert.True(t, c.RequireForkApproval, "a fork PR is a stranger's code, so the gate is on by default")
 }
 
-// The runner token is stored on every runner host and sent to the control
-// plane. Reusing the job-token signing key there would put the key that mints
-// every job's credentials on every runner.
-func TestLoad_RejectsAReusedSigningKey(t *testing.T) {
+// There is no runner credential to configure at all: a host proves itself with
+// a key it generated, so there is nothing here for an operator to reuse, leak,
+// or have to rotate across a fleet.
+func TestLoad_HasNoRunnerCredential(t *testing.T) {
 	m := complete()
-	m["CIPLATFORM_RUNNER_TOKEN"] = m["CIPLATFORM_JOB_TOKEN_SECRET"]
+	m["CIPLATFORM_RUNNER_TOKEN"] = "left-over-from-an-older-deployment"
 
-	_, err := LoadFrom(env(m))
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "must differ from CIPLATFORM_JOB_TOKEN_SECRET")
+	cfg, err := LoadFrom(env(m))
+	require.NoError(t, err, "a stale variable must not block startup")
+	assert.Equal(t, 10*time.Minute, cfg.RunnerSessionTTL)
 }
 
 // Every job container can route to the control plane, so the operator API's
@@ -63,7 +62,6 @@ func TestLoad_OperatorTokenConstraints(t *testing.T) {
 	tests := []struct {
 		name, val, want string
 	}{
-		{"reused runner token", "runner-secret", "must differ from CIPLATFORM_RUNNER_TOKEN"},
 		{"reused signing key", "job-secret", "must differ from CIPLATFORM_JOB_TOKEN_SECRET"},
 		{"too short", "hunter2", "at least 16 are required"},
 	}
@@ -91,7 +89,7 @@ func TestLoad_ReportsEveryMissingValueAtOnce(t *testing.T) {
 	msg := err.Error()
 	for _, name := range []string{
 		"CIPLATFORM_PUBLIC_URL", "CIPLATFORM_DATABASE_URL", "CIPLATFORM_WEBHOOK_SECRET",
-		"CIPLATFORM_APP_ID", "CIPLATFORM_JOB_TOKEN_SECRET", "CIPLATFORM_RUNNER_TOKEN",
+		"CIPLATFORM_APP_ID", "CIPLATFORM_JOB_TOKEN_SECRET",
 		"CIPLATFORM_OPERATOR_TOKEN", "CIPLATFORM_ALLOWED_OWNERS", "CIPLATFORM_ADMIN_LOGINS",
 		"CIPLATFORM_OAUTH_CLIENT_ID", "CIPLATFORM_OAUTH_CLIENT_SECRET",
 	} {

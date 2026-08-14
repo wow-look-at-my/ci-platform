@@ -19,7 +19,10 @@ import (
 	"github.com/wow-look-at-my/ci-platform/internal/store/mem"
 )
 
-const testToken = "runner-token"
+const (
+	testSessionKey  = "runner-session-signing-key"
+	testFingerprint = "SHA256:test-host-fingerprint"
+)
 
 type fakeScheduler struct {
 	assignment *protocol.Assignment
@@ -76,6 +79,9 @@ type harness struct {
 	logs  *fakeLogs
 	st    store.Store
 	http  *httptest.Server
+	// token is a session token for an approved host, which is what every
+	// authenticated call on this surface now carries.
+	token string
 }
 
 func newHarness(t *testing.T) *harness {
@@ -84,14 +90,30 @@ func newHarness(t *testing.T) *harness {
 	sched := &fakeScheduler{}
 	logs := &fakeLogs{}
 	srv, err := New(Options{
-		Store: st, Scheduler: sched, Logs: logs, Token: testToken,
+		Store: st, Scheduler: sched, Logs: logs, SessionKey: []byte(testSessionKey),
 		LeaseTTL: time.Minute, HeartbeatInterval: 5 * time.Second,
 		AcquireWait: 200 * time.Millisecond, PollInterval: 20 * time.Millisecond,
 	})
 	require.NoError(t, err)
 	h := &harness{srv: srv, sched: sched, logs: logs, st: st, http: httptest.NewServer(srv)}
 	t.Cleanup(h.http.Close)
+	h.token = h.approvedToken(t, testFingerprint)
 	return h
+}
+
+// approvedToken puts an approved host in the store and mints the token its
+// runners would carry.
+func (h *harness) approvedToken(t *testing.T, fingerprint string) string {
+	t.Helper()
+	_, err := h.st.EnrolRunnerHost(t.Context(), &model.RunnerHost{
+		Fingerprint: fingerprint, PublicKey: "cHVibGljLWtleQ==", Name: "test-host",
+		EnrolledAt: time.Now().UTC(),
+	})
+	require.NoError(t, err)
+	_, err = h.st.SetRunnerHostState(t.Context(), fingerprint, model.RunnerHostApproved, "PazerOP", "", time.Now().UTC())
+	require.NoError(t, err)
+	token, _ := h.srv.sessions.Mint(fingerprint, "runner-1")
+	return token
 }
 
 func (h *harness) post(t *testing.T, path string, body any, out any) int {
@@ -100,7 +122,7 @@ func (h *harness) post(t *testing.T, path string, body any, out any) int {
 	require.NoError(t, err)
 	req, err := http.NewRequest(http.MethodPost, h.http.URL+path, bytes.NewReader(b))
 	require.NoError(t, err)
-	req.Header.Set("Authorization", "Bearer "+testToken)
+	req.Header.Set("Authorization", "Bearer "+h.token)
 	resp, err := http.DefaultClient.Do(req)
 	require.NoError(t, err)
 	defer resp.Body.Close()
@@ -123,11 +145,11 @@ func TestNew_RequiresItsDependencies(t *testing.T) {
 	require.ErrorContains(t, err, "Logs is required")
 
 	_, err = New(Options{Store: mem.New(), Scheduler: &fakeScheduler{}, Logs: &fakeLogs{}})
-	require.ErrorContains(t, err, "Token is required")
+	require.ErrorContains(t, err, "SessionKey is required")
 
 	// A heartbeat slower than the lease requeues every running job forever.
 	_, err = New(Options{
-		Store: mem.New(), Scheduler: &fakeScheduler{}, Logs: &fakeLogs{}, Token: "t",
+		Store: mem.New(), Scheduler: &fakeScheduler{}, Logs: &fakeLogs{}, SessionKey: []byte("k"),
 		LeaseTTL: 10 * time.Second, HeartbeatInterval: 30 * time.Second,
 	})
 	require.ErrorContains(t, err, "must be shorter than lease TTL")
@@ -436,7 +458,7 @@ func TestAnnotate(t *testing.T) {
 func TestMalformedBodyIsRejected(t *testing.T) {
 	h := newHarness(t)
 	req, _ := http.NewRequest(http.MethodPost, h.http.URL+protocol.PathRegister, bytes.NewReader([]byte(`{not json`)))
-	req.Header.Set("Authorization", "Bearer "+testToken)
+	req.Header.Set("Authorization", "Bearer "+h.token)
 	resp, err := http.DefaultClient.Do(req)
 	require.NoError(t, err)
 	defer resp.Body.Close()

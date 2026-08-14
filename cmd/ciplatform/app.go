@@ -150,9 +150,17 @@ func (a *app) mount(ctx context.Context, cfg *config.Config, st store.Store, sig
 		return fmt.Errorf("oidc service: %w", err)
 	}
 
+	// Runner session tokens live for minutes and are renewed from a key the
+	// host holds, so a key generated per process costs a silent
+	// re-authentication on restart and saves an operator a secret to manage.
+	runnerSessionKey := make([]byte, 32)
+	if _, err := rand.Read(runnerSessionKey); err != nil {
+		return fmt.Errorf("generate runner session key: %w", err)
+	}
 	runnerSrv, err := runnerapi.New(runnerapi.Options{
 		Store: st, Scheduler: schedulerAdapter{a.sched}, Logs: a.logs,
-		Token:             cfg.RunnerToken,
+		SessionKey:        runnerSessionKey,
+		SessionTTL:        cfg.RunnerSessionTTL,
 		LeaseTTL:          cfg.LeaseTTL,
 		HeartbeatInterval: cfg.HeartbeatInterval,
 		Logger:            a.log,

@@ -61,9 +61,11 @@ func (e *Error) Class() model.FailureClass { return e.Decision.Class }
 type ClientConfig struct {
 	// BaseURL is the control plane root, e.g. https://ci.example.com.
 	BaseURL string
-	// Token authenticates the runner.
-	Token string
-	HTTP  *http.Client
+	// Tokens supplies the bearer token for each call. A runner holds a key
+	// rather than a password, so the token it sends is short-lived and is
+	// re-signed as needed.
+	Tokens TokenSource
+	HTTP   *http.Client
 	// MaxAttempts bounds retries per call. Zero means the default.
 	MaxAttempts int
 	Backoff     time.Duration
@@ -84,8 +86,8 @@ func NewClient(cfg ClientConfig) (*Client, error) {
 	if strings.TrimSpace(cfg.BaseURL) == "" {
 		return nil, errors.New("agent: control plane URL is required")
 	}
-	if strings.TrimSpace(cfg.Token) == "" {
-		return nil, errors.New("agent: runner token is required")
+	if cfg.Tokens == nil {
+		return nil, errors.New("agent: a token source is required; there is no unauthenticated mode")
 	}
 	cfg.BaseURL = strings.TrimSuffix(cfg.BaseURL, "/")
 	if cfg.HTTP == nil {
@@ -165,9 +167,9 @@ func (c *Client) Release(ctx context.Context, req protocol.ReleaseRequest) error
 	return c.post(ctx, protocol.PathRelease, req, nil)
 }
 
-// post sends one request, retrying network failures and 5xx/429 with
-// exponential backoff. A 4xx is not retried: the control plane rejected the
-// request and repeating it cannot help.
+// post sends one request, retrying network failures, 5xx, 429, and an expired
+// session with exponential backoff. Any other 4xx is not retried: the control
+// plane rejected the request and repeating it cannot help.
 func (c *Client) post(ctx context.Context, path string, body, out any) error {
 	payload, err := json.Marshal(body)
 	if err != nil {
@@ -190,7 +192,10 @@ func (c *Client) post(ctx context.Context, path string, body, out any) error {
 		case err == nil:
 			lastStatus = status
 			lastErr = fmt.Errorf("HTTP %d: %s", status, strings.TrimSpace(string(respBody)))
-			if status/100 != 5 && status != http.StatusTooManyRequests {
+			// A 401 is retried because once() has just dropped the token that
+			// earned it, so the next attempt carries a freshly signed one. Any
+			// other 4xx is the control plane rejecting the request itself.
+			if status/100 != 5 && status != http.StatusTooManyRequests && status != http.StatusUnauthorized {
 				return &Error{Path: path, Status: status, Attempts: attempt, Err: lastErr,
 					Decision: c.classifyErr(path, status, lastErr)}
 			}
@@ -215,12 +220,16 @@ func (c *Client) post(ctx context.Context, path string, body, out any) error {
 }
 
 func (c *Client) once(ctx context.Context, path string, payload []byte) (int, []byte, error) {
+	token, err := c.cfg.Tokens.Token(ctx)
+	if err != nil {
+		return 0, nil, err
+	}
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.cfg.BaseURL+path, bytes.NewReader(payload))
 	if err != nil {
 		return 0, nil, err
 	}
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", "Bearer "+c.cfg.Token)
+	req.Header.Set("Authorization", "Bearer "+token)
 	req.Header.Set("X-CI-Api-Version", protocol.APIVersion)
 
 	resp, err := c.cfg.HTTP.Do(req)
@@ -231,6 +240,12 @@ func (c *Client) once(ctx context.Context, path string, payload []byte) (int, []
 	body, err := io.ReadAll(io.LimitReader(resp.Body, 4<<20))
 	if err != nil {
 		return resp.StatusCode, nil, err
+	}
+	// A rejected token is the expected outcome of a control-plane restart,
+	// which discards the key it signed tokens with. Dropping the cached one
+	// turns that into one retry rather than a runner that never recovers.
+	if resp.StatusCode == http.StatusUnauthorized {
+		c.cfg.Tokens.Invalidate()
 	}
 	return resp.StatusCode, body, nil
 }

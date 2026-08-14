@@ -79,9 +79,6 @@ func start(t *testing.T, workflows map[string]string) *controlPlane {
 		"CIPLATFORM_APP_ID=12345",
 		"CIPLATFORM_APP_PRIVATE_KEY_PATH="+keyPath,
 		"CIPLATFORM_JOB_TOKEN_SECRET=0123456789abcdef0123456789abcdef",
-		// Deliberately different from the signing key: the control plane
-		// refuses to start if they match.
-		"CIPLATFORM_RUNNER_TOKEN=fedcba9876543210fedcba9876543210",
 		"CIPLATFORM_OPERATOR_TOKEN="+operatorToken,
 		"CIPLATFORM_BLOB_ROOT="+filepath.Join(dir, "blobs"),
 		"CIPLATFORM_OIDC_KEY_PATH="+filepath.Join(dir, "oidc"),

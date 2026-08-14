@@ -19,6 +19,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/wow-look-at-my/ci-platform/internal/enrol"
 	"github.com/wow-look-at-my/ci-platform/internal/model"
 	"github.com/wow-look-at-my/ci-platform/internal/protocol"
 	"github.com/wow-look-at-my/ci-platform/internal/store"
@@ -56,9 +57,13 @@ type Options struct {
 	Scheduler Scheduler
 	Logs      Logs
 
-	// Token authenticates agents. Required: an unauthenticated runner endpoint
-	// would let anything on the network claim a job and read its secrets.
-	Token string
+	// SessionKey signs the short-lived tokens runners carry. Required: an
+	// unauthenticated runner endpoint would let anything on the network claim a
+	// job and read its secrets.
+	SessionKey []byte
+	// SessionTTL bounds a runner's token. It is also the longest a revoked host
+	// keeps working, so it is minutes rather than days.
+	SessionTTL time.Duration
 
 	LeaseTTL          time.Duration
 	HeartbeatInterval time.Duration
@@ -74,9 +79,10 @@ type Options struct {
 
 // Server is the runner-facing HTTP surface.
 type Server struct {
-	opts Options
-	mux  *http.ServeMux
-	log  *slog.Logger
+	opts     Options
+	mux      *http.ServeMux
+	log      *slog.Logger
+	sessions *enrol.Sessions
 
 	// cancels holds pending cancellations keyed by job id, delivered on the
 	// job's next heartbeat.
@@ -94,8 +100,8 @@ func New(opts Options) (*Server, error) {
 		return nil, errors.New("runnerapi: Scheduler is required")
 	case opts.Logs == nil:
 		return nil, errors.New("runnerapi: Logs is required")
-	case opts.Token == "":
-		return nil, errors.New("runnerapi: Token is required; an unauthenticated runner endpoint would let anything on the network claim a job and read its secrets")
+	case len(opts.SessionKey) == 0:
+		return nil, errors.New("runnerapi: SessionKey is required; an unauthenticated runner endpoint would let anything on the network claim a job and read its secrets")
 	}
 	if opts.LeaseTTL <= 0 {
 		opts.LeaseTTL = 90 * time.Second
@@ -123,7 +129,15 @@ func New(opts Options) (*Server, error) {
 		opts.Logger = slog.Default()
 	}
 
-	s := &Server{opts: opts, mux: http.NewServeMux(), log: opts.Logger, cancels: map[int64]model.CancelReason{}}
+	sessions, err := enrol.NewSessions(opts.SessionKey, opts.SessionTTL, opts.Now)
+	if err != nil {
+		return nil, err
+	}
+
+	s := &Server{
+		opts: opts, mux: http.NewServeMux(), log: opts.Logger,
+		cancels: map[int64]model.CancelReason{}, sessions: sessions,
+	}
 	s.routes()
 	return s, nil
 }
@@ -151,6 +165,10 @@ func (s *Server) routes() {
 	post := func(path string, h func(http.ResponseWriter, *http.Request)) {
 		s.mux.HandleFunc("POST "+path, s.authenticated(h))
 	}
+	// These two are how a host gets a token, so they cannot require one. Both
+	// verify an Ed25519 signature instead, and enrolment grants nothing.
+	s.mux.HandleFunc("POST "+protocol.PathEnrol, s.enrol)
+	s.mux.HandleFunc("POST "+protocol.PathSession, s.session)
 	post(protocol.PathRegister, s.register)
 	post(protocol.PathAcquire, s.acquire)
 	post(protocol.PathHeartbeat, s.heartbeat)
@@ -163,14 +181,31 @@ func (s *Server) routes() {
 	post(protocol.PathSetup, s.setup)
 }
 
+// authenticated requires a session token minted for an approved host, and
+// re-reads that host's state on every request.
+//
+// Re-reading is the point: without it, revoking a host would leave every token
+// already issued to it working until it expired, and "revoked" would mean
+// "revoked in a few minutes".
 func (s *Server) authenticated(h func(http.ResponseWriter, *http.Request)) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		got := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
-		if subtleCompare(got, s.opts.Token) != 1 {
-			writeErr(w, http.StatusUnauthorized, "runner token is missing or wrong")
+		token := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
+		sess, err := s.sessions.Parse(token)
+		if err != nil {
+			writeErr(w, http.StatusUnauthorized, "runner session token is missing, wrong, or expired: "+
+				"exchange a signature at "+protocol.PathSession)
 			return
 		}
-		h(w, r)
+		host, err := s.opts.Store.GetRunnerHost(r.Context(), sess.Fingerprint)
+		if err != nil {
+			writeErr(w, http.StatusUnauthorized, "the host this token names is no longer enrolled")
+			return
+		}
+		if !host.Approved() {
+			writeErr(w, http.StatusForbidden, "this host is "+string(host.State)+" and cannot take jobs")
+			return
+		}
+		h(w, r.WithContext(withHost(r.Context(), host, sess)))
 	}
 }
 
@@ -190,9 +225,19 @@ func (s *Server) register(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusBadRequest, "runner_id is required")
 		return
 	}
+	// A runner's labels decide which jobs it is offered, so they are bounded by
+	// what the operator allowed the host rather than taken as declared. A host
+	// that is later compromised cannot widen its own reach by claiming a label
+	// it was never approved for.
+	labels, dropped := allowedLabels(r.Context(), req.Labels)
+	if len(dropped) > 0 {
+		s.log.Warn("runner asked for labels its host is not approved for",
+			"runner", req.RunnerID, "dropped", dropped, "kept", labels)
+	}
+
 	now := s.opts.Now()
 	rn := &model.Runner{
-		ID: req.RunnerID, Name: req.Name, Labels: req.Labels, Group: req.Group,
+		ID: req.RunnerID, Name: req.Name, Labels: labels, Group: req.Group,
 		State: model.RunnerIdle, Capacity: req.Capacity, Version: req.Version,
 		OS: req.OS, Arch: req.Arch, FirstSeenAt: now, LastHeartbeat: now,
 	}

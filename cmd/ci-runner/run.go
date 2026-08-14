@@ -2,15 +2,18 @@ package main
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"log/slog"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/wow-look-at-my/ci-platform/internal/enrol"
 	"github.com/wow-look-at-my/ci-platform/internal/protocol"
 	"github.com/wow-look-at-my/ci-platform/internal/runner/actions"
 	"github.com/wow-look-at-my/ci-platform/internal/runner/agent"
@@ -21,8 +24,10 @@ import (
 
 // config is every setting the runner takes, from flags or environment.
 type config struct {
-	url           string
-	token         string
+	url string
+	// keyPath holds this host's Ed25519 identity. It is generated on first
+	// start, so there is no secret for anybody to invent or type.
+	keyPath       string
 	name          string
 	id            string
 	labels        string
@@ -55,7 +60,7 @@ func init() {
 func runCommand(ctx context.Context, fs *flag.FlagSet, args []string) error {
 	var c config
 	fs.StringVar(&c.url, "url", envOr("CI_CONTROL_PLANE_URL", ""), "control plane base URL (env CI_CONTROL_PLANE_URL)")
-	fs.StringVar(&c.token, "token", envOr("CI_RUNNER_TOKEN", ""), "runner registration token (env CI_RUNNER_TOKEN)")
+	fs.StringVar(&c.keyPath, "host-key", envOr("CI_RUNNER_HOST_KEY", ""), "path to this host's identity key, generated if absent; defaults to <state-dir>/host.key (env CI_RUNNER_HOST_KEY)")
 	fs.StringVar(&c.name, "name", envOr("CI_RUNNER_NAME", ""), "runner name, defaults to the hostname (env CI_RUNNER_NAME)")
 	fs.StringVar(&c.id, "id", envOr("CI_RUNNER_ID", ""), "stable runner id; generated and persisted in the state dir when unset (env CI_RUNNER_ID)")
 	fs.StringVar(&c.labels, "labels", envOr("CI_RUNNER_LABELS", ""), "comma-separated labels this runner accepts jobs for (env CI_RUNNER_LABELS)")
@@ -90,7 +95,11 @@ func runCommand(ctx context.Context, fs *flag.FlagSet, args []string) error {
 		return err
 	}
 
-	client, err := agent.NewClient(agent.ClientConfig{BaseURL: c.url, Token: c.token})
+	creds, err := c.credentials(ctx, id, log)
+	if err != nil {
+		return err
+	}
+	client, err := agent.NewClient(agent.ClientConfig{BaseURL: c.url, Tokens: creds})
 	if err != nil {
 		return err
 	}
@@ -139,9 +148,6 @@ func (c *config) validate() error {
 	if strings.TrimSpace(c.url) == "" {
 		missing = append(missing, "-url (or CI_CONTROL_PLANE_URL)")
 	}
-	if strings.TrimSpace(c.token) == "" {
-		missing = append(missing, "-token (or CI_RUNNER_TOKEN)")
-	}
 	if strings.TrimSpace(c.stateDir) == "" {
 		missing = append(missing, "-state-dir (or CI_RUNNER_STATE_DIR)")
 	}
@@ -161,7 +167,62 @@ func (c *config) validate() error {
 		}
 		c.name = host
 	}
+	if c.keyPath == "" {
+		c.keyPath = filepath.Join(c.stateDir, "host.key")
+	}
 	return nil
+}
+
+// approvalPoll is how often a runner waiting to be approved asks again. An
+// operator approving a host is a human action taken minutes or hours later, so
+// this is patient rather than tight.
+const approvalPoll = 15 * time.Second
+
+// credentials loads or creates this host's key, enrols it, and waits until an
+// operator has approved the fingerprint.
+//
+// Waiting is the right behaviour rather than exiting: a host that has just been
+// set up is supposed to be unapproved, and a runner that crash-loops through
+// that state buries the fingerprint the operator needs to read.
+func (c *config) credentials(ctx context.Context, runnerID string, log *slog.Logger) (*agent.Credentials, error) {
+	key, created, err := enrol.LoadOrCreateKey(c.keyPath)
+	if err != nil {
+		return nil, err
+	}
+	creds, err := agent.NewCredentials(agent.CredentialsConfig{
+		BaseURL: c.url, Key: key, RunnerID: runnerID,
+	})
+	if err != nil {
+		return nil, err
+	}
+	if created {
+		log.Info("generated a host identity key", "path", c.keyPath, "fingerprint", creds.Fingerprint())
+	}
+
+	resp, err := creds.Enrol(ctx, c.name, runtime.GOOS, runtime.GOARCH, version, splitLabels(c.labels))
+	if err != nil {
+		return nil, fmt.Errorf("enrolling with %s: %w", c.url, err)
+	}
+	log.Info("enrolled", "fingerprint", resp.Fingerprint, "state", resp.State, "message", resp.Message)
+
+	for {
+		_, err := creds.Token(ctx)
+		if err == nil {
+			return creds, nil
+		}
+		if !errors.Is(err, agent.ErrNotApproved) {
+			return nil, err
+		}
+		// One line per poll would bury everything else in the log, and one line
+		// ever would leave an operator staring at a silent process.
+		log.Warn("waiting for an operator to approve this host",
+			"fingerprint", creds.Fingerprint(), "control_plane", c.url, "retry_in", approvalPoll)
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		case <-time.After(approvalPoll):
+		}
+	}
 }
 
 // resolveID keeps the runner's identity stable across restarts, so the control

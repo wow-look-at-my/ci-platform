@@ -288,6 +288,28 @@ func (f *fakeStore) MarkOfflineRunners(context.Context, time.Time) ([]*model.Run
 	return nil, errUnused
 }
 
+func (f *fakeStore) EnrolRunnerHost(context.Context, *model.RunnerHost) (*model.RunnerHost, error) {
+	return nil, errUnused
+}
+
+func (f *fakeStore) GetRunnerHost(context.Context, string) (*model.RunnerHost, error) {
+	return nil, errUnused
+}
+
+func (f *fakeStore) ListRunnerHosts(context.Context) ([]*model.RunnerHost, error) {
+	return nil, errUnused
+}
+
+func (f *fakeStore) SetRunnerHostState(context.Context, string, model.RunnerHostState, string, string, time.Time) (*model.RunnerHost, error) {
+	return nil, errUnused
+}
+
+func (f *fakeStore) SetRunnerHostLabels(context.Context, string, []string) (*model.RunnerHost, error) {
+	return nil, errUnused
+}
+
+func (f *fakeStore) TouchRunnerHost(context.Context, string, time.Time) error { return errUnused }
+
 // --- Annotations, artifacts, caches ---
 
 func (f *fakeStore) AddAnnotations(context.Context, int64, []model.Annotation) error {

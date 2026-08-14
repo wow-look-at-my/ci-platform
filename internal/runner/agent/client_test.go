@@ -22,19 +22,19 @@ func newTestClient(t *testing.T, h http.Handler) (*Client, *httptest.Server) {
 	srv := httptest.NewServer(h)
 	t.Cleanup(srv.Close)
 	c, err := NewClient(ClientConfig{
-		BaseURL: srv.URL, Token: "runner-token",
+		BaseURL: srv.URL, Tokens: StaticToken("runner-token"),
 		MaxAttempts: 3, Backoff: time.Millisecond, MaxBackoff: 2 * time.Millisecond,
 	})
 	require.NoError(t, err)
 	return c, srv
 }
 
-func TestNewClientRequiresURLAndToken(t *testing.T) {
-	_, err := NewClient(ClientConfig{Token: "t"})
+func TestNewClientRequiresURLAndTokenSource(t *testing.T) {
+	_, err := NewClient(ClientConfig{Tokens: StaticToken("runner-token")})
 	require.ErrorContains(t, err, "control plane URL is required")
 
 	_, err = NewClient(ClientConfig{BaseURL: "https://x"})
-	require.ErrorContains(t, err, "runner token is required")
+	require.ErrorContains(t, err, "token source is required")
 }
 
 func TestClientRoundTripsEveryEndpoint(t *testing.T) {
@@ -133,7 +133,7 @@ func TestClientDoesNotRetryClientErrors(t *testing.T) {
 	var calls atomic.Int32
 	c, _ := newTestClient(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		calls.Add(1)
-		http.Error(w, "unknown runner", http.StatusUnauthorized)
+		http.Error(w, "runner_id is required", http.StatusBadRequest)
 	}))
 
 	_, err := c.Register(context.Background(), protocol.RegisterRequest{})
@@ -142,7 +142,48 @@ func TestClientDoesNotRetryClientErrors(t *testing.T) {
 
 	var e *Error
 	require.True(t, errors.As(err, &e))
-	assert.Equal(t, http.StatusUnauthorized, e.Status)
+	assert.Equal(t, http.StatusBadRequest, e.Status)
+}
+
+// A session token lasts minutes, and the control plane discards its signing key
+// on restart, so a 401 is an expected event mid-job rather than a rejection.
+// Retrying it with a freshly signed token is what keeps a running job alive.
+func TestClientRetriesAnExpiredSessionWithAFreshToken(t *testing.T) {
+	var calls atomic.Int32
+	tokens := &countingTokens{value: "first"}
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if calls.Add(1) == 1 {
+			http.Error(w, "session expired", http.StatusUnauthorized)
+			return
+		}
+		assert.Equal(t, "Bearer second", r.Header.Get("Authorization"))
+		_ = json.NewEncoder(w).Encode(protocol.RegisterResponse{})
+	}))
+	defer srv.Close()
+
+	c, err := NewClient(ClientConfig{
+		BaseURL: srv.URL, Tokens: tokens, MaxAttempts: 3,
+		Sleep: func(context.Context, time.Duration) error { return nil },
+	})
+	require.NoError(t, err)
+
+	_, err = c.Register(context.Background(), protocol.RegisterRequest{})
+	require.NoError(t, err)
+	assert.Equal(t, int32(2), calls.Load())
+	assert.Equal(t, 1, tokens.invalidated, "the dead token has to be dropped, or the retry replays it")
+}
+
+// countingTokens hands out a new value after each invalidation.
+type countingTokens struct {
+	value       string
+	invalidated int
+}
+
+func (c *countingTokens) Token(context.Context) (string, error) { return c.value, nil }
+
+func (c *countingTokens) Invalidate() {
+	c.invalidated++
+	c.value = "second"
 }
 
 func TestClientRetriesRateLimiting(t *testing.T) {
@@ -164,7 +205,7 @@ func TestClientRetriesNetworkFailures(t *testing.T) {
 	srv.Close() // nothing is listening now
 
 	c, err := NewClient(ClientConfig{
-		BaseURL: url, Token: "t", MaxAttempts: 2,
+		BaseURL: url, Tokens: StaticToken("runner-token"), MaxAttempts: 2,
 		Backoff: time.Millisecond, MaxBackoff: time.Millisecond,
 	})
 	require.NoError(t, err)
@@ -218,7 +259,7 @@ func TestClientTrimsTrailingSlash(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	c, err := NewClient(ClientConfig{BaseURL: srv.URL + "/", Token: "t"})
+	c, err := NewClient(ClientConfig{BaseURL: srv.URL + "/", Tokens: StaticToken("runner-token")})
 	require.NoError(t, err)
 	require.NoError(t, c.Logs(context.Background(), protocol.LogBatch{}))
 	assert.Equal(t, protocol.PathLogs, path)

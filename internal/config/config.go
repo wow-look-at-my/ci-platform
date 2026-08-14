@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/wow-look-at-my/ci-platform/internal/artifacts"
+	"github.com/wow-look-at-my/ci-platform/internal/enrol"
 	"github.com/wow-look-at-my/ci-platform/internal/ghaccounts"
 	"github.com/wow-look-at-my/ci-platform/internal/operatorauth"
 )
@@ -46,11 +47,14 @@ type Config struct {
 	AppPrivateKey  []byte
 	WebhookSecret  string
 	JobTokenSecret []byte
-	// RunnerToken authenticates runner agents. It is deliberately NOT the job
-	// token signing key: the runner holds this value on disk and sends it to
-	// the control plane, so reusing the signing key would put the key that
-	// mints every job's credentials on every runner host.
-	RunnerToken string
+	// RunnerSessionTTL bounds a runner's session token. It is also the longest
+	// a revoked host keeps working, because approval is re-read on every
+	// renewal.
+	//
+	// There is no runner credential to configure: a host proves itself with a
+	// key it generated, and the key that signs these tokens is generated at
+	// startup. A restart costs every runner one silent re-authentication.
+	RunnerSessionTTL time.Duration
 	// OperatorToken gates the REST API and the UI. Every job container can
 	// route to this instance -- it has to, to upload artifacts -- so an
 	// ungated /api/v1 is reachable from inside any workflow, including a fork
@@ -121,7 +125,7 @@ func LoadFrom(env Getenv) (*Config, error) {
 		DatabaseURL:         l.required("CIPLATFORM_DATABASE_URL", "the path to the SQLite file holding runs, jobs, and the durable queue"),
 		AllowEphemeralStore: l.bool("CIPLATFORM_ALLOW_EPHEMERAL_STORE", false),
 		WebhookSecret:       l.required("CIPLATFORM_WEBHOOK_SECRET", "the shared secret GitHub signs webhook deliveries with"),
-		RunnerToken:         l.required("CIPLATFORM_RUNNER_TOKEN", "the shared secret runner agents authenticate with; it must differ from the job token signing key"),
+		RunnerSessionTTL:    l.duration("CIPLATFORM_RUNNER_SESSION_TTL", enrol.DefaultSessionTTL),
 		OperatorToken:       l.required("CIPLATFORM_OPERATOR_TOKEN", "the credential for the REST API and the web UI; without it every job container could read every repository's logs"),
 		RequireForkApproval: l.bool("CIPLATFORM_REQUIRE_FORK_APPROVAL", true),
 		OAuthClientID: l.required("CIPLATFORM_OAUTH_CLIENT_ID",
@@ -197,24 +201,13 @@ func (c *Config) Validate() error {
 	if err := artifacts.ValidateServerURL(c.GitHubServerURL.String()); err != nil {
 		return fmt.Errorf("config: CIPLATFORM_GITHUB_SERVER_URL: %w", err)
 	}
-	// The runner token travels to every runner host; the signing key must not.
-	if c.RunnerToken != "" && c.RunnerToken == string(c.JobTokenSecret) {
-		return errors.New("config: CIPLATFORM_RUNNER_TOKEN must differ from CIPLATFORM_JOB_TOKEN_SECRET; " +
-			"the runner token is stored on every runner host, and reusing the signing key there would let " +
-			"anyone holding it mint a job token for any repository")
-	}
-	// The operator token is typed into a browser and pasted into scripts. Each
-	// of the other two reaches somewhere it must not: the runner token is on
-	// every runner host, and the signing key mints every job's credentials.
+	// The operator token is typed into a browser and pasted into scripts. The
+	// signing key mints every job's credentials, so one value serving as both
+	// means anything holding either one holds both.
 	if c.OperatorToken != "" {
-		for _, other := range []struct{ name, val string }{
-			{"CIPLATFORM_RUNNER_TOKEN", c.RunnerToken},
-			{"CIPLATFORM_JOB_TOKEN_SECRET", string(c.JobTokenSecret)},
-		} {
-			if c.OperatorToken == other.val {
-				return fmt.Errorf("config: CIPLATFORM_OPERATOR_TOKEN must differ from %s; "+
-					"sharing one value means anything holding either one holds both", other.name)
-			}
+		if c.OperatorToken == string(c.JobTokenSecret) {
+			return errors.New("config: CIPLATFORM_OPERATOR_TOKEN must differ from CIPLATFORM_JOB_TOKEN_SECRET; " +
+				"sharing one value means anything holding either one holds both")
 		}
 		if c.SessionSecret != "" && c.SessionSecret == c.OperatorToken {
 			return errors.New("config: CIPLATFORM_SESSION_SECRET must differ from CIPLATFORM_OPERATOR_TOKEN; " +
