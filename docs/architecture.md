@@ -103,6 +103,9 @@ the runner process, and never written into the workspace. Fork PRs get no
 secrets and no OIDC, and need explicit approval — the same posture as GHA.
 
 That boundary runs both ways: because a job must be able to reach the control
-plane, the operator API and the UI sit behind `CIPLATFORM_OPERATOR_TOKEN`
-(`internal/operatorauth`) rather than relying on network position. Route by
-route, and what this does not defend against: [security.md](security.md).
+plane, the operator API and the UI sit behind `internal/operatorauth` rather
+than relying on network position — a GitHub sign-in for a person, a bearer
+token for a script. And because the App can be published, a webhook is gated on
+an account the operator named (`internal/installpolicy`) before any of this is
+reached. Route by route, and what this does not defend against:
+[security.md](security.md).
