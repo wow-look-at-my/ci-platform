@@ -198,6 +198,9 @@ func (c *config) credentials(ctx context.Context, runnerID string, log *slog.Log
 	if created {
 		log.Info("generated a host identity key", "path", c.keyPath, "fingerprint", creds.Fingerprint())
 	}
+	if warning := agent.PlaintextWarning(c.url); warning != "" {
+		log.Warn(warning, "control_plane", c.url)
+	}
 
 	resp, err := creds.Enrol(ctx, c.name, runtime.GOOS, runtime.GOARCH, version, splitLabels(c.labels))
 	if err != nil {

@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"strings"
 	"sync"
 	"time"
@@ -37,6 +38,30 @@ func (s StaticToken) Token(context.Context) (string, error) { return string(s), 
 
 // Invalidate does nothing: there is nothing to refresh.
 func (s StaticToken) Invalidate() {}
+
+// PlaintextWarning returns a sentence to log when a runner is about to talk to
+// the control plane in the clear, and "" when it is not.
+//
+// It is a warning rather than a refusal because a LAN deployment pointing
+// straight at the coordinator is a legitimate, wanted setup. What is not
+// legitimate is doing it without knowing: an assignment carries the job's
+// secrets and its token, so on a network somebody else is on, "plain HTTP"
+// means "those secrets are readable".
+//
+// Loopback is exempt: there is no network to sniff.
+func PlaintextWarning(baseURL string) string {
+	u, err := url.Parse(baseURL)
+	if err != nil || u.Scheme != "http" {
+		return ""
+	}
+	host := u.Hostname()
+	if host == "localhost" || host == "127.0.0.1" || host == "::1" || strings.HasSuffix(host, ".localhost") {
+		return ""
+	}
+	return "connecting to the control plane over plain HTTP: a job's secrets and its token travel " +
+		"unencrypted over this network. That is fine on a network you trust and nowhere else; " +
+		"point this runner at the https public URL instead if it is not."
+}
 
 // ErrNotApproved is what a host gets until an operator approves its
 // fingerprint. It is a distinct error because it is not a fault: it is the

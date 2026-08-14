@@ -106,6 +106,19 @@ Both are the same `CI_CONTROL_PLANE_URL`, and hosts of both kinds can serve the
 same instance at once. Nothing about the enrolment or the protocol differs; a
 LAN host is simply one that took a shorter path.
 
+### Plain HTTP on the LAN is a decision, and it is logged as one
+
+Enrolment and renewal are signatures, so nothing secret crosses the wire there
+even in the clear. The job assignment is different: it carries the job's
+secrets and its token. Over plain HTTP they are readable by anything on that
+network.
+
+On a network you control that is usually a fine trade for not running TLS
+inside the house. It is not fine on a network you share. A runner pointed at an
+`http://` URL that is not loopback logs a warning at startup saying exactly
+this, so the choice is one somebody made rather than one nobody noticed. Point
+the host at the https public URL to avoid it.
+
 ### The one thing to watch: jobs use the public URL
 
 A runner talks to the control plane on the URL you gave it. A **job** does not —

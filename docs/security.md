@@ -165,3 +165,8 @@ one you know you lack:
 - **`runner-host` holds the Docker socket**, so anything that compromises the
   supervisor owns that machine's daemon. It is the same trust a CI runner
   already needs; it is not additional exposure, but it is not isolation either.
+- **A runner pointed at a plain-HTTP URL sends job secrets in the clear.**
+  Enrolment and renewal are signatures and give nothing away, but an assignment
+  carries the job's secrets and its token. A LAN deployment straight to the
+  coordinator is a legitimate setup and this does not refuse it; it logs a
+  warning naming the consequence, so it is a choice rather than an oversight.
