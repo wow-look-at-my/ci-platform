@@ -177,8 +177,8 @@ func Create(ctx context.Context, opts Options) (_ *Container, report *SetupRepor
 			return nil, report, setupErr(ctx, "image_cache_lock", lerr)
 		}
 		c.lock = lock
-		if _, ierr := capture(ctx, opts.Docker, "volume", "inspect", opts.ImageCacheVolume); ierr != nil {
-			if _, cerr := capture(ctx, opts.Docker, "volume", "create", opts.ImageCacheVolume); cerr != nil {
+		if _, ierr := Capture(ctx, opts.Docker, "volume", "inspect", opts.ImageCacheVolume); ierr != nil {
+			if _, cerr := Capture(ctx, opts.Docker, "volume", "create", opts.ImageCacheVolume); cerr != nil {
 				return nil, report, setupErr(ctx, "image_cache_volume", cerr)
 			}
 			opts.Log(fmt.Sprintf("created image cache volume %s", opts.ImageCacheVolume))
@@ -187,7 +187,7 @@ func Create(ctx context.Context, opts Options) (_ *Container, report *SetupRepor
 	}
 
 	sw := report.begin()
-	if _, cerr := capture(ctx, opts.Docker, "volume", "create", c.workspace); cerr != nil {
+	if _, cerr := Capture(ctx, opts.Docker, "volume", "create", c.workspace); cerr != nil {
 		return nil, report, setupErr(ctx, "workspace_volume", cerr)
 	}
 	c.madeWorkspace = true
@@ -197,8 +197,8 @@ func Create(ctx context.Context, opts Options) (_ *Container, report *SetupRepor
 	// Pull only when the image is absent. An unconditional pull makes every job
 	// depend on the registry being reachable, so a rate-limited registry fails
 	// a job whose image is already on the host.
-	if _, ierr := capture(ctx, opts.Docker, "image", "inspect", opts.Image); ierr != nil {
-		if _, perr := capture(ctx, opts.Docker, "pull", opts.Image); perr != nil {
+	if _, ierr := Capture(ctx, opts.Docker, "image", "inspect", opts.Image); ierr != nil {
+		if _, perr := Capture(ctx, opts.Docker, "pull", opts.Image); perr != nil {
 			return nil, report, setupErr(ctx, "image_pull", perr)
 		}
 		opts.Log("pulled sandbox image " + opts.Image)
@@ -211,7 +211,7 @@ func Create(ctx context.Context, opts Options) (_ *Container, report *SetupRepor
 	// A network of its own. The Docker-in-Docker entrypoint always publishes an
 	// unauthenticated daemon API on 2375 inside the container; on the shared
 	// default bridge that is root access to this job from every other job.
-	if _, nerr := capture(ctx, opts.Docker, "network", "create", c.network); nerr != nil {
+	if _, nerr := Capture(ctx, opts.Docker, "network", "create", c.network); nerr != nil {
 		return nil, report, setupErr(ctx, "network_create", nerr)
 	}
 	c.madeNetwork = true
@@ -237,7 +237,7 @@ func Create(ctx context.Context, opts Options) (_ *Container, report *SetupRepor
 	// No -v /var/run/docker.sock and no control-plane credentials: a job can
 	// reach only its own inner daemon.
 	args = append(args, opts.Image)
-	if _, rerr := capture(ctx, opts.Docker, args...); rerr != nil {
+	if _, rerr := Capture(ctx, opts.Docker, args...); rerr != nil {
 		return nil, report, setupErr(ctx, "container_create", rerr)
 	}
 	c.madeContainer = true
@@ -287,7 +287,7 @@ func (c *Container) waitForDockerd(ctx context.Context) error {
 		// `docker version` is the probe, not `docker info`: info exits 0 with
 		// "Cannot connect to the Docker daemon" in its output, so probing with
 		// it reports a dead daemon as ready.
-		out, err := capture(ctx, c.opts.Docker, "exec", c.name, "docker", "version", "--format", "{{.Server.Version}}")
+		out, err := Capture(ctx, c.opts.Docker, "exec", c.name, "docker", "version", "--format", "{{.Server.Version}}")
 		switch {
 		case err != nil:
 			last = err
@@ -311,7 +311,7 @@ func (c *Container) probeCache(ctx context.Context) bool {
 	if c.opts.ImageCacheVolume == "" {
 		return false
 	}
-	out, err := capture(ctx, c.opts.Docker, "exec", c.name, "docker", "image", "ls", "-q")
+	out, err := Capture(ctx, c.opts.Docker, "exec", c.name, "docker", "image", "ls", "-q")
 	if err != nil {
 		return false
 	}
@@ -379,7 +379,7 @@ func (c *Container) CopyInto(ctx context.Context, hostDir, containerPath string)
 // The destination's parent must already exist: `docker cp` does not create
 // parent directories, so every caller mkdir -p's first.
 func (c *Container) copyIn(ctx context.Context, hostPath, dest string) error {
-	_, err := capture(ctx, c.opts.Docker, "cp", hostPath, c.name+":"+dest)
+	_, err := Capture(ctx, c.opts.Docker, "cp", hostPath, c.name+":"+dest)
 	return err
 }
 
@@ -402,20 +402,20 @@ func (c *Container) ReadFile(ctx context.Context, src string) ([]byte, error) {
 
 // MkdirAll creates a directory inside the sandbox.
 func (c *Container) MkdirAll(ctx context.Context, dir string) error {
-	_, err := capture(ctx, c.opts.Docker, "exec", c.name, "mkdir", "-p", dir)
+	_, err := Capture(ctx, c.opts.Docker, "exec", c.name, "mkdir", "-p", dir)
 	return err
 }
 
 // RemoveAll deletes a path inside the sandbox.
 func (c *Container) RemoveAll(ctx context.Context, target string) error {
-	_, err := capture(ctx, c.opts.Docker, "exec", c.name, "rm", "-rf", target)
+	_, err := Capture(ctx, c.opts.Docker, "exec", c.name, "rm", "-rf", target)
 	return err
 }
 
 // LookPath resolves a binary on the sandbox's PATH. A missing binary is an
 // error naming it, never an empty result the caller might treat as fine.
 func (c *Container) LookPath(ctx context.Context, bin string) (string, error) {
-	out, err := capture(ctx, c.opts.Docker, "exec", c.name, "sh", "-c", "command -v "+bin)
+	out, err := Capture(ctx, c.opts.Docker, "exec", c.name, "sh", "-c", "command -v "+bin)
 	if err != nil {
 		return "", fmt.Errorf("%q is not installed in the sandbox image %s: %w", bin, c.opts.Image, err)
 	}
@@ -441,7 +441,7 @@ func (c *Container) Close(ctx context.Context) error {
 		if !made {
 			return
 		}
-		if _, err := capture(ctx, c.opts.Docker, args...); err != nil {
+		if _, err := Capture(ctx, c.opts.Docker, args...); err != nil {
 			errs = append(errs, fmt.Sprintf("removing %s %s: %v", what, name, err))
 			c.opts.Log(fmt.Sprintf("TEARDOWN FAILED: could not remove %s %s: %v", what, name, err))
 			return

@@ -1,0 +1,37 @@
+# syntax=docker/dockerfile:1
+
+# The runner-host supervisor. It keeps a pool of runner containers running, up
+# to date, and on storage that is fresh per runner.
+#
+# This image is the one an operator installs on a machine, and the one an image
+# updater (docker-updater, watchtower) is pointed at. Updating it is safe at any
+# moment: stopping the supervisor deliberately leaves the runners running, so a
+# build in flight is never interrupted by the supervisor's own restart.
+#
+# It needs the docker socket, because managing containers is its whole job.
+FROM golang:1.25-alpine AS build
+WORKDIR /src
+
+RUN --mount=type=cache,target=/go/pkg/mod \
+	--mount=type=bind,source=go.mod,target=go.mod \
+	--mount=type=bind,source=go.sum,target=go.sum \
+	go mod download
+
+COPY . .
+
+ARG VERSION=dev
+RUN --mount=type=cache,target=/go/pkg/mod \
+	--mount=type=cache,target=/root/.cache/go-build \
+	CGO_ENABLED=0 go build -trimpath \
+	-ldflags "-s -w -X main.version=${VERSION}" \
+	-o /out/runner-host ./cmd/runner-host
+
+FROM alpine:3.21 AS runner-host
+RUN apk add --no-cache ca-certificates tzdata docker-cli \
+	&& mkdir -p /var/lib/ci-runner-host
+COPY --from=build /out/runner-host /usr/local/bin/runner-host
+# The identity key lives here. Mount it: a key that does not survive a restart
+# means a new fingerprint to approve every time this container is replaced,
+# which is exactly the toil this design exists to remove.
+VOLUME /var/lib/ci-runner-host
+ENTRYPOINT ["/usr/local/bin/runner-host"]

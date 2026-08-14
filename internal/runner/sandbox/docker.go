@@ -64,10 +64,10 @@ func (c *CLI) Run(ctx context.Context, in Invocation) (int, error) {
 	return -1, fmt.Errorf("running %s %s: %w", bin, strings.Join(in.Args, " "), err)
 }
 
-// capture runs a docker command collecting its output, and turns a non-zero
+// Capture runs a docker command collecting its output, and turns a non-zero
 // exit into an error carrying that output: a docker command that failed with a
 // message nobody reads is how a sandbox failure becomes a mystery.
-func capture(ctx context.Context, d Docker, args ...string) (string, error) {
+func Capture(ctx context.Context, d Docker, args ...string) (string, error) {
 	var out, errBuf bytes.Buffer
 	code, err := d.Run(ctx, Invocation{Args: args, Stdout: &out, Stderr: &errBuf})
 	if err != nil {

@@ -35,33 +35,38 @@ You need Docker with Compose, and a GitHub App. The App is not optional: check
 runs can only be written with an App installation token.
 
 **1. Create the GitHub App.** In your org's settings, *Developer settings → GitHub
-Apps → New*. Set the webhook URL to `https://<your-host>/webhook`, invent a
-webhook secret, and grant: Checks `write`, Commit statuses `write`, Contents
-`read`, Metadata `read`, Pull requests `read`, Actions `read`. Subscribe to
-Push, Pull request, Check run, and Check suite events. Generate a private key,
-download the `.pem`, and note the App ID.
+Apps → New*. Set the webhook URL to `https://<your-host>/webhook` and the
+callback URL to `https://<your-host>/auth/github/callback`, invent a webhook
+secret, and grant: Checks `write`, Commit statuses `write`, Contents `read`,
+Metadata `read`, Pull requests `read`, Actions `read`. Subscribe to Push, Pull
+request, Check run, and Check suite events. Generate a private key, download the
+`.pem`, and note the App ID and the OAuth client ID and secret.
+
+The App can be public. An install by an account you did not list is inert: it
+schedules nothing and gets nothing — [docs/security.md](docs/security.md).
 
 **2. Configure.** Put the key next to `compose.yaml` as `app-private-key.pem`,
 then write a `.env`:
 
 ```sh
+CIPLATFORM_PUBLIC_URL=https://ci.pazer.build
 CIPLATFORM_WEBHOOK_SECRET=<the secret you invented>
 CIPLATFORM_APP_ID=<your app id>
+CIPLATFORM_OAUTH_CLIENT_ID=<from the App's settings page>
+CIPLATFORM_OAUTH_CLIENT_SECRET=<generated on the App's settings page>
+CIPLATFORM_ALLOWED_OWNERS=PazerOP
+CIPLATFORM_ADMIN_LOGINS=PazerOP
 CIPLATFORM_JOB_TOKEN_SECRET=$(openssl rand -hex 32)
-CI_RUNNER_TOKEN=$(openssl rand -hex 32)
 CIPLATFORM_OPERATOR_TOKEN=$(openssl rand -hex 32)
-CIPLATFORM_PUBLIC_URL=http://ci.localhost:8080
+CIPLATFORM_SESSION_SECRET=$(openssl rand -hex 32)
 ```
 
-Those three secrets must be three different values; the control plane refuses to
-start otherwise. `CIPLATFORM_OPERATOR_TOKEN` is what you sign into the web UI
-with, and what a script sends as `Authorization: Bearer`. The API is closed
-without it because every job container can reach this server —
-[docs/security.md](docs/security.md).
+`CIPLATFORM_ALLOWED_OWNERS` is the list of accounts this instance runs work for,
+and `CIPLATFORM_ADMIN_LOGINS` the accounts that may sign in. Both are required:
+"everybody" is spelled `*`, out loud, and never by leaving a value empty.
 
-The public URL's hostname must end in `.localhost` or `.ghe.com`. That is a
-constraint the official `actions/upload-artifact` imposes on any non-github.com
-server, not a preference of ours — see [docs/deviations.md](docs/deviations.md).
+There is no runner credential to invent. A runner host generates its own key and
+you approve its fingerprint once — [docs/runners.md](docs/runners.md).
 
 **3. Start it.**
 
@@ -72,11 +77,16 @@ docker compose pull && docker compose up -d
 That takes the images CI publishes. To run the source you have checked out
 instead, `docker compose up -d --build`.
 
-**4. Install the App** on a repository and push. Open
-`http://ci.localhost:8080`, sign in with the operator credential, and the run is
-there; the check runs appear on the commit.
+**4. Approve the runner host.** Open your public URL, *Sign in with GitHub*, and
+go to Runners. The host that just started is listed as pending; check its
+fingerprint against the one in `docker compose logs runner-host` and approve it.
 
-Add capacity with `docker compose up -d --scale runner=4`.
+**5. Install the App** on a repository and push. The run is on the dashboard and
+the check runs are on the commit.
+
+Add capacity by raising `CI_RUNNER_HOST_RUNNERS`, or by running the runner-host
+image on another machine — see [docs/runners.md](docs/runners.md) for a LAN or
+internet runner.
 
 There is no database to provision: everything lives in one SQLite file on the
 `ciplatform-data` volume, created on first start. Back it up by copying it.

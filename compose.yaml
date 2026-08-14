@@ -1,8 +1,9 @@
-# Single-node deployment. See README.md for the ten-minute setup.
+# Single-node deployment: the control plane, and one runner-host supervising a
+# pool of runners on the same machine. See README.md for the setup.
 #
-# CIPLATFORM_PUBLIC_URL must have a hostname ending in .localhost or .ghe.com,
-# or actions/upload-artifact@v4 refuses to run before issuing a request
-# (docs/deviations.md). The default below satisfies that.
+# Runners on other machines run the runner-host image alone, pointed at this
+# host's address. They need nothing from this file and no shared secret: each
+# generates its own key and waits to be approved.
 
 name: ciplatform
 
@@ -15,22 +16,37 @@ services:
       context: .
       target: control-plane
     environment:
-      CIPLATFORM_PUBLIC_URL: ${CIPLATFORM_PUBLIC_URL:-http://ci.localhost:8080}
+      # The URL browsers, GitHub, and job containers reach this instance on. Any
+      # hostname is fine. It is also what a job's artifact, cache, and OIDC
+      # clients are pointed at, so it has to resolve from every machine that
+      # runs jobs -- on a LAN without hairpin NAT, map it there in DNS.
+      CIPLATFORM_PUBLIC_URL: ${CIPLATFORM_PUBLIC_URL:-https://ci.pazer.build}
       # The database is one file on the data volume; back it up by copying it.
       CIPLATFORM_DATABASE_URL: /var/lib/ciplatform/ciplatform.db
       CIPLATFORM_WEBHOOK_SECRET: ${CIPLATFORM_WEBHOOK_SECRET:?set CIPLATFORM_WEBHOOK_SECRET in .env}
       CIPLATFORM_APP_ID: ${CIPLATFORM_APP_ID:?set CIPLATFORM_APP_ID in .env}
       CIPLATFORM_APP_PRIVATE_KEY_PATH: /run/secrets/app-private-key.pem
       CIPLATFORM_JOB_TOKEN_SECRET: ${CIPLATFORM_JOB_TOKEN_SECRET:?set CIPLATFORM_JOB_TOKEN_SECRET in .env}
-      # Distinct from the signing key above, and checked at startup: this one
-      # is stored on every runner host.
-      CIPLATFORM_RUNNER_TOKEN: ${CI_RUNNER_TOKEN:?set CI_RUNNER_TOKEN in .env}
-      # Sign-in for the UI and the REST API. Job containers can reach this
-      # server, so the API is closed without it.
+      # Anybody can install a published GitHub App. These are the accounts whose
+      # repositories this instance will actually run work for; an install by any
+      # other account is recorded nowhere and schedules nothing.
+      CIPLATFORM_ALLOWED_OWNERS: ${CIPLATFORM_ALLOWED_OWNERS:-PazerOP}
+      # Who may sign in to the dashboard.
+      CIPLATFORM_ADMIN_LOGINS: ${CIPLATFORM_ADMIN_LOGINS:-PazerOP}
+      # The App's own OAuth client, from its settings page. This is what "Sign in
+      # with GitHub" uses; no second App is needed.
+      CIPLATFORM_OAUTH_CLIENT_ID: ${CIPLATFORM_OAUTH_CLIENT_ID:?set CIPLATFORM_OAUTH_CLIENT_ID in .env}
+      CIPLATFORM_OAUTH_CLIENT_SECRET: ${CIPLATFORM_OAUTH_CLIENT_SECRET:?set CIPLATFORM_OAUTH_CLIENT_SECRET in .env}
+      # Signs dashboard sessions. Optional: unset regenerates it on every
+      # restart, which signs everybody out.
+      CIPLATFORM_SESSION_SECRET: ${CIPLATFORM_SESSION_SECRET:-}
+      # The credential for scripts and curl. The dashboard uses GitHub sign-in.
       CIPLATFORM_OPERATOR_TOKEN: ${CIPLATFORM_OPERATOR_TOKEN:?set CIPLATFORM_OPERATOR_TOKEN in .env}
       CIPLATFORM_BLOB_ROOT: /var/lib/ciplatform/blobs
       CIPLATFORM_OIDC_KEY_PATH: /var/lib/ciplatform/oidc
     ports:
+      # Runners elsewhere on the LAN connect straight to this port; runners
+      # outside it come in through whatever terminates TLS for the public URL.
       - "8080:8080"
     volumes:
       - ciplatform-data:/var/lib/ciplatform
@@ -44,30 +60,32 @@ services:
       timeout: 5s
       retries: 6
 
-  runner:
-    image: oci.pazer.build/ci-platform/runner:latest
+  runner-host:
+    # Supervises the runner pool: keeps N runners running, replaces them when a
+    # newer runner image is published, and drains each one first so an update
+    # never kills a build. Point an image updater at THIS image; it never has to
+    # be told about the runners themselves.
+    image: oci.pazer.build/ci-platform/runner-host:latest
     build:
       context: .
-      dockerfile: Dockerfile.runner
-      target: runner
+      dockerfile: Dockerfile.runner-host
+      target: runner-host
     depends_on:
       control-plane:
         condition: service_healthy
     environment:
-      CI_RUNNER_SERVER_URL: http://control-plane:8080
-      CI_RUNNER_TOKEN: ${CI_RUNNER_TOKEN:?set CI_RUNNER_TOKEN in .env}
+      CI_CONTROL_PLANE_URL: ${CI_CONTROL_PLANE_URL:-http://control-plane:8080}
+      CI_RUNNER_HOST_RUNNERS: ${CI_RUNNER_HOST_RUNNERS:-2}
       CI_RUNNER_LABELS: ${CI_RUNNER_LABELS:-self-hosted,linux,x64}
-      CI_RUNNER_STATE_DIR: /var/lib/ci-runner
+      CI_RUNNER_HOST_STATE_DIR: /var/lib/ci-runner-host
     volumes:
-      # The agent needs the host daemon to create each job's sandbox container.
-      # The job itself never sees this socket: it gets its own dockerd inside
-      # its own container.
+      # Managing containers is this service's whole job, so it holds the socket.
+      # The runners it starts get their own; a job never sees either, because it
+      # runs against its own dockerd inside its own container.
       - /var/run/docker.sock:/var/run/docker.sock
-      - runner-state:/var/lib/ci-runner
-      - image-cache:/var/lib/ci-runner/image-cache
-    # Scale with `docker compose up --scale runner=4`.
+      # The identity key. Losing it means a new fingerprint to approve.
+      - runner-host-state:/var/lib/ci-runner-host
 
 volumes:
   ciplatform-data:
-  runner-state:
-  image-cache:
+  runner-host-state:
