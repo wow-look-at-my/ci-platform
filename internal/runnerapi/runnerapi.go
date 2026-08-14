@@ -64,6 +64,10 @@ type Options struct {
 	// SessionTTL bounds a runner's token. It is also the longest a revoked host
 	// keeps working, so it is minutes rather than days.
 	SessionTTL time.Duration
+	// MaxPendingHosts caps how many unapproved hosts may be waiting at once.
+	// Enrolment answers without a credential by necessity, so this is what
+	// stops anything that can reach it from filling the table. Default 32.
+	MaxPendingHosts int
 
 	LeaseTTL          time.Duration
 	HeartbeatInterval time.Duration
@@ -121,6 +125,9 @@ func New(opts Options) (*Server, error) {
 	}
 	if opts.PollInterval <= 0 {
 		opts.PollInterval = 500 * time.Millisecond
+	}
+	if opts.MaxPendingHosts <= 0 {
+		opts.MaxPendingHosts = 32
 	}
 	if opts.Now == nil {
 		opts.Now = time.Now

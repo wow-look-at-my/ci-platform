@@ -3,6 +3,7 @@ package runnerapi
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net"
 	"net/http"
 	"strings"
@@ -51,6 +52,19 @@ func (s *Server) enrol(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Enrolment has to answer without a credential, and a signature over a key
+	// the sender generated proves only that they generated it. So anything that
+	// can reach this route can mint fingerprints, and without a cap that is an
+	// unbounded table and an approval page nobody can read.
+	//
+	// The cap is on PENDING hosts, so it never gets in the way of a fleet that
+	// is actually approved, and clearing it is the same action the operator was
+	// going to take anyway.
+	if err := s.checkPendingCapacity(r.Context(), fingerprint); err != nil {
+		writeErr(w, http.StatusTooManyRequests, err.Error())
+		return
+	}
+
 	host, err := s.opts.Store.EnrolRunnerHost(r.Context(), &model.RunnerHost{
 		Fingerprint: fingerprint, PublicKey: enrol.EncodePublicKey(pub),
 		Name: req.Name, OS: req.OS, Arch: req.Arch, Version: req.Version,
@@ -71,6 +85,32 @@ func (s *Server) enrol(w http.ResponseWriter, r *http.Request) {
 		State:       string(host.State),
 		Message:     enrolMessage(host),
 	})
+}
+
+// checkPendingCapacity refuses a NEW fingerprint once too many are already
+// waiting. A host that has enrolled before is always let through, so a runner
+// restarting is never turned away by somebody else's flood.
+func (s *Server) checkPendingCapacity(ctx context.Context, fingerprint string) error {
+	if _, err := s.opts.Store.GetRunnerHost(ctx, fingerprint); err == nil {
+		return nil
+	}
+	hosts, err := s.opts.Store.ListRunnerHosts(ctx)
+	if err != nil {
+		return fmt.Errorf("could not check how many hosts are pending: %v", err)
+	}
+	pending := 0
+	for _, h := range hosts {
+		if h.State == model.RunnerHostPending {
+			pending++
+		}
+	}
+	if pending < s.opts.MaxPendingHosts {
+		return nil
+	}
+	s.log.Warn("refused an enrolment because too many hosts are already waiting for approval",
+		"pending", pending, "limit", s.opts.MaxPendingHosts, "fingerprint", fingerprint)
+	return fmt.Errorf("%d hosts are already waiting for approval, which is the limit; "+
+		"approve or revoke the pending ones before enrolling another", pending)
 }
 
 func enrolMessage(h *model.RunnerHost) string {

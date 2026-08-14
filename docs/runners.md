@@ -41,6 +41,16 @@ captured request be replayed for the whole window.
 A signature also names what it is for, so the one a host makes to enrol cannot
 be replayed to get a token.
 
+### Enrolment is capped
+
+Enrolment answers without a credential, because it is the step before a host
+has one, and a signature over a key the sender generated proves only that they
+generated it. So anything that can reach the control plane can mint
+fingerprints. At most 32 unapproved hosts may be waiting at once; past that,
+enrolment is refused until you approve or revoke some. A host that has already
+enrolled is always let back in, so a runner restarting is never turned away
+because somebody else filled the queue.
+
 ### Labels are bounded by the approval
 
 A runner's labels decide which jobs it is offered. What a runner asks for is

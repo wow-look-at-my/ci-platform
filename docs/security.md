@@ -55,7 +55,8 @@ has to be checked rather than asserted:
   after GitHub confirms who they are.
 - **They can enrol a runner key.** It lands as pending, and pending is inert:
   the session endpoint refuses it, and the fingerprint sits on the Runners page
-  where it is obviously not one of yours.
+  where it is obviously not one of yours. At most 32 may be waiting at once, so
+  this is not a way to fill the table or bury the hosts you do want.
 
 The cost of a stranger's push is one HMAC check and one log line. Nothing
 unbounded happens before the refusal.

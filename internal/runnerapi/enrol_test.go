@@ -183,6 +183,52 @@ func TestSession_RefusesAStaleRequest(t *testing.T) {
 	assert.Equal(t, http.StatusBadRequest, h.postAnon(t, protocol.PathSession, box.sessionRequest(t, future), nil))
 }
 
+// Enrolment answers without a credential, and a signature over a key the sender
+// generated proves only that they generated it. Without a cap, anything that
+// can reach this route fills the table and the approval page.
+func TestEnrol_RefusesANewHostOnceTooManyAreWaiting(t *testing.T) {
+	h := newHarness(t)
+	h.srv.opts.MaxPendingHosts = 2
+
+	for range 2 {
+		require.Equal(t, http.StatusOK,
+			h.postAnon(t, protocol.PathEnrol, newHost(t).enrolRequest(t, time.Now()), nil))
+	}
+
+	flood := newHost(t)
+	code := h.postAnon(t, protocol.PathEnrol, flood.enrolRequest(t, time.Now()), nil)
+	assert.Equal(t, http.StatusTooManyRequests, code)
+	_, err := h.st.GetRunnerHost(t.Context(), flood.fingerprint)
+	require.Error(t, err, "a refused enrolment must leave no row behind")
+
+	// Approving clears the queue, and the next host is let in: the cap counts
+	// what is waiting, not what exists.
+	hosts, err := h.st.ListRunnerHosts(t.Context())
+	require.NoError(t, err)
+	for _, existing := range hosts {
+		if existing.State != model.RunnerHostPending {
+			continue
+		}
+		_, err := h.st.SetRunnerHostState(t.Context(), existing.Fingerprint,
+			model.RunnerHostApproved, "PazerOP", "", time.Now())
+		require.NoError(t, err)
+	}
+	assert.Equal(t, http.StatusOK, h.postAnon(t, protocol.PathEnrol, flood.enrolRequest(t, time.Now()), nil))
+}
+
+// A runner restarting must not be turned away because somebody else flooded the
+// queue: it already has a row, so the cap does not apply to it.
+func TestEnrol_LetsAKnownHostBackInWhenTheQueueIsFull(t *testing.T) {
+	h := newHarness(t)
+	h.srv.opts.MaxPendingHosts = 1
+	known := newHost(t)
+	require.Equal(t, http.StatusOK, h.postAnon(t, protocol.PathEnrol, known.enrolRequest(t, time.Now()), nil))
+
+	assert.Equal(t, http.StatusOK, h.postAnon(t, protocol.PathEnrol, known.enrolRequest(t, time.Now()), nil))
+	assert.Equal(t, http.StatusTooManyRequests,
+		h.postAnon(t, protocol.PathEnrol, newHost(t).enrolRequest(t, time.Now()), nil))
+}
+
 // A signature made to enrol must not be usable to get a token, or an operator
 // approving a host would be handing out access retroactively to whoever
 // captured the enrolment.
