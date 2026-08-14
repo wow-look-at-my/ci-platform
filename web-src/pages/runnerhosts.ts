@@ -51,7 +51,6 @@ function table(hosts: RunnerHost[], onChange: () => void): HTMLElement {
 					h.enrolled_from ? el("div", { class: "muted" }, `from ${h.enrolled_from}`) : el("span"),
 				),
 				el("td", {}, ...h.labels.map((l) => chip(l))),
-				el("td", { class: "mono" }, h.os && h.arch ? `${h.os}/${h.arch}` : "—"),
 				el("td", {}, h.last_seen_at ? relTime(h.last_seen_at) : el("span", { class: "muted" }, "never")),
 				el("td", {}, approvalCell(h)),
 				el("td", {}, actions(h, onChange)),
@@ -60,8 +59,10 @@ function table(hosts: RunnerHost[], onChange: () => void): HTMLElement {
 	}
 	return el("div", { class: "scroll-x" },
 		el("table", { class: "runner-hosts" },
+			// No platform column: the fleet table below already says what each
+			// runner is, and the fingerprint needs the width more.
 			el("thead", {}, el("tr", {},
-				...["State", "Host", "Labels", "Platform", "Last seen", "Approval", ""].map((h) => el("th", {}, h)))),
+				...["State", "Host", "Labels", "Last seen", "Approval", ""].map((h) => el("th", {}, h)))),
 			body));
 }
 

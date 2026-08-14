@@ -1,6 +1,8 @@
 # Architecture
 
-Two binaries, both shipped as containers.
+Three binaries, all shipped as containers. The control plane and the runner
+agent are the platform; `runner-host` is the supervisor an operator installs on
+a machine, and the only one there that anything else has to keep updated.
 
 ```
 GitHub ──webhook──▶ control plane (cmd/ciplatform)
@@ -19,12 +21,13 @@ GitHub ──webhook──▶ control plane (cmd/ciplatform)
                       │  ├─ internal/api              REST + SSE
                       │  └─ internal/webui            embedded UI
                       │
-                      ▼ HTTP long-poll, mutually authenticated
-                   runner agent (cmd/ci-runner, one per host)
-                      └─ per job: fresh DinD container
-                           ├─ its own dockerd (isolated image cache + network)
-                           ├─ workspace volume
-                           └─ step executor
+                      ▼ HTTP long-poll; the runner signs in with its host's key
+                   runner-host (cmd/runner-host, one per machine)
+                      └─ N × runner agent (cmd/ci-runner, one container each)
+                           └─ per job: fresh DinD container
+                                ├─ its own dockerd (isolated image cache + network)
+                                ├─ workspace volume
+                                └─ step executor
 ```
 
 ## The layering rule

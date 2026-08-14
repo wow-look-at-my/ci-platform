@@ -467,9 +467,12 @@ tr[class*="tone-"] td:first-child {
 }
 
 /* The fingerprint is compared character by character against what the host
-   printed, so it does not wrap mid-string. */
+   printed, so it does not wrap mid-string. It is set smaller than the rest of
+   the row to buy that width back from a table that has to fit the approve
+   buttons too. */
 .fingerprint {
 	white-space: nowrap;
+	font-size: 0.72rem;
 }
 
 /* ============================================================

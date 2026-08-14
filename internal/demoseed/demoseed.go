@@ -51,6 +51,7 @@ func (s Seeded) Paths() []string {
 	out := []string{
 		"/api/v1/runs",
 		"/api/v1/runners",
+		"/api/v1/runner-hosts",
 		"/api/v1/queue",
 		"/api/v1/queue/history?since=" + ago(6*time.Hour).UTC().Format(time.RFC3339),
 		fmt.Sprintf("/api/v1/repos/%s/%s/cache", owner, repo),
