@@ -365,7 +365,12 @@ func (f *fakeStore) ResolveVars(context.Context, string, string, string) (map[st
 }
 func (f *fakeStore) DeleteVar(context.Context, string, string, string) error { return errUnused }
 
-func (f *fakeStore) RecordEvent(context.Context, store.Event) error { return errUnused }
+func (f *fakeStore) RecordEvent(_ context.Context, e store.Event) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.events = append(f.events, e)
+	return nil
+}
 
 func (f *fakeStore) ListEvents(_ context.Context, runID, jobID int64) ([]store.Event, error) {
 	var out []store.Event

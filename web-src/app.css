@@ -448,6 +448,30 @@ tr[class*="tone-"] td:first-child {
 	background: var(--tone-infra);
 }
 
+/* A host waiting for approval is the one state on this page that needs somebody
+   to do something, so it reads as attention rather than as a fault. */
+.host-state-pending {
+	background: var(--tone-config);
+}
+.host-state-approved {
+	background: var(--tone-success);
+}
+.host-state-revoked {
+	background: var(--tone-failure);
+}
+
+.host-actions {
+	display: flex;
+	gap: 6px;
+	align-items: center;
+}
+
+/* The fingerprint is compared character by character against what the host
+   printed, so it does not wrap mid-string. */
+.fingerprint {
+	white-space: nowrap;
+}
+
 /* ============================================================
    5. Filters, pager, stats
    ============================================================ */

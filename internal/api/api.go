@@ -148,6 +148,9 @@ func (s *Server) routes() {
 	m.HandleFunc("POST /api/v1/jobs/{id}/rerun", s.rerunJob)
 
 	m.HandleFunc("GET /api/v1/runners", s.listRunners)
+	m.HandleFunc("GET /api/v1/runner-hosts", s.listRunnerHosts)
+	m.HandleFunc("POST /api/v1/runner-hosts/{fingerprint}/approve", s.approveRunnerHost)
+	m.HandleFunc("POST /api/v1/runner-hosts/{fingerprint}/revoke", s.revokeRunnerHost)
 	m.HandleFunc("GET /api/v1/queue", s.getQueue)
 	m.HandleFunc("GET /api/v1/queue/history", s.getQueueHistory)
 

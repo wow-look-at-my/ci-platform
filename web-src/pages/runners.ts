@@ -3,15 +3,22 @@
 import { api, type Runner } from "../api.js";
 import { el, errorPanel, replace, spinner } from "../dom.js";
 import { formatDuration, heartbeatStaleness } from "../format.js";
+import { renderRunnerHosts } from "./runnerhosts.js";
 import { chip, relTime } from "../widgets.js";
 
 export function renderRunners(root: HTMLElement, registerTimer: (id: number) => void): void {
 	replace(root, spinner("Loading fleet"));
+	// The hosts section reloads on its own after an approval, so a poll of the
+	// fleet does not wipe out what the operator just did.
+	const hosts = el("section", { class: "panel hosts-panel" });
+	const reloadHosts = () => renderRunnerHosts(hosts, reloadHosts);
+
 	const load = async () => {
 		try {
 			const data = await api.runners();
 			replace(root,
 				el("header", { class: "page-head" }, el("h1", {}, "Runner fleet")),
+				hosts,
 				el("section", { class: "panel stat-row" },
 					stat("Runners", data.total_count),
 					stat("Online", data.online),
@@ -26,6 +33,7 @@ export function renderRunners(root: HTMLElement, registerTimer: (id: number) => 
 			replace(root, errorPanel("the runner fleet", err));
 		}
 	};
+	reloadHosts();
 	void load();
 	registerTimer(setInterval(load, 5000) as unknown as number);
 }

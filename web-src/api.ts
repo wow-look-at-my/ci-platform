@@ -181,6 +181,30 @@ export interface RunnerList {
 	at: string;
 }
 
+/** A machine that may run runners, once an operator has approved its key. */
+export interface RunnerHost {
+	fingerprint: string;
+	state: "pending" | "approved" | "revoked";
+	name: string;
+	os?: string;
+	arch?: string;
+	version?: string;
+	labels: string[];
+	enrolled_from?: string;
+	enrolled_at: string;
+	approved_by?: string;
+	approved_at?: string;
+	last_seen_at?: string;
+	note?: string;
+}
+
+export interface RunnerHostList {
+	total_count: number;
+	pending_count: number;
+	hosts: RunnerHost[];
+	at: string;
+}
+
 export interface QueueStats {
 	depth: number;
 	depth_by_label: Record<string, number>;
@@ -329,6 +353,19 @@ export const api = {
 	streamUrl: (id: number, opts: { from_seq?: number; attempt?: number } = {}) =>
 		`/api/v1/jobs/${id}/logs/stream${query(opts)}`,
 	runners: () => request<RunnerList>("/api/v1/runners"),
+	runnerHosts: () => request<RunnerHostList>("/api/v1/runner-hosts"),
+	approveRunnerHost: (fingerprint: string, note: string) =>
+		request<RunnerHost>(`/api/v1/runner-hosts/${encodeURIComponent(fingerprint)}/approve`, {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify({ note }),
+		}),
+	revokeRunnerHost: (fingerprint: string, note: string) =>
+		request<RunnerHost>(`/api/v1/runner-hosts/${encodeURIComponent(fingerprint)}/revoke`, {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify({ note }),
+		}),
 	queue: () => request<QueueStats>("/api/v1/queue"),
 	queueHistory: (since: string) => request<QueueHistory>(`/api/v1/queue/history${query({ since })}`),
 	artifacts: (runID: number) => request<ArtifactList>(`/api/v1/runs/${runID}/artifacts`),
