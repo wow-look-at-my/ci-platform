@@ -13,7 +13,8 @@ func testSigner(now func() time.Time) *signer {
 	if now == nil {
 		now = func() time.Time { return time.Unix(1_700_000_000, 0).UTC() }
 	}
-	return &signer{key: []byte("session-signing-key"), ttl: time.Hour, now: now}
+	key := []byte("session-signing-key")
+	return &signer{key: key, tokenKey: tokenSigningKey(key, token), ttl: time.Hour, now: now}
 }
 
 func TestSession_RoundTrips(t *testing.T) {

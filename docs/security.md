@@ -86,10 +86,16 @@ navigation, so every sign-in would land signed-out. Lax still withholds the
 cookie from every cross-site POST, which is what this API's mutations are.
 
 Sessions are signed statements rather than rows in a table, so there is nothing
-to look up per request. Removing an account from the admin list takes effect on
-its next request — the list is re-read every time — but rotating
-`CIPLATFORM_SESSION_SECRET` is the only way to end a specific session early, and
-it ends all of them.
+to look up per request. Two things still take effect immediately. Removing an
+account from `CIPLATFORM_ADMIN_LOGINS` locks them out on their next request,
+because the list is re-read every time. Rotating `CIPLATFORM_OPERATOR_TOKEN`
+ends every session that was minted from it, because those are signed with a key
+derived from the credential — so a leaked credential cannot be traded for a
+session that outlives the rotation.
+
+What has no fast path is ending one named person's GitHub session before it
+expires while leaving them an admin. Rotating `CIPLATFORM_SESSION_SECRET` does
+it, but it signs everybody out.
 
 ## Runner hosts
 

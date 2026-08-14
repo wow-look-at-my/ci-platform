@@ -1,6 +1,8 @@
 package operatorauth
 
 import (
+	"crypto/hmac"
+	"crypto/sha256"
 	"errors"
 	"fmt"
 	"strconv"
@@ -45,26 +47,57 @@ func (i Identity) Actor() string {
 // migration to every schema change, and buy nothing that a short TTL and a
 // rotated signing key do not already give.
 //
-// The consequence, stated because it is a real one: a session cannot be revoked
-// before it expires except by rotating the signing key, which ends every
-// session at once. Removing somebody from the admin list stops them signing in
-// again but does not cut a session already open.
+// The consequence, stated because it is a real one: a GitHub session cannot be
+// revoked before it expires except by rotating the signing key, which ends
+// every session at once. Removing somebody from the admin list stops them
+// signing in again, and the middleware re-checks that list on every request, so
+// that particular case is covered.
 type signer struct {
 	key signedvalue.Key
-	ttl time.Duration
-	now func() time.Time
+	// tokenKey signs sessions minted from the shared operator credential, and
+	// is derived from that credential. Rotating the credential changes this key,
+	// so the sessions it handed out stop verifying -- which is what somebody
+	// rotating a leaked credential is expecting to happen.
+	tokenKey signedvalue.Key
+	ttl      time.Duration
+	now      func() time.Time
+}
+
+// tokenSigningKey derives the key that signs token sessions from the operator
+// credential, so a rotated credential cannot be traded for a session that
+// outlives it.
+func tokenSigningKey(sessionKey []byte, token string) signedvalue.Key {
+	mac := hmac.New(sha256.New, sessionKey)
+	mac.Write([]byte("ci-platform/operator-token-session/v1"))
+	mac.Write([]byte(token))
+	return mac.Sum(nil)
+}
+
+// keyFor picks the signing key for a method.
+func (s *signer) keyFor(method Method) signedvalue.Key {
+	if method == MethodToken {
+		return s.tokenKey
+	}
+	return s.key
 }
 
 func (s *signer) mint(login string, method Method) (string, Identity) {
 	id := Identity{Login: login, Method: method, Expires: s.now().Add(s.ttl)}
 	payload := fmt.Sprintf("v1|%s|%s|%d", method, login, id.Expires.Unix())
-	return s.key.Sign([]byte(payload)), id
+	return s.keyFor(method).Sign([]byte(payload)), id
 }
 
 // parse verifies the signature before it reads anything out of the payload, so
 // no field of a forged cookie is ever acted on.
+//
+// Which key signed it is not known until the payload is read, and the payload
+// must not be read until a signature verifies, so both are tried. Neither
+// answers differently on a wrong guess, so nothing is learned from the order.
 func (s *signer) parse(raw string) (Identity, error) {
 	payload, err := s.key.Open(raw)
+	if err != nil {
+		payload, err = s.tokenKey.Open(raw)
+	}
 	if err != nil {
 		return Identity{}, err
 	}

@@ -128,7 +128,10 @@ func New(opts Options) (*Auth, error) {
 		admins: opts.Admins,
 		oauth:  opts.OAuth,
 		sessions: &signer{
-			key: opts.SessionKey, ttl: opts.SessionTTL, now: opts.Now,
+			key:      opts.SessionKey,
+			tokenKey: tokenSigningKey(opts.SessionKey, opts.Token),
+			ttl:      opts.SessionTTL,
+			now:      opts.Now,
 		},
 		secure: opts.Secure,
 		log:    opts.Logger,

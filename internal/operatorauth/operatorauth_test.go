@@ -115,6 +115,40 @@ func TestMiddleware_RejectsASessionSignedWithAnotherKey(t *testing.T) {
 	assert.Equal(t, http.StatusUnauthorized, rec.Code)
 }
 
+// Rotating the operator credential is what somebody does when they think it
+// leaked, so the sessions it handed out have to stop working then, not up to a
+// session lifetime later. A GitHub session is unaffected: it was never a claim
+// about the credential.
+func TestMiddleware_RotatingTheCredentialEndsTheSessionsItMinted(t *testing.T) {
+	before := newAuth(t)
+	fromToken := sessionFor(t, before, "", MethodToken)
+	fromGitHub := sessionFor(t, before, "PazerOP", MethodGitHub)
+
+	rotated := options(t)
+	rotated.Token = "a-freshly-rotated-operator-token"
+	after, err := New(rotated)
+	require.NoError(t, err)
+
+	for _, tc := range []struct {
+		name   string
+		cookie *http.Cookie
+		want   int
+	}{
+		{"session minted from the old credential", fromToken, http.StatusUnauthorized},
+		{"session from signing in with GitHub", fromGitHub, http.StatusOK},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			r := httptest.NewRequest(http.MethodGet, "/api/v1/runs", nil)
+			r.AddCookie(tc.cookie)
+			rec := httptest.NewRecorder()
+			after.Middleware(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				w.WriteHeader(http.StatusOK)
+			})).ServeHTTP(rec, r)
+			assert.Equal(t, tc.want, rec.Code)
+		})
+	}
+}
+
 // Dropping somebody from the admin list has to take effect now, not whenever
 // their session happens to run out.
 func TestMiddleware_RejectsASessionForAnAccountRemovedFromTheAdminList(t *testing.T) {
