@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/wow-look-at-my/ci-platform/internal/model"
+	"github.com/wow-look-at-my/ci-platform/internal/operatorauth"
 	"github.com/wow-look-at-my/ci-platform/internal/store"
 )
 
@@ -74,10 +75,10 @@ type Config struct {
 	// Now is injected so tests get deterministic timing output.
 	Now func() time.Time
 	// Actor names the principal performing a cancel or re-run. The default
-	// reads X-CI-Actor and falls back to "operator". The header is a display
-	// name the caller chooses, not an identity: what authorises the request is
-	// the operator credential the gate in front of this server already
-	// checked, and every operator shares one.
+	// prefers the account the gate authenticated, which is an identity rather
+	// than a claim. It falls back to X-CI-Actor for a caller holding the shared
+	// operator credential, which names nobody, and that header is a display
+	// name the caller chooses.
 	Actor func(*http.Request) string
 	// SSEHeartbeat is how often an SSE stream emits a comment so proxies do
 	// not close an idle tail.
@@ -112,6 +113,9 @@ func New(cfg Config) *Server {
 }
 
 func defaultActor(r *http.Request) string {
+	if id, ok := operatorauth.IdentityFrom(r.Context()); ok && id.Login != "" {
+		return id.Login
+	}
 	if a := r.Header.Get("X-CI-Actor"); a != "" {
 		return a
 	}

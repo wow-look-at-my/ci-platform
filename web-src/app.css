@@ -924,6 +924,27 @@ tr[class*="tone-"] td:first-child {
 	width: 100%;
 }
 
+/* The GitHub button is the way in; the token form is the way in when GitHub is
+   not reachable. Size says which is which. */
+.signin-github {
+	margin-top: var(--gap);
+	padding: 8px 16px;
+}
+
+.signin-fallback {
+	margin-top: calc(var(--gap) * 2);
+}
+
+.signin-fallback summary {
+	cursor: pointer;
+	color: var(--text-muted);
+}
+
+.whoami {
+	color: var(--text-muted);
+	font-size: 0.85rem;
+}
+
 @media (max-width: 720px) {
 	.page-head {
 		flex-direction: column;

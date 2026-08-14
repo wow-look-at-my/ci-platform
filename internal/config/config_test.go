@@ -20,6 +20,10 @@ func complete() map[string]string {
 		"CIPLATFORM_JOB_TOKEN_SECRET": "job-secret",
 		"CIPLATFORM_RUNNER_TOKEN":     "runner-secret",
 		"CIPLATFORM_OPERATOR_TOKEN":   "operator-secret-long-enough",
+		"CIPLATFORM_ALLOWED_OWNERS":   "PazerOP",
+		"CIPLATFORM_ADMIN_LOGINS":     "PazerOP",
+		"CIPLATFORM_OAUTH_CLIENT_ID":  "Iv1.0123456789abcdef",
+		"CIPLATFORM_OAUTH_CLIENT_SECRET": "oauth-client-secret",
 	}
 }
 
@@ -88,7 +92,8 @@ func TestLoad_ReportsEveryMissingValueAtOnce(t *testing.T) {
 	for _, name := range []string{
 		"CIPLATFORM_PUBLIC_URL", "CIPLATFORM_DATABASE_URL", "CIPLATFORM_WEBHOOK_SECRET",
 		"CIPLATFORM_APP_ID", "CIPLATFORM_JOB_TOKEN_SECRET", "CIPLATFORM_RUNNER_TOKEN",
-		"CIPLATFORM_OPERATOR_TOKEN",
+		"CIPLATFORM_OPERATOR_TOKEN", "CIPLATFORM_ALLOWED_OWNERS", "CIPLATFORM_ADMIN_LOGINS",
+		"CIPLATFORM_OAUTH_CLIENT_ID", "CIPLATFORM_OAUTH_CLIENT_SECRET",
 	} {
 		assert.Contains(t, msg, name)
 	}
@@ -96,24 +101,55 @@ func TestLoad_ReportsEveryMissingValueAtOnce(t *testing.T) {
 	assert.Contains(t, msg, "check runs cannot be written without App auth")
 }
 
-func TestLoad_RejectsAHostnameTheArtifactClientWillNotAccept(t *testing.T) {
+// The isGhes() rule governs where the repositories are, so an ordinary
+// deployment hostname is fine and a bad GITHUB_SERVER_URL is not.
+func TestLoad_AcceptsAnyPublicHostnameAndChecksTheGitHubServerURL(t *testing.T) {
 	m := complete()
-	m["CIPLATFORM_PUBLIC_URL"] = "https://ci.internal.example.com"
+	m["CIPLATFORM_PUBLIC_URL"] = "https://ci.pazer.build"
 
-	_, err := LoadFrom(env(m))
-	require.ErrorIs(t, err, ErrGHESHostname)
+	cfg, err := LoadFrom(env(m))
+	require.NoError(t, err)
+	assert.Equal(t, "https://ci.pazer.build", cfg.PublicURL.String())
+	assert.Equal(t, "https://github.com", cfg.GitHubServerURL.String(), "defaults to github.com")
+
+	m["CIPLATFORM_GITHUB_SERVER_URL"] = "https://ghe.internal.example.com"
+	_, err = LoadFrom(env(m))
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "GHESNotSupportedError")
+	assert.Contains(t, err.Error(), "CIPLATFORM_GITHUB_SERVER_URL")
 }
 
-func TestArtifactClientAccepts(t *testing.T) {
-	accepted := []string{"github.com", "GITHUB.COM", "foo.ghe.com", "ci.example.localhost", "localhost.localhost"}
-	for _, h := range accepted {
-		assert.True(t, ArtifactClientAccepts(h), h)
+// Anybody can install a published App, so the list of accounts served is a
+// decision the operator has to make out loud.
+func TestLoad_RequiresTheAccountAllowlists(t *testing.T) {
+	for _, name := range []string{"CIPLATFORM_ALLOWED_OWNERS", "CIPLATFORM_ADMIN_LOGINS"} {
+		m := complete()
+		delete(m, name)
+
+		_, err := LoadFrom(env(m))
+		require.Error(t, err, name)
+		assert.Contains(t, err.Error(), name)
 	}
-	rejected := []string{"ci.example.com", "localhost", "ghe.com.evil.net", "", "ci.internal"}
-	for _, h := range rejected {
-		assert.False(t, ArtifactClientAccepts(h), h)
-	}
+
+	m := complete()
+	m["CIPLATFORM_ALLOWED_OWNERS"] = "PazerOP/ci-platform"
+	_, err := LoadFrom(env(m))
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "not an account login")
+}
+
+func TestLoad_ParsesTheAccountAllowlists(t *testing.T) {
+	m := complete()
+	m["CIPLATFORM_ALLOWED_OWNERS"] = "PazerOP, wow-look-at-my"
+	m["CIPLATFORM_ADMIN_LOGINS"] = "PazerOP"
+
+	cfg, err := LoadFrom(env(m))
+	require.NoError(t, err)
+	assert.True(t, cfg.AllowedOwners.Contains("pazerop"))
+	assert.True(t, cfg.AllowedOwners.Contains("wow-look-at-my"))
+	assert.False(t, cfg.AllowedOwners.Contains("a-total-stranger"))
+	assert.True(t, cfg.AdminLogins.Contains("PazerOP"))
+	assert.False(t, cfg.AdminLogins.Contains("wow-look-at-my"), "serving an org is not administering it")
 }
 
 // A heartbeat slower than the lease means every running job loses its lease and

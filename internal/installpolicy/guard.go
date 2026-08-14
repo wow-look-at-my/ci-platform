@@ -119,7 +119,7 @@ func (g *Guard) Installation(ctx context.Context, e *webhook.InstallationEvent) 
 	if !g.owners.Contains(account) {
 		g.log.Warn("ignored an App installation by an account this instance does not serve",
 			"account", account, "installation", e.Installation.ID, "action", e.Meta.Action,
-			"repositories", len(e.Repositories), "serving", g.policy.String())
+			"repositories", len(e.Repositories), "serving", g.owners.String())
 		return nil
 	}
 	return g.next.Installation(ctx, e)
