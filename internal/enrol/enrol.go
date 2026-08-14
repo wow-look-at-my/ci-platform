@@ -47,9 +47,14 @@ const MaxClockSkew = 2 * time.Minute
 
 // Fingerprint names a public key the way ssh does, so an operator comparing
 // what the host printed with what the dashboard shows is doing a familiar job.
+//
+// The digest is base64url rather than standard base64: a fingerprint is a path
+// segment in the approval API, and standard base64's "/" would split it in two.
+// It differs from ssh's own output only in the two substituted characters, so
+// it still reads as the thing it is.
 func Fingerprint(pub ed25519.PublicKey) string {
 	sum := sha256.Sum256(pub)
-	return "SHA256:" + base64.RawStdEncoding.EncodeToString(sum[:])
+	return "SHA256:" + base64.RawURLEncoding.EncodeToString(sum[:])
 }
 
 // ParsePublicKey reads the base64 form a host sends over the wire.
