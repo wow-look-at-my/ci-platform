@@ -45,7 +45,9 @@ request, Check run, and Check suite events. Generate a private key, download the
 `.pem`, and note the App ID and the OAuth client ID and secret.
 
 The App can be public. An install by an account you did not list is inert: it
-schedules nothing and gets nothing — [docs/security.md](docs/security.md).
+schedules nothing and gets nothing — [docs/security.md](docs/security.md). Say
+so in the App's description, so somebody who installs it out of curiosity
+learns why nothing happened from the App rather than from a support thread.
 
 **2. Configure.** Put the key next to `compose.yaml` as `app-private-key.pem`,
 then write a `.env`:
