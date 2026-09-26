@@ -5,16 +5,14 @@ package model
 
 import "fmt"
 
-// Status is the lifecycle phase of a run, job, or step. It mirrors the Checks
-// API status values so the reporter can pass them through unchanged.
+// Status is the lifecycle phase of a run, job, or step; mirrors the Checks API status values.
 type Status string
 
 const (
 	StatusQueued     Status = "queued"
 	StatusInProgress Status = "in_progress"
 	StatusCompleted  Status = "completed"
-	// StatusWaiting covers a job held by a concurrency group, an environment
-	// protection rule, or a fork-PR approval gate. GitHub has "waiting" too.
+	// StatusWaiting covers a job held by a concurrency group, environment gate, or fork-PR approval.
 	StatusWaiting Status = "waiting"
 )
 
@@ -30,12 +28,7 @@ func (s Status) Valid() bool {
 // Terminal reports whether no further transition is expected.
 func (s Status) Terminal() bool { return s == StatusCompleted }
 
-// Conclusion is the outcome of a completed unit of work.
-//
-// ConclusionInfraFailure is ours, not GitHub's: it is the whole point of the
-// platform. It maps onto the Checks API as "action_required" so that it is
-// visually distinct from a red build (see internal/github.ConclusionToCheck),
-// because a red build must mean the user's code is broken.
+// Conclusion is the outcome of a completed unit of work. ConclusionInfraFailure maps to action_required.
 type Conclusion string
 
 const (
@@ -63,9 +56,8 @@ func (c Conclusion) Valid() bool {
 	return false
 }
 
-// IsFailure reports whether c should stop dependents from running. Skipped is
-// deliberately excluded: a skipped job does not fail its dependents, but it is
-// also never counted as success by the aggregate (see Aggregate).
+// IsFailure reports whether c should stop dependents. Skipped is excluded: it
+// never fails dependents, but Aggregate also never counts it as success.
 func (c Conclusion) IsFailure() bool {
 	switch c {
 	case ConclusionFailure, ConclusionTimedOut, ConclusionInfraFailure,
@@ -81,8 +73,7 @@ func (c Conclusion) UserVisibleRed() bool {
 	return c == ConclusionFailure || c == ConclusionTimedOut
 }
 
-// FailureClass answers the question that GitHub Actions never answers: whose
-// fault was it? Every non-success outcome carries one.
+// FailureClass answers whose fault a non-success outcome was; every one carries a class.
 type FailureClass string
 
 const (
@@ -90,12 +81,9 @@ const (
 	ClassNone FailureClass = ""
 	// ClassUser means a command the user wrote exited non-zero. Never retried.
 	ClassUser FailureClass = "user"
-	// ClassInfra means the platform, the network, or a dependency of the
-	// platform failed. Retried with backoff by default.
+	// ClassInfra means the platform, network, or a platform dependency failed. Retried with backoff.
 	ClassInfra FailureClass = "infra"
-	// ClassConfig means the workflow itself is wrong: unparseable YAML, an
-	// unresolvable action ref, an unsupported key. Never retried; retrying
-	// cannot help.
+	// ClassConfig means the workflow is wrong (bad YAML, action ref, unsupported key). Never retried.
 	ClassConfig FailureClass = "config"
 )
 
@@ -126,8 +114,7 @@ func (f FailureClass) Conclusion() Conclusion {
 	return ConclusionFailure
 }
 
-// CancelActor identifies who or what cancelled a unit of work. Every
-// cancellation records one; there is no path that cancels without an actor.
+// CancelActor identifies who or what cancelled a unit of work; every cancellation records one.
 type CancelActor string
 
 const (
@@ -157,11 +144,9 @@ func (a CancelActor) Valid() bool {
 // the exact incident this platform was built to never repeat.
 type CancelReason struct {
 	Actor CancelActor `json:"actor"`
-	// Sentence is a complete human sentence shown verbatim in the UI and in
-	// the check run's output. Not a code, not an enum name.
+	// Sentence is a complete human sentence shown verbatim in the UI and check run output.
 	Sentence string `json:"sentence"`
-	// TriggeredBy is the login of the user, or the ID of the run/group that
-	// caused it. Optional, because a timeout has no principal.
+	// TriggeredBy is the login or run/group ID that caused it; optional, since a timeout has no principal.
 	TriggeredBy string `json:"triggered_by,omitempty"`
 }
 
@@ -227,8 +212,7 @@ func Aggregate(cs []Conclusion) Conclusion {
 	case sawNeutral:
 		return ConclusionNeutral
 	case sawSkipped && !sawSuccess:
-		// Everything was skipped. Saying "success" here is the
-		// zero-work-satisfies-a-required-check lie.
+		// Everything was skipped; reporting success would be the zero-work-satisfies-a-check lie.
 		return ConclusionSkipped
 	case sawSkipped:
 		// A mix. Report neutral rather than laundering skips into a green.

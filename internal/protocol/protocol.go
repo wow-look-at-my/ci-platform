@@ -12,9 +12,7 @@ import (
 	"github.com/wow-look-at-my/ci-platform/internal/model"
 )
 
-// APIVersion is bumped on any breaking change; the control plane rejects a
-// runner announcing a version it does not understand rather than silently
-// misinterpreting its payloads.
+// APIVersion is bumped on breaking changes; the control plane rejects an unrecognized version.
 const APIVersion = "1"
 
 // Endpoint paths, all under /runner/v1.
@@ -29,9 +27,7 @@ const (
 	PathRelease   = "/runner/v1/release"
 	PathAnnotate  = "/runner/v1/annotate"
 	PathSetup     = "/runner/v1/setup"
-	// PathEnrol and PathSession are the only two routes on this surface that
-	// answer without a session token. They cannot require one: they are how a
-	// host gets one. Both are signature-verified instead.
+	// PathEnrol and PathSession answer without a session token; both are signature-verified instead.
 	PathEnrol   = "/runner/v1/enrol"
 	PathSession = "/runner/v1/session"
 )
@@ -47,10 +43,7 @@ type EnrolRequest struct {
 	Arch       string   `json:"arch,omitempty"`
 	Version    string   `json:"version,omitempty"`
 	Labels     []string `json:"labels,omitempty"`
-	// Timestamp, Nonce and Signature prove the sender holds the private half.
-	// Without them anybody could enrol somebody else's public key and leave the
-	// operator approving a fingerprint that belongs to a machine they do not
-	// control.
+	// Timestamp, Nonce and Signature prove the sender holds the private key.
 	Timestamp int64  `json:"timestamp"`
 	Nonce     string `json:"nonce"`
 	Signature string `json:"signature"`
@@ -68,8 +61,7 @@ type EnrolResponse struct {
 type SessionRequest struct {
 	APIVersion  string `json:"api_version"`
 	Fingerprint string `json:"fingerprint"`
-	// RunnerID names which of the host's runners this token is for, so a host
-	// running several does not have them share one identity.
+	// RunnerID identifies which of the host's runners this token is for.
 	RunnerID  string `json:"runner_id"`
 	Timestamp int64  `json:"timestamp"`
 	Nonce     string `json:"nonce"`
@@ -80,9 +72,7 @@ type SessionRequest struct {
 type SessionResponse struct {
 	Token     string    `json:"token"`
 	ExpiresAt time.Time `json:"expires_at"`
-	// Labels are what the operator allows this host to serve. A runner
-	// registering with more than these has them dropped, so the answer is sent
-	// back rather than left to be discovered as jobs that never arrive.
+	// Labels are what the operator allows this host to serve; a runner registering more has them dropped.
 	Labels []string `json:"labels,omitempty"`
 }
 
@@ -127,8 +117,7 @@ type Assignment struct {
 	RunID   int64 `json:"run_id"`
 	JobID   int64 `json:"job_id"`
 	Attempt int   `json:"attempt"`
-	// IdempotencyKey is "<run_id>/<job_id>/<attempt>"; the runner refuses to
-	// start a key it has already started.
+	// IdempotencyKey is "<run_id>/<job_id>/<attempt>"; the runner refuses to restart an already-started key.
 	IdempotencyKey string `json:"idempotency_key"`
 
 	JobName   string   `json:"job_name"`
@@ -139,13 +128,11 @@ type Assignment struct {
 	HeadRef   string   `json:"head_ref"`
 	Labels    []string `json:"labels"`
 
-	// Steps are fully resolved except for expressions that depend on earlier
-	// steps in this same job, which the runner evaluates as it goes.
+	// Steps are fully resolved except expressions depending on earlier steps, evaluated as the runner goes.
 	Steps []StepSpec `json:"steps"`
 	// Env is the job-level environment, already expression-evaluated.
 	Env map[string]string `json:"env"`
-	// Contexts carries the evaluated github/runner/needs/matrix/strategy/vars
-	// contexts so the runner can finish evaluating step-level expressions.
+	// Contexts carries the evaluated github/runner/needs/matrix/strategy/vars contexts for step expressions.
 	Contexts map[string]any `json:"contexts"`
 	// Secrets are injected per job and masked by value in logs. They are never
 	// written to the workspace.

@@ -27,21 +27,16 @@ type Options struct {
 	Image string
 	// DockerHost is the OUTER daemon. The job container never sees it.
 	DockerHost string
-	// ImageCacheVolume is the shared volume mounted at the inner daemon's
-	// /var/lib/docker, so a cold pull is paid once per runner rather than once
-	// per job.
+	// ImageCacheVolume is the volume mounted at the inner daemon's /var/lib/docker, shared across jobs.
 	ImageCacheVolume string
-	// LockDir holds the cache volume's lock file. Two dockerds sharing one
-	// graph directory corrupt it, so the volume is used under an exclusive
-	// lock rather than silently shared.
+	// LockDir holds the cache volume's lock file; two dockerds sharing one graph directory corrupt it.
 	LockDir string
 
 	// WorkspaceDir and TempDir are paths inside the container.
 	WorkspaceDir string
 	TempDir      string
 
-	// SetupTimeout bounds the whole setup phase. Exceeding it is an infra
-	// failure; there is no path where setup hangs forever.
+	// SetupTimeout bounds the whole setup phase; exceeding it is an infra failure, never a hang.
 	SetupTimeout time.Duration
 	// ReadyPoll is how often the inner dockerd is probed.
 	ReadyPoll time.Duration
@@ -124,8 +119,7 @@ type Container struct {
 	lock       *fileLock
 	removed    bool
 	hostTmpDir string
-	// Only what was actually created is removed, so teardown never reports a
-	// failure for a resource that never existed.
+	// Only what was actually created is removed, so teardown never reports removing a nonexistent resource.
 	madeWorkspace bool
 	madeNetwork   bool
 	madeContainer bool
@@ -164,8 +158,7 @@ func Create(ctx context.Context, opts Options) (_ *Container, report *SetupRepor
 	}
 	defer func() {
 		if err != nil {
-			// A half-built sandbox is torn down here; the caller only ever
-			// holds a container it can use.
+			// A half-built sandbox is torn down here, so the caller only ever holds a usable container.
 			_ = c.Close(context.WithoutCancel(ctx))
 		}
 	}()
@@ -208,9 +201,8 @@ func Create(ctx context.Context, opts Options) (_ *Container, report *SetupRepor
 	sw.mark("image_pull")
 
 	sw = report.begin()
-	// A network of its own. The Docker-in-Docker entrypoint always publishes an
-	// unauthenticated daemon API on 2375 inside the container; on the shared
-	// default bridge that is root access to this job from every other job.
+	// A network of its own: DinD's unauthenticated daemon API on 2375 would be root access to
+	// this job from every other job on a shared bridge.
 	if _, nerr := Capture(ctx, opts.Docker, "network", "create", c.network); nerr != nil {
 		return nil, report, setupErr(ctx, "network_create", nerr)
 	}

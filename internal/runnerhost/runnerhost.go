@@ -29,37 +29,29 @@ import (
 // Options configures the supervisor.
 type Options struct {
 	Docker sandbox.Docker
-	// ControlPlaneURL is where the runners get their work. On a LAN this is the
-	// coordinator's address directly; over the internet it is the public URL.
+	// ControlPlaneURL is where the runners get their work: the coordinator's LAN or public address.
 	ControlPlaneURL string
 	// Runners is how many to keep running.
 	Runners int
 	Labels  []string
-	// Name identifies this machine, and is the prefix of every container and
-	// volume it owns.
+	// Name identifies this machine and prefixes every container and volume it owns.
 	Name string
-	// HostKeyPath is the identity all this host's runners share, copied into
-	// each container rather than passed as an environment variable, so it is
-	// not visible in `docker inspect`.
+	// HostKeyPath is the shared runner identity, copied in rather than passed as an env var.
 	HostKeyPath string
 	// RunnerImage is the agent image. RunnerImageUpdates checks for a newer one.
 	RunnerImage string
 	// SandboxImage is the Docker-in-Docker image each job runs in.
 	SandboxImage string
-	// DockerHost is the daemon the runners themselves talk to. Empty means the
-	// default socket, mounted into each runner.
+	// DockerHost is the daemon the runners talk to; empty means the default socket, mounted in.
 	DockerHost string
 	// ActionsAPIURL is where `uses:` steps are fetched from.
 	ActionsAPIURL string
 
-	// ReconcileInterval is how often the pool is checked against what should be
-	// running.
+	// ReconcileInterval is how often the pool is checked against what should be running.
 	ReconcileInterval time.Duration
 	// UpdateInterval is how often a newer runner image is looked for.
 	UpdateInterval time.Duration
-	// DrainTimeout bounds how long a runner may take to finish the job it holds
-	// when it is asked to stop. It is hours rather than seconds: the whole point
-	// is that an update does not kill a build.
+	// DrainTimeout bounds how long a runner may take to finish its job before it is stopped.
 	DrainTimeout time.Duration
 
 	Logger *slog.Logger
@@ -70,8 +62,7 @@ type Options struct {
 type Host struct {
 	opts Options
 	log  *slog.Logger
-	// imageID is the runner image the pool was last built from. An empty value
-	// means it has not been resolved yet.
+	// imageID is the runner image the pool was last built from; empty means not resolved yet.
 	imageID string
 }
 
@@ -116,9 +107,7 @@ func (h *Host) container(slot int) string {
 	return "ci-runner-" + h.opts.Name + "-" + strconv.Itoa(slot)
 }
 
-// imageCacheVolume is the slot's Docker image cache. It deliberately survives a
-// runner restart -- it is a cache, and throwing it away means every job after an
-// update re-pulls its images -- and is removed only when the slot itself goes.
+// imageCacheVolume is the slot's Docker image cache; it survives restarts and is removed only with the slot.
 func (h *Host) imageCacheVolume(slot int) string {
 	return h.container(slot) + "-images"
 }
@@ -130,8 +119,7 @@ func (h *Host) imageCacheVolume(slot int) string {
 // next supervisor adopts the same containers by name.
 func (h *Host) Run(ctx context.Context) error {
 	if err := h.reconcile(ctx); err != nil {
-		// A first pass that cannot even talk to Docker is a misconfiguration
-		// worth failing on, rather than logging every fifteen seconds forever.
+		// A first pass that cannot talk to Docker is a misconfiguration worth failing on.
 		return err
 	}
 

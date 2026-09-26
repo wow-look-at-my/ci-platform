@@ -17,9 +17,6 @@ import (
 // ErrNotFound is returned by every getter for a missing row.
 var ErrNotFound = errors.New("store: not found")
 
-// ErrLeaseLost is returned when a lease operation is attempted by a runner that
-// no longer holds the lease. The runner must stop work; the job has already
-// been requeued elsewhere.
 var ErrLeaseLost = errors.New("store: lease lost")
 
 // ErrConflict is returned when an optimistic update loses a race.
