@@ -147,14 +147,10 @@ type Assignment struct {
 	// JobToken is a per-job scoped bearer token for the artifact, cache, log, and OIDC endpoints.
 	JobToken  string `json:"job_token"`
 	ServerURL string `json:"server_url"`
-	// ServiceEnv is the environment the artifact, cache, and OIDC clients
-	// discover their endpoints through. The control plane builds it because it
-	// owns those URLs and mints the token; a runner deriving them itself would
-	// be guessing at the server it is talking to.
+	// ServiceEnv is the environment through which artifact, cache, and OIDC clients discover their endpoints.
 	ServiceEnv map[string]string `json:"service_env,omitempty"`
 
-	// Retry is the resolved job-level policy, so the runner can report an
-	// attempt as retryable without asking.
+	// Retry is the resolved job-level policy, so the runner can report an attempt retryable without asking.
 	Retry model.RetryPolicy `json:"retry"`
 
 	// DefaultShell and WorkingDirectory come from defaults.run.
@@ -180,8 +176,7 @@ type StepSpec struct {
 	ContinueOnError  bool               `json:"continue_on_error,omitempty"`
 	TimeoutMinutes   int                `json:"timeout_minutes,omitempty"`
 	Retry            *model.RetryPolicy `json:"retry,omitempty"`
-	// PreAction and PostAction mark synthesized steps from an action's
-	// pre:/post: entrypoints, which run outside the normal if: rules.
+	// PreAction and PostAction mark synthesized steps from pre:/post: entrypoints, run outside if: rules.
 	PreAction  bool `json:"pre,omitempty"`
 	PostAction bool `json:"post,omitempty"`
 }
@@ -207,8 +202,7 @@ type HeartbeatRequest struct {
 // HeartbeatResponse carries control-plane-initiated instructions back, which is
 // how a cancellation reaches a running job.
 type HeartbeatResponse struct {
-	// Cancel is non-nil when the control plane wants this job stopped, and it
-	// always carries the reason: there is no unexplained cancellation path.
+	// Cancel is non-nil when the control plane wants the job stopped; it always carries the reason.
 	Cancel *model.CancelReason `json:"cancel,omitempty"`
 	// LeaseLost tells the runner the job was taken from it and it must stop
 	// without reporting a result.

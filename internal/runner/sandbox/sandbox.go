@@ -214,20 +214,16 @@ func Create(ctx context.Context, opts Options) (_ *Container, report *SetupRepor
 		"run", "-d",
 		"--name", c.name,
 		"--network", c.network,
-		// Privileged is what makes an inner dockerd possible at all; the
-		// isolation comes from it being a throwaway container with its own
-		// image store and network, not from dropping privileges.
+		// Privileged enables the inner dockerd; isolation is the throwaway container, not dropped privileges.
 		"--privileged",
-		// TLS between the job and its own local daemon buys nothing and adds a
-		// certificate dance to every readiness probe.
+		// TLS to the job's own local daemon buys nothing and adds a cert dance to every readiness probe.
 		"-e", "DOCKER_TLS_CERTDIR=",
 		"-v", c.workspace + ":" + opts.WorkspaceDir,
 	}
 	if opts.ImageCacheVolume != "" {
 		args = append(args, "-v", opts.ImageCacheVolume+":/var/lib/docker")
 	}
-	// No -v /var/run/docker.sock and no control-plane credentials: a job can
-	// reach only its own inner daemon.
+	// No docker.sock mount and no control-plane credentials: a job reaches only its own inner daemon.
 	args = append(args, opts.Image)
 	if _, rerr := Capture(ctx, opts.Docker, args...); rerr != nil {
 		return nil, report, setupErr(ctx, "container_create", rerr)

@@ -284,8 +284,7 @@ func (h *Host) create(ctx context.Context, slot int) error {
 		"-e", "CI_CONTROL_PLANE_URL=" + h.opts.ControlPlaneURL,
 		"-e", "CI_RUNNER_LABELS=" + strings.Join(h.opts.Labels, ","),
 		"-e", "CI_RUNNER_NAME=" + h.opts.Name + "-" + strconv.Itoa(slot),
-		// The id is stable per slot, so a replaced runner is the same runner to
-		// the control plane rather than an ever-growing list of dead ones.
+		// The id is stable per slot, so a replaced runner reuses its identity with the control plane.
 		"-e", "CI_RUNNER_ID=" + name,
 		"-e", "CI_RUNNER_STATE_DIR=" + stateDir,
 		"-e", "CI_RUNNER_HOST_KEY=" + stateDir + "/host.key",
@@ -300,8 +299,7 @@ func (h *Host) create(ctx context.Context, slot int) error {
 	if h.opts.DockerHost != "" {
 		args = append(args, "-e", "CI_RUNNER_DOCKER_HOST="+h.opts.DockerHost)
 	} else {
-		// A runner builds its job sandboxes on the same daemon this supervisor
-		// uses, so it needs the socket.
+		// A runner builds job sandboxes on this supervisor's own daemon, so it needs the socket.
 		args = append(args, "-v", "/var/run/docker.sock:/var/run/docker.sock")
 	}
 	args = append(args, h.opts.RunnerImage, "run")
@@ -309,10 +307,8 @@ func (h *Host) create(ctx context.Context, slot int) error {
 	if _, err := sandbox.Capture(ctx, h.opts.Docker, args...); err != nil {
 		return fmt.Errorf("creating %s: %w", name, err)
 	}
-	// Copied into the stopped container rather than mounted or passed as an
-	// environment variable: a bind mount would need a path that means the same
-	// thing inside this supervisor and on the host, and an environment variable
-	// would put the private key in `docker inspect` output.
+	// Copied into the stopped container rather than mounted or passed as an env var,
+	// which would put the private key in `docker inspect` output.
 	if _, err := sandbox.Capture(ctx, h.opts.Docker, "cp", h.opts.HostKeyPath, name+":"+stateDir+"/host.key"); err != nil {
 		return fmt.Errorf("installing the host key into %s: %w", name, err)
 	}

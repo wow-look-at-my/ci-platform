@@ -66,8 +66,7 @@ var DefaultScopes = []Scope{
 // ActionsResultsScopePrefix is the scope entry @actions/artifact looks for.
 const ActionsResultsScopePrefix = "Actions.Results"
 
-// backendIDNamespace derives stable UUIDv5 backend IDs. It is a constant so
-// the same run always produces the same ID across control-plane restarts.
+// backendIDNamespace derives stable UUIDv5 backend IDs across control-plane restarts.
 var backendIDNamespace = uuid.MustParse("6b2f4a1e-6c1f-5a0c-9d3b-2f0a7c4e51d8")
 
 // BackendRunID is the workflowRunBackendId for a run.
@@ -93,8 +92,7 @@ type Claims struct {
 	// Ref is the job's git ref, carried so cache ref-scoping needs no lookup.
 	Ref    string  `json:"ref,omitempty"`
 	Scopes []Scope `json:"scopes"`
-	// Scp is the Actions-compatible space-separated scope string. The toolkit
-	// reads this and nothing else in this struct.
+	// Scp is the Actions-compatible space-separated scope string; the toolkit reads only this field.
 	Scp string `json:"scp"`
 
 	jwt.RegisteredClaims
@@ -133,8 +131,7 @@ type Job struct {
 	ExpiresAt time.Time
 }
 
-// Lookup resolves the job a Mint call names. The scheduler owns this data; the
-// token package refuses to guess it.
+// Lookup resolves the job a Mint call names; the scheduler owns this data, not this package.
 type Lookup func(runID, jobID int64, attempt int) (Job, error)
 
 // Options configures a Signer.

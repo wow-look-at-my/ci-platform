@@ -68,9 +68,7 @@ type Job struct {
 
 	// Key is the workflow's jobs.<key>. Stable across matrix legs.
 	Key string `json:"key"`
-	// Name is the display name including any matrix suffix, e.g.
-	// "publish (claude-host/agent-host, Dockerfile)". This is the check run
-	// name, and existing branch protection matches on it.
+	// Name is the display name with any matrix suffix; it is the check run name that branch protection matches on.
 	Name string `json:"name"`
 	// MatrixKey is a stable identity for one leg, "" for an unmatrixed job.
 	MatrixKey string         `json:"matrix_key,omitempty"`
@@ -110,9 +108,8 @@ type Job struct {
 	ClassificationLog []string          `json:"classification_log,omitempty"`
 }
 
-// Timing is the queued/setup/execute breakdown surfaced on every job page. The
-// "job setup took 5m30s with nothing to explain it" incident is why setup is a
-// first-class measured phase rather than something inferred from timestamps.
+// Timing is the queued/setup/execute breakdown surfaced on every job page; setup
+// is measured directly rather than inferred, so an unexplained delay is visible.
 type Timing struct {
 	QueuedFor  time.Duration `json:"queued_for"`
 	SetupFor   time.Duration `json:"setup_for"`
