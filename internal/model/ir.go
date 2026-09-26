@@ -1,6 +1,9 @@
 package model
 
-import "time"
+import (
+	"strings"
+	"time"
+)
 
 // The IR is the parser's output and the scheduler's and executor's input. It is
 // deliberately not a GitHub Actions AST: the GHA YAML frontend is one frontend
@@ -27,6 +30,45 @@ func (e Expr) IsLiteral() bool {
 		}
 	}
 	return true
+}
+
+// Sole returns the body of an expression that is exactly one ${{ }} with only
+// whitespace around it. ok is false for a literal, an unterminated wrapper, or
+// a template that mixes text with expressions.
+func (e Expr) Sole() (body string, ok bool) {
+	s := strings.TrimSpace(e.Raw)
+	if !strings.HasPrefix(s, "${{") {
+		return "", false
+	}
+	body, rest, ok := SplitExprBody(s[3:])
+	if !ok || strings.TrimSpace(rest) != "" {
+		return "", false
+	}
+	return body, true
+}
+
+// SplitExprBody finds the "}}" that closes an expression body, ignoring braces
+// inside single-quoted strings so that format('}}') survives. s starts just
+// after the opening "${{".
+func SplitExprBody(s string) (body, rest string, ok bool) {
+	inStr := false
+	for i := 0; i < len(s); i++ {
+		switch s[i] {
+		case '\'':
+			// '' inside a string is an escaped quote, and skipping the second
+			// one here keeps inStr correct.
+			if inStr && i+1 < len(s) && s[i+1] == '\'' {
+				i++
+				continue
+			}
+			inStr = !inStr
+		case '}':
+			if !inStr && i+1 < len(s) && s[i+1] == '}' {
+				return s[:i], s[i+2:], true
+			}
+		}
+	}
+	return "", "", false
 }
 
 // String returns the raw text.
@@ -284,9 +326,6 @@ type RetryPolicy struct {
 	Jitter   bool           `json:"jitter"`
 }
 
-// DefaultRetryPolicy is what applies when a workflow declares nothing: infra
-// failures retry three times with exponential backoff, user failures never
-// retry, config errors never retry because retrying cannot fix them.
 func DefaultRetryPolicy() RetryPolicy {
 	return RetryPolicy{
 		Attempts: 3,
@@ -298,8 +337,6 @@ func DefaultRetryPolicy() RetryPolicy {
 	}
 }
 
-// Retries reports whether this policy retries the given class at the given
-// attempt number (1-based, so attempt 1 is the first try).
 func (p RetryPolicy) Retries(class FailureClass, attempt int) bool {
 	if attempt >= p.Attempts {
 		return false
@@ -312,8 +349,6 @@ func (p RetryPolicy) Retries(class FailureClass, attempt int) bool {
 	return false
 }
 
-// Delay is the wait before the given attempt number (1-based: the delay before
-// attempt 2 is Delay(2)).
 func (p RetryPolicy) Delay(attempt int) time.Duration {
 	if attempt < 2 {
 		return 0

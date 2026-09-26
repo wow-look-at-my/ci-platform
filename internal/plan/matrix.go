@@ -256,7 +256,7 @@ func dimensionValues(raw []any, ev Evaluator) ([]any, error) {
 		if ev == nil {
 			return nil, fmt.Errorf("value %q needs an evaluator and none was supplied", s)
 		}
-		got, err := ev.Eval(s)
+		got, err := evalValue(ev, model.NewExpr(s))
 		if err != nil {
 			return nil, err
 		}
@@ -278,7 +278,7 @@ func resolveMatrix(m *model.Matrix, ev Evaluator) (*model.Matrix, error) {
 	if ev == nil {
 		return nil, fmt.Errorf("matrix %q needs an evaluator and none was supplied", m.FromExpr.Raw)
 	}
-	v, err := ev.Eval(m.FromExpr.Raw)
+	v, err := evalValue(ev, m.FromExpr)
 	if err != nil {
 		return nil, fmt.Errorf("matrix expression %q: %w", m.FromExpr.Raw, err)
 	}

@@ -50,11 +50,17 @@ func TestEvalBoolRejectsAMisspelledLiteral(t *testing.T) {
 }
 
 func TestEvalIntAndStringMap(t *testing.T) {
-	ev := newFakeFactory(map[string]any{"vars.n": "12", "vars.bad": []any{1}})(map[string]any{}, Status{})
+	ev := realEval(map[string]any{"vars": map[string]any{"n": "12", "bad": []any{1}}})
 	n, err := EvalInt(ev, model.NewExpr("${{ vars.n }}"), 0)
 	require.False(t, err != nil || n != 12)
 
 	_, err = EvalInt(ev, model.NewExpr("${{ vars.bad }}"), 0)
+	require.NotNil(t, err)
+
+	n, err = EvalInt(ev, model.NewExpr("${{ vars.n }}0"), 0)
+	require.False(t, err != nil || n != 120)
+
+	_, err = EvalInt(ev, model.NewExpr("${{ vars.n "), 0)
 	require.NotNil(t, err)
 
 	_, err = EvalInt(nil, model.NewExpr("nine"), 0)
@@ -89,24 +95,22 @@ func TestExpandMatrixNeedsAnEvaluatorForExpressions(t *testing.T) {
 }
 
 func TestFromJSONMatrixRejectsMalformedShapes(t *testing.T) {
-	ev := newFakeFactory(map[string]any{
-		"bad-dim":     map[string]any{"os": "ubuntu"},
-		"bad-include": map[string]any{"include": "nope"},
-		"bad-entry":   map[string]any{"include": []any{"nope"}},
-	})(map[string]any{}, Status{})
-	for _, raw := range []string{"bad-dim", "bad-include", "bad-entry"} {
-		_, err := ExpandMatrix(&model.Matrix{FromExpr: model.NewExpr("${{ " + raw + " }}")}, ev)
+	ev := realEval(map[string]any{"vars": map[string]any{
+		"bad_dim":     `{"os": "ubuntu"}`,
+		"bad_include": `{"include": "nope"}`,
+		"bad_entry":   `{"include": ["nope"]}`,
+	}})
+	for _, name := range []string{"bad_dim", "bad_include", "bad_entry"} {
+		_, err := ExpandMatrix(&model.Matrix{FromExpr: model.NewExpr("${{ fromJSON(vars." + name + ") }}")}, ev)
 		require.NotNil(t, err)
 
 	}
 }
 
 func TestFromJSONMatrixHonoursDeclaredOrder(t *testing.T) {
-	ev := newFakeFactory(map[string]any{
-		"m": map[string]any{"os": []any{"ubuntu"}, "go": []any{"1.24"}},
-	})(map[string]any{}, Status{})
+	ev := realEval(map[string]any{"vars": map[string]any{"m": `{"os": ["ubuntu"], "go": ["1.24"]}`}})
 	legs, err := ExpandMatrix(&model.Matrix{
-		FromExpr: model.NewExpr("${{ m }}"),
+		FromExpr: model.NewExpr("${{ fromJSON(vars.m) }}"),
 		Order:    []string{"os", "go"},
 	}, ev)
 	require.Nil(t, err)
@@ -121,9 +125,9 @@ func TestEmptyIncludeEntryIsAnError(t *testing.T) {
 }
 
 func TestStringDimensionsAreAccepted(t *testing.T) {
-	ev := newFakeFactory(map[string]any{"list": []string{"a", "b"}})(map[string]any{}, Status{})
+	ev := realEval(map[string]any{"vars": map[string]any{"list": []string{"a", "b"}}})
 	legs, err := ExpandMatrix(&model.Matrix{
-		Dimensions: map[string][]any{"x": {"${{ list }}"}},
+		Dimensions: map[string][]any{"x": {"${{ vars.list }}"}},
 		Order:      []string{"x"},
 	}, ev)
 	require.Nil(t, err)

@@ -20,7 +20,7 @@ type Evaluator interface {
 type EvaluatorFactory func(contexts map[string]any, status Status) Evaluator
 
 // Status is what success(), failure() and cancelled() answer inside an
-// expression. Exactly one of the three is true for a given evaluation.
+// expression. Exactly one of all of them is true for a given evaluation.
 type Status struct{ Success, Failure, Cancelled bool }
 
 // EvalString evaluates an Expr to text, short-circuiting literals so a literal
@@ -72,7 +72,7 @@ func EvalInt(ev Evaluator, e model.Expr, def int) (int, error) {
 	if ev == nil {
 		return 0, fmt.Errorf("expression %q needs an evaluator and none was supplied", e.Raw)
 	}
-	v, err := ev.Eval(e.Raw)
+	v, err := evalValue(ev, e)
 	if err != nil {
 		return 0, err
 	}
@@ -81,6 +81,16 @@ func EvalInt(ev Evaluator, e model.Expr, def int) (int, error) {
 		return 0, fmt.Errorf("expression %q evaluated to %v, which is not a number", e.Raw, v)
 	}
 	return n, nil
+}
+
+// evalValue evaluates e to a typed value. An Expr that is exactly one ${{ }}
+// yields that expression's value, so fromJSON can produce a list or an object;
+// a template with text around its expressions yields the interpolated string.
+func evalValue(ev Evaluator, e model.Expr) (any, error) {
+	if body, ok := e.Sole(); ok {
+		return ev.Eval(body)
+	}
+	return ev.EvalString(e.Raw)
 }
 
 func toInt(v any) (int, bool) {

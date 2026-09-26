@@ -3,10 +3,12 @@ package expr
 import (
 	"fmt"
 	"strings"
+
+	"github.com/wow-look-at-my/ci-platform/internal/model"
 )
 
-// StatusFunctions are the four functions whose presence in an `if:` changes
-// what the condition means when a dependency has failed.
+// StatusFunctions are the functions whose presence in an `if:` changes what
+// the condition means when a dependency has failed.
 var StatusFunctions = []string{"success", "failure", "cancelled", "always"}
 
 // ReferencesStatusFunction reports whether an if: condition calls one of the
@@ -36,7 +38,7 @@ func ReferencesStatusFunction(raw string) (bool, error) {
 		if i < 0 {
 			return false, nil
 		}
-		body, after, ok := splitExpr(rest[i+3:])
+		body, after, ok := model.SplitExprBody(rest[i+3:])
 		if !ok {
 			return false, fmt.Errorf("unterminated expression: %q", rest[i:])
 		}

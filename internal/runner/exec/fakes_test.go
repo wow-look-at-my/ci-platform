@@ -12,7 +12,7 @@ import (
 	"github.com/wow-look-at-my/ci-platform/internal/model"
 	"github.com/wow-look-at-my/ci-platform/internal/protocol"
 	"github.com/wow-look-at-my/ci-platform/internal/runner/actions"
-	"github.com/wow-look-at-my/go-containers/set"
+	"github.com/wow-look-at-my/ci-platform/internal/workflow/expr"
 )
 
 // fakeSandbox is an in-memory stand-in for the DinD container, so the executor
@@ -185,84 +185,14 @@ func (r *recordingReporter) Annotate(_ context.Context, a []model.Annotation) er
 	return r.err
 }
 
-// fakeEvaluator understands just enough expression syntax to drive the
-// executor's decisions: status functions, literals, and dotted context lookups.
-type fakeEvaluator struct {
-	contexts map[string]any
-	status   Status
-	fail     set.Set[string]
-}
-
-func newFakeEvaluatorFactory(fail set.Set[string]) EvaluatorFactory {
-	return func(contexts map[string]any, status Status) Evaluator {
-		return &fakeEvaluator{contexts: contexts, status: status, fail: fail}
-	}
-}
-
-func (f *fakeEvaluator) EvalBool(expr string) (bool, error) {
-	expr = strings.TrimSpace(expr)
-	if f.fail.Contains(expr) {
-		return false, fmt.Errorf("unrecognized named-value %q", expr)
-	}
-	switch expr {
-	case "true", "always()":
-		return true, nil
-	case "false":
-		return false, nil
-	case "success()":
-		return f.status.Success, nil
-	case "failure()":
-		return f.status.Failure, nil
-	case "cancelled()":
-		return f.status.Cancelled, nil
-	}
-	v, err := f.lookup(expr)
-	if err != nil {
-		return false, err
-	}
-	return v != "" && v != "false", nil
-}
-
-func (f *fakeEvaluator) EvalString(s string) (string, error) {
-	out := s
-	for {
-		start := strings.Index(out, "${{")
-		if start < 0 {
-			return out, nil
-		}
-		end := strings.Index(out[start:], "}}")
-		if end < 0 {
-			return "", fmt.Errorf("invalid expression: unterminated ${{ in %q", s)
-		}
-		inner := strings.TrimSpace(out[start+3 : start+end])
-		v, err := f.lookup(inner)
-		if err != nil {
-			return "", err
-		}
-		out = out[:start] + v + out[start+end+2:]
-	}
-}
-
-// lookup walks a dotted path through the contexts map.
-func (f *fakeEvaluator) lookup(path string) (string, error) {
-	if f.fail.Contains(path) {
-		return "", fmt.Errorf("unrecognized named-value %q", path)
-	}
-	var cur any = f.contexts
-	for _, part := range strings.Split(path, ".") {
-		m, ok := cur.(map[string]any)
-		if !ok {
-			return "", fmt.Errorf("unrecognized named-value %q", path)
-		}
-		cur, ok = m[part]
-		if !ok {
-			return "", nil
-		}
-	}
-	if cur == nil {
-		return "", nil
-	}
-	return fmt.Sprint(cur), nil
+// realEvaluator is the production evaluator, the same adapter ci-runner wires
+// in.
+func realEvaluator(contexts map[string]any, status Status) Evaluator {
+	return expr.New(expr.Context(contexts)).WithStatus(expr.Status{
+		Success:   status.Success,
+		Failure:   status.Failure,
+		Cancelled: status.Cancelled,
+	})
 }
 
 // fakeResolver serves actions from a temp directory on the host.

@@ -134,7 +134,7 @@ func TestForkPullRequestGetsNoSecrets(t *testing.T) {
 func TestForkApprovalHoldsJobs(t *testing.T) {
 	h := &harness{t: t, st: newFakeStore()}
 	h.s = New(h.st, Options{
-		NewEval: fakeFactory, ServerURL: "https://ci.example.com",
+		NewEval: realFactory, ServerURL: "https://ci.example.com",
 		MintJobToken:        func(int64, int64, int) (string, error) { return "tok", nil },
 		RequireForkApproval: true,
 	})
@@ -144,7 +144,7 @@ func TestForkApprovalHoldsJobs(t *testing.T) {
 	h.run = &model.Run{ID: 1, RepoID: 7, IsForkPR: true, Status: model.StatusQueued, CreatedAt: base, HeadBranch: "pr"}
 	require.NoError(t, h.st.CreateRun(ctx(), h.run))
 
-	p, err := plan.Build(wf(jobIR("build")), plan.Input{Run: h.run, NewEval: fakeFactory})
+	p, err := plan.Build(wf(jobIR("build")), plan.Input{Run: h.run, NewEval: realFactory})
 	require.Nil(t, err)
 
 	require.NoError(t, h.s.StartRun(ctx(), h.run, p))
@@ -329,9 +329,9 @@ func TestStartRunRejectsAnEmptyPlan(t *testing.T) {
 
 func TestNewRejectsMissingWiring(t *testing.T) {
 	for name, f := range map[string]func(){
-		"no store":     func() { New(nil, Options{NewEval: fakeFactory}) },
+		"no store":     func() { New(nil, Options{NewEval: realFactory}) },
 		"no evaluator": func() { New(newFakeStore(), Options{}) },
-		"no minter":    func() { New(newFakeStore(), Options{NewEval: fakeFactory}) },
+		"no minter":    func() { New(newFakeStore(), Options{NewEval: realFactory}) },
 	} {
 		t.Run(name, func(t *testing.T) {
 			defer func() {
@@ -357,7 +357,7 @@ func TestRunConcurrencySupersedesTheOlderRun(t *testing.T) {
 	// A second run of the same workflow, same group, cancel-in-progress.
 	w2 := wf(jobIR("build"))
 	w2.Concurrency = &model.Concurrency{Group: model.NewExpr("ci-main"), CancelInProgress: model.NewExpr("true")}
-	p1, err := plan.Build(w2, plan.Input{Run: h.run, NewEval: fakeFactory})
+	p1, err := plan.Build(w2, plan.Input{Run: h.run, NewEval: realFactory})
 	require.Nil(t, err)
 
 	h.s.registerPlan(h.run.ID, p1)
@@ -365,7 +365,7 @@ func TestRunConcurrencySupersedesTheOlderRun(t *testing.T) {
 	run2 := &model.Run{ID: 2, RepoID: 7, Status: model.StatusQueued, CreatedAt: base.Add(time.Minute), HeadBranch: "feature", HeadSHA: "cafe"}
 	require.NoError(t, h.st.CreateRun(ctx(), run2))
 
-	p2, err := plan.Build(w2, plan.Input{Run: run2, NewEval: fakeFactory})
+	p2, err := plan.Build(w2, plan.Input{Run: run2, NewEval: realFactory})
 	require.Nil(t, err)
 
 	require.NoError(t, h.s.StartRun(ctx(), run2, p2))
@@ -381,7 +381,7 @@ func TestRunConcurrencyWithoutCancelHoldsTheNewerRun(t *testing.T) {
 	h := newHarness(t, wf(jobIR("build")))
 	w2 := wf(jobIR("build"))
 	w2.Concurrency = &model.Concurrency{Group: model.NewExpr("ci-main")}
-	p1, err := plan.Build(w2, plan.Input{Run: h.run, NewEval: fakeFactory})
+	p1, err := plan.Build(w2, plan.Input{Run: h.run, NewEval: realFactory})
 	require.Nil(t, err)
 
 	h.s.registerPlan(h.run.ID, p1)
@@ -390,7 +390,7 @@ func TestRunConcurrencyWithoutCancelHoldsTheNewerRun(t *testing.T) {
 	run2 := &model.Run{ID: 2, RepoID: 7, Status: model.StatusQueued, CreatedAt: base.Add(time.Minute), HeadBranch: "feature"}
 	require.NoError(t, h.st.CreateRun(ctx(), run2))
 
-	p2, err := plan.Build(w2, plan.Input{Run: run2, NewEval: fakeFactory})
+	p2, err := plan.Build(w2, plan.Input{Run: run2, NewEval: realFactory})
 	require.Nil(t, err)
 
 	require.NoError(t, h.s.StartRun(ctx(), run2, p2))

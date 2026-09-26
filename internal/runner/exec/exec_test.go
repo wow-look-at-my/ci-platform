@@ -52,7 +52,7 @@ func newHarness(t *testing.T, steps []protocol.StepSpec, tweak func(*Config)) *h
 		Log:          h.log,
 		Reporter:     h.rep,
 		Masker:       h.msk,
-		NewEvaluator: newFakeEvaluatorFactory(set.Set[string]{}),
+		NewEvaluator: realEvaluator,
 		WorkspaceDir: "/workspace",
 		TempDir:      "/tmp/_temp",
 	}
@@ -236,9 +236,7 @@ func TestIfExpressionFalseSkips(t *testing.T) {
 }
 
 func TestIfExpressionErrorIsConfigFailure(t *testing.T) {
-	h := newHarness(t, []protocol.StepSpec{{Number: 1, Run: "echo x", IfExpr: "bogus()"}}, func(c *Config) {
-		c.NewEvaluator = newFakeEvaluatorFactory(set.Of("bogus()"))
-	})
+	h := newHarness(t, []protocol.StepSpec{{Number: 1, Run: "echo x", IfExpr: "bogus()"}}, nil)
 	res := h.ex.Run(context.Background())
 	assert.Equal(t, model.ConclusionConfigError, res.Conclusion)
 	assert.Equal(t, model.ClassConfig, res.Class)
