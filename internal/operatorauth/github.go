@@ -14,17 +14,13 @@ import (
 	"time"
 )
 
-// The three routes the browser sign-in uses. Login and callback are
-// unauthenticated by necessity: they are how a browser stops being anonymous.
+// Login and callback are unauthenticated by necessity: they are how a browser stops being anonymous.
 const (
 	PathGitHubLogin    = "/auth/github/login"
 	PathGitHubCallback = "/auth/github/callback"
 )
 
-// stateCookie holds the CSRF state across the round trip to GitHub. It is
-// SameSite=Lax rather than Strict because the browser arrives back here from
-// github.com, and a Strict cookie is not sent on a cross-site navigation --
-// every sign-in would fail with a state mismatch.
+// stateCookie holds the CSRF state across the round trip to GitHub; SameSite=Lax survives the return from github.com.
 const stateCookie = "ci_oauth_state"
 
 const stateTTL = 10 * time.Minute

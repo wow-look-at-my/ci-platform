@@ -40,9 +40,7 @@ func (s *Server) enrol(w http.ResponseWriter, r *http.Request) {
 	fingerprint := enrol.Fingerprint(pub)
 	at := time.Unix(req.Timestamp, 0)
 
-	// Proving possession of the private half is what makes the fingerprint mean
-	// something. Without it, anybody could enrol a key they do not hold and the
-	// operator would approve a machine that is not the one in front of them.
+	// Proving possession of the private half is what makes the fingerprint trustworthy.
 	if err := s.sessions.CheckFreshness(fingerprint, at, req.Nonce); err != nil {
 		writeErr(w, http.StatusBadRequest, err.Error())
 		return
@@ -52,18 +50,10 @@ func (s *Server) enrol(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Enrolment has to answer without a credential, and a signature over a key
-	// the sender generated proves only that they generated it. So anything that
-	// can reach this route can mint fingerprints, and without a cap that is an
-	// unbounded table and an approval page nobody can read.
-	//
-	// The cap is on PENDING hosts, so it never gets in the way of a fleet that
-	// is actually approved, and clearing it is the same action the operator was
-	// going to take anyway.
+	// Enrolment answers without a credential, so anything that reaches this route can mint
+	// fingerprints; the cap is on PENDING hosts only, never blocking an already-approved fleet.
 	if err := s.checkPendingCapacity(r.Context(), fingerprint); err != nil {
-		// A full queue and a broken store are different problems, and answering
-		// 429 for the second would have an operator hunting for hosts to
-		// approve that do not exist.
+		// A full queue and a broken store are different problems; only the first is a 429.
 		status := http.StatusInternalServerError
 		if errors.Is(err, errPendingFull) {
 			status = http.StatusTooManyRequests
@@ -94,8 +84,7 @@ func (s *Server) enrol(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// errPendingFull marks a refusal the operator can clear, as opposed to one
-// that means the store is broken.
+// errPendingFull marks a refusal the operator can clear, unlike one meaning the store is broken.
 var errPendingFull = errors.New("too many hosts are waiting for approval")
 
 // checkPendingCapacity refuses a NEW fingerprint once too many are already
@@ -170,9 +159,7 @@ func (s *Server) session(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if !host.Approved() {
-		// Say plainly what is wrong. A runner that sits silent because nobody
-		// pressed approve is the most likely thing to happen here, and it must
-		// not look like a network fault.
+		// Say plainly what is wrong; this must not look like a network fault to the runner.
 		writeErr(w, http.StatusForbidden, "this host is "+string(host.State)+
 			"; an operator has to approve the fingerprint "+host.Fingerprint+" before it can take jobs")
 		return
@@ -226,10 +213,7 @@ func allowedLabels(ctx context.Context, asked []string) (kept, dropped []string)
 	return kept, dropped
 }
 
-// remoteHost is the address the request came from, for an operator comparing an
-// enrolment against the machine they expect it from. A proxy header is
-// deliberately not consulted: anything can send one, and a wrong address here
-// would be worse than none.
+// remoteHost is the request's source address; a proxy header is not consulted since anything can send one.
 func remoteHost(r *http.Request) string {
 	host, _, err := net.SplitHostPort(strings.TrimSpace(r.RemoteAddr))
 	if err != nil {

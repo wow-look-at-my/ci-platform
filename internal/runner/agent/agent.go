@@ -18,9 +18,8 @@ import (
 	"github.com/wow-look-at-my/ci-platform/internal/runner/mask"
 )
 
-// Sandbox is the per-job execution environment the agent builds. The concrete
-// implementation is internal/runner/sandbox; the interface keeps the agent's
-// loop testable without docker.
+// Sandbox is the per-job execution environment the agent builds, kept abstract so the
+// loop is testable without docker.
 type Sandbox interface {
 	exec.Sandbox
 	WorkspaceDir() string

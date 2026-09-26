@@ -10,23 +10,14 @@ import (
 	"github.com/wow-look-at-my/go-containers/set"
 )
 
-// Leg is one expanded matrix combination.
-//
-// Order is every key of the combination, deterministically ordered. NameKeys is
-// the subset that appears in the display name and the leg identity: for a cross
-// product combination that is the declared dimensions only, because GitHub
-// builds the name before merging an include's extra values into the vector
-// (MatrixBuilder.CreateConfiguration in the runner source). For a leg appended
-// by an unmatched include, every key of that include entry names it.
+// Leg is one expanded matrix combination; NameKeys names it, a narrower subset than Order for cross-product legs.
 type Leg struct {
 	Values   map[string]any
 	Order    []string
 	NameKeys []string
 }
 
-// Key renders the stable per-leg identity, "os=ubuntu,go=1.22". It is built
-// from the same keys as the display name, so adding an include that only
-// contributes extra values does not renumber existing legs.
+// Key renders the stable per-leg identity, "os=ubuntu,go=1.22", from the same keys as the display name.
 func (l Leg) Key() string {
 	parts := make([]string, 0, len(l.NameKeys))
 	for _, k := range l.NameKeys {
@@ -70,8 +61,7 @@ func ExpandMatrix(m *model.Matrix, ev Evaluator) ([]Leg, error) {
 		return nil, err
 	}
 
-	// Cartesian product, first dimension outermost so the last one varies
-	// fastest. Declaration order is what makes leg numbering stable.
+	// Cartesian product; declaration order (first dimension outermost) keeps leg numbering stable.
 	var combos []map[string]any
 	if len(dims) > 0 {
 		combos = []map[string]any{{}}
@@ -104,9 +94,7 @@ func ExpandMatrix(m *model.Matrix, ev Evaluator) ([]Leg, error) {
 		if len(ex) == 0 {
 			return nil, fmt.Errorf("matrix exclude has an empty entry, which would exclude everything")
 		}
-		// GitHub rejects an exclude naming a key the matrix does not declare
-		// rather than quietly excluding nothing, and so do we: a typo there
-		// silently runs the combination the author meant to remove.
+		// GitHub rejects an exclude naming an undeclared key rather than quietly excluding nothing.
 		for k := range ex {
 			if !isDim.Contains(k) {
 				return nil, fmt.Errorf("matrix exclude key %q does not match any key within the matrix", k)
@@ -121,8 +109,7 @@ func ExpandMatrix(m *model.Matrix, ev Evaluator) ([]Leg, error) {
 		combos = kept
 	}
 
-	// Original dimension values are never overwritten by an include, so the
-	// conflict test reads this snapshot rather than the mutated combination.
+	// The conflict test reads this pre-include snapshot, never the mutated combination.
 	base := make([]map[string]any, len(combos))
 	for i, c := range combos {
 		base[i] = cloneValues(c)
@@ -309,8 +296,7 @@ func resolveMatrix(m *model.Matrix, ev Evaluator) (*model.Matrix, error) {
 			extra = append(extra, k)
 		}
 	}
-	// A JSON object has no key order, so declared Order wins where it exists
-	// and the rest is sorted.
+	// A JSON object has no key order, so declared Order wins and the rest is sorted.
 	sort.Strings(extra)
 	for _, k := range m.Order {
 		if _, ok := out.Dimensions[k]; ok {

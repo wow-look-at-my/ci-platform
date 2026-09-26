@@ -18,8 +18,7 @@ import (
 // Resolved is a reference turned into something executable.
 type Resolved struct {
 	Ref Reference
-	// Dir is the host directory holding the action, "" for docker and local
-	// references, which the executor handles without a download.
+	// Dir is the host directory holding the action, "" for docker and local references (the executor's job).
 	Dir string
 	// SHA is the immutable commit the ref resolved to, for repo references.
 	SHA string
@@ -38,8 +37,7 @@ type Fetcher interface {
 	Tarball(ctx context.Context, owner, repo, sha string) (io.ReadCloser, error)
 }
 
-// Resolver downloads and caches actions. The cache is content-addressed by
-// owner/repo@sha, so a ref that already resolved is never downloaded twice.
+// Resolver downloads and caches actions, content-addressed by owner/repo@sha so a resolved ref is never redownloaded.
 type Resolver struct {
 	CacheDir string
 	Fetch    Fetcher
@@ -113,8 +111,7 @@ func (r *Resolver) resolveSHA(ctx context.Context, ref Reference) (string, error
 	return sha, nil
 }
 
-// marker is written last, so a half-extracted directory is never mistaken for
-// a warm cache entry.
+// marker is written last, so a half-extracted directory is never mistaken for a warm cache entry.
 const marker = ".ci-platform-complete"
 
 func isPopulated(dir string) bool {
@@ -204,10 +201,7 @@ func extractTarGz(r io.Reader, dest string) error {
 				return fmt.Errorf("action tarball: expands past the %d byte limit", maxExtractedBytes)
 			}
 		case tar.TypeSymlink, tar.TypeLink:
-			// A link is only safe if it cannot reach outside the extraction
-			// directory. Without this check an entry linking to "/" followed by
-			// a file entry written through it is an arbitrary write on the
-			// runner host, from any workflow that names the action.
+			// A link that escapes the extraction directory is an arbitrary write on the runner host.
 			if err := checkLinkTarget(dest, target, h.Linkname); err != nil {
 				return err
 			}
@@ -229,9 +223,7 @@ func extractTarGz(r io.Reader, dest string) error {
 				return err
 			}
 		default:
-			// Devices, FIFOs, and sockets have no business in an action
-			// tarball, and creating one is a way to surprise whatever reads
-			// the directory next.
+			// Devices, FIFOs, and sockets have no business in an action tarball.
 			return fmt.Errorf("action tarball: entry %q has unsupported type %q", h.Name, string(h.Typeflag))
 		}
 	}
@@ -246,8 +238,7 @@ func stripLeading(name string) string {
 	return name[i+1:]
 }
 
-// maxExtractedBytes bounds a tarball's expansion. An action is source code; a
-// tarball that expands past this is a decompression bomb, not an action.
+// maxExtractedBytes bounds a tarball's expansion; past this it is a decompression bomb, not an action.
 const maxExtractedBytes = 512 << 20
 
 // checkLinkTarget refuses a link whose target escapes the extraction directory.

@@ -57,16 +57,11 @@ type Options struct {
 	Scheduler Scheduler
 	Logs      Logs
 
-	// SessionKey signs the short-lived tokens runners carry. Required: an
-	// unauthenticated runner endpoint would let anything on the network claim a
-	// job and read its secrets.
+	// SessionKey signs runners' tokens; required, or the runner endpoint is unauthenticated.
 	SessionKey []byte
-	// SessionTTL bounds a runner's token. It is also the longest a revoked host
-	// keeps working, so it is minutes rather than days.
+	// SessionTTL bounds a runner's token; also the longest a revoked host keeps working.
 	SessionTTL time.Duration
-	// MaxPendingHosts caps how many unapproved hosts may be waiting at once.
-	// Enrolment answers without a credential by necessity, so this is what
-	// stops anything that can reach it from filling the table. Default 32.
+	// MaxPendingHosts caps unapproved hosts waiting at once; enrolment answers with no credential. Default 32.
 	MaxPendingHosts int
 
 	LeaseTTL          time.Duration
@@ -88,8 +83,7 @@ type Server struct {
 	log      *slog.Logger
 	sessions *enrol.Sessions
 
-	// cancels holds pending cancellations keyed by job id, delivered on the
-	// job's next heartbeat.
+	// cancels holds pending cancellations keyed by job id, delivered on the job's next heartbeat.
 	mu      sync.Mutex
 	cancels map[int64]model.CancelReason
 }
@@ -172,8 +166,7 @@ func (s *Server) routes() {
 	post := func(path string, h func(http.ResponseWriter, *http.Request)) {
 		s.mux.HandleFunc("POST "+path, s.authenticated(h))
 	}
-	// These two are how a host gets a token, so they cannot require one. Both
-	// verify an Ed25519 signature instead, and enrolment grants nothing.
+	// These two are how a host gets a token, so they verify an Ed25519 signature instead of one.
 	s.mux.HandleFunc("POST "+protocol.PathEnrol, s.enrol)
 	s.mux.HandleFunc("POST "+protocol.PathSession, s.session)
 	post(protocol.PathRegister, s.register)
@@ -232,10 +225,7 @@ func (s *Server) register(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusBadRequest, "runner_id is required")
 		return
 	}
-	// A runner's labels decide which jobs it is offered, so they are bounded by
-	// what the operator allowed the host rather than taken as declared. A host
-	// that is later compromised cannot widen its own reach by claiming a label
-	// it was never approved for.
+	// Labels are clamped to what the operator approved for this host, not taken as declared.
 	labels, dropped := allowedLabels(r.Context(), req.Labels)
 	if len(dropped) > 0 {
 		s.log.Warn("runner asked for labels its host is not approved for",
@@ -323,8 +313,7 @@ func (s *Server) heartbeat(w http.ResponseWriter, r *http.Request) {
 		err := s.opts.Store.Heartbeat(ctx, req.RunnerID, req.JobID, s.opts.LeaseTTL)
 		switch {
 		case errors.Is(err, store.ErrLeaseLost), errors.Is(err, store.ErrNotFound):
-			// The job was requeued elsewhere. Tell the agent to stop without
-			// reporting a result, so two runners cannot both complete it.
+			// The job was requeued elsewhere; the agent stops without reporting a result.
 			resp.LeaseLost = true
 			s.log.Warn("runner holds a lost lease", "runner", req.RunnerID, "job", req.JobID)
 		case err != nil:

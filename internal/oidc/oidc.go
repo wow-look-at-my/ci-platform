@@ -47,14 +47,10 @@ const (
 	PathDiscovery = "/.well-known/openid-configuration"
 )
 
-// APIVersionParam is the query parameter that makes ACTIONS_ID_TOKEN_REQUEST_URL
-// carry a query string, which getIDToken requires before it appends
-// "&audience=".
+// APIVersionParam makes ACTIONS_ID_TOKEN_REQUEST_URL carry a query string before getIDToken appends "&audience=".
 const APIVersionParam = "api-version=2.0"
 
-// RunnerEnvSelfHosted is the runner_environment claim value for this platform.
-// Every runner here is self-hosted; claiming "github-hosted" would be a lie a
-// relying party might key a trust decision on.
+// RunnerEnvSelfHosted is the runner_environment claim value; every runner here is self-hosted, never github-hosted.
 const RunnerEnvSelfHosted = "self-hosted"
 
 // Env var names the runner injects for the ID token endpoint.
@@ -104,8 +100,7 @@ type Subject struct {
 	Workflow string
 	// WorkflowRef is owner/repo/.github/workflows/ci.yml@refs/heads/main.
 	WorkflowRef string
-	// JobWorkflowRef is the ref of the workflow file the job is defined in,
-	// which differs from WorkflowRef for a reusable workflow call.
+	// JobWorkflowRef is the ref of the workflow file the job is defined in; it differs from WorkflowRef for a reusable call.
 	JobWorkflowRef string
 
 	RunID      int64
@@ -119,8 +114,7 @@ type Subject struct {
 	HeadRef string
 	BaseRef string
 
-	// IsForkPR denies the token outright. A fork PR's workflow is attacker-
-	// controlled, and an ID token is a credential.
+	// IsForkPR denies the token outright: a fork PR's workflow is attacker-controlled, and an ID token is a credential.
 	IsForkPR bool
 }
 
@@ -158,8 +152,7 @@ type Claims struct {
 	jwt.RegisteredClaims
 }
 
-// Lookup resolves the subject of a token request. The OIDC service holds no
-// run state of its own.
+// Lookup resolves the subject of a token request; the OIDC service holds no run state of its own.
 type Lookup func(ctx context.Context, runID, jobID int64, attempt int) (*Subject, error)
 
 // Options configures the Service.
@@ -174,8 +167,7 @@ type Options struct {
 	Now      func() time.Time
 }
 
-// DefaultTokenTTL matches GitHub's own ID token lifetime closely enough that
-// relying parties tuned for it do not need reconfiguring.
+// DefaultTokenTTL matches GitHub's own ID token lifetime closely enough that relying parties need no reconfiguring.
 const DefaultTokenTTL = 15 * time.Minute
 
 // Service issues ID tokens and serves discovery documents.
@@ -230,9 +222,7 @@ func (s *Service) Handler() http.Handler {
 	return mux
 }
 
-// optionalID renders an id, or nothing when it is unknown. Emitting "0" would
-// be a claim that matches every job on the platform, which is worse than an
-// absent claim a relying party can reject.
+// optionalID renders an id, or empty when unknown: emitting "0" would be a claim matching every job on the platform.
 func optionalID(v int64) string {
 	if v == 0 {
 		return ""

@@ -319,8 +319,7 @@ func (h *Host) create(ctx context.Context, slot int) error {
 	return nil
 }
 
-// stateDir is where a runner keeps its state inside its own container. It is
-// the container's writable layer, so it is gone when the container is.
+// stateDir is a runner's state, kept in its own writable layer so it is gone with the container.
 const stateDir = "/var/lib/ci-runner"
 
 // inspect returns the container's state, or "" when there is no such container.

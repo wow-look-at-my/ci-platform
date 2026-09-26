@@ -167,8 +167,7 @@ type Step struct {
 
 	StartedAt   *time.Time `json:"started_at,omitempty"`
 	CompletedAt *time.Time `json:"completed_at,omitempty"`
-	// LogStart and LogEnd bound this step's slice of the job log, so the UI can
-	// deep-link to the failing step without a separate log per step.
+	// LogStart and LogEnd bound this step's slice of the job log, for deep-linking to the failing step.
 	LogStart int64 `json:"log_start"`
 	LogEnd   int64 `json:"log_end"`
 }
@@ -256,37 +255,29 @@ type RunnerHost struct {
 	// PublicKey is the Ed25519 public key, base64.
 	PublicKey string          `json:"public_key"`
 	State     RunnerHostState `json:"state"`
-	// Name, OS, Arch and Version are what the host says about itself. They are
-	// display only: nothing is authorised on their basis, because a machine
-	// that has not been approved yet can say anything.
+	// Name, OS, Arch and Version are self-reported and display only; nothing is authorised on their basis.
 	Name    string `json:"name"`
 	OS      string `json:"os,omitempty"`
 	Arch    string `json:"arch,omitempty"`
 	Version string `json:"version,omitempty"`
-	// Labels are the job labels this host may serve. They start as what the
-	// host asked for and are the operator's to change; a runner registering
-	// under this host cannot claim a label outside them.
+	// Labels are the job labels this host may serve; a runner on this host cannot claim a label outside them.
 	Labels []string `json:"labels"`
-	// EnrolledFrom is the address the enrolment arrived from, so an operator
-	// approving a fingerprint can see whether it came from where they expect.
+	// EnrolledFrom is the address the enrolment arrived from, for the approver to sanity-check.
 	EnrolledFrom string    `json:"enrolled_from,omitempty"`
 	EnrolledAt   time.Time `json:"enrolled_at"`
-	// ApprovedBy is the account that approved it. Approval is the one action
-	// here that hands out access, so it is the one that must name a person.
+	// ApprovedBy names the account that approved it, since approval is what grants access.
 	ApprovedBy string    `json:"approved_by,omitempty"`
 	ApprovedAt time.Time `json:"approved_at,omitzero"`
 	LastSeenAt time.Time `json:"last_seen_at,omitzero"`
-	// Note is the operator's own words: which machine this is, or why it was
-	// revoked.
+	// Note is the operator's own words: which machine this is, or why it was revoked.
 	Note string `json:"note,omitempty"`
 }
 
 // Approved reports whether this host may hold a session.
 func (h RunnerHost) Approved() bool { return h.State == RunnerHostApproved }
 
-// AllowsLabel reports whether a runner on this host may claim a label. An
-// approved host with no labels recorded serves anything, which is what a
-// single-host deployment wants and what enrolment defaults to.
+// AllowsLabel reports whether a runner on this host may claim a label.
+// An approved host with no labels recorded serves anything.
 func (h RunnerHost) AllowsLabel(label string) bool {
 	if len(h.Labels) == 0 {
 		return true

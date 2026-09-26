@@ -30,13 +30,11 @@ type Controller interface {
 // LogSource reads and tails one job attempt's log.
 type LogSource interface {
 	Read(ctx context.Context, jobID int64, attempt int, fromSeq int64, limit int) ([]model.LogLine, error)
-	// Subscribe delivers every line with Seq >= fromSeq and then live lines,
-	// closing the channel when the attempt is finished.
+	// Subscribe delivers every line with Seq >= fromSeq, then live lines, closing when the attempt finishes.
 	Subscribe(ctx context.Context, jobID int64, attempt int, fromSeq int64) (<-chan model.LogLine, error)
 }
 
-// BlobStore hands back artifact bytes. Optional: without one, the download
-// endpoint answers 503 rather than pretending the artifact is empty.
+// BlobStore hands back artifact bytes. Optional: without one the download endpoint answers 503.
 type BlobStore interface {
 	Open(ctx context.Context, a *model.Artifact) (io.ReadCloser, error)
 }
@@ -57,8 +55,7 @@ type Subsystem struct {
 	Detail string         `json:"detail,omitempty"`
 }
 
-// HealthReporter contributes subsystem health beyond what the API can see for
-// itself. Nil is fine; the store's own reachability is always reported.
+// HealthReporter contributes subsystem health beyond what the API sees itself; nil is fine.
 type HealthReporter interface {
 	Subsystems(ctx context.Context) []Subsystem
 }
@@ -74,14 +71,9 @@ type Config struct {
 
 	// Now is injected so tests get deterministic timing output.
 	Now func() time.Time
-	// Actor names the principal performing a cancel or re-run. The default
-	// prefers the account the gate authenticated, which is an identity rather
-	// than a claim. It falls back to X-CI-Actor for a caller holding the shared
-	// operator credential, which names nobody, and that header is a display
-	// name the caller chooses.
+	// Actor names the principal for a cancel or re-run: the gate's identity, or X-CI-Actor as a fallback.
 	Actor func(*http.Request) string
-	// SSEHeartbeat is how often an SSE stream emits a comment so proxies do
-	// not close an idle tail.
+	// SSEHeartbeat is how often an SSE stream emits a comment so proxies do not close an idle tail.
 	SSEHeartbeat time.Duration
 	// MaxPerPage caps per_page.
 	MaxPerPage int
@@ -164,8 +156,7 @@ func (s *Server) routes() {
 func writeJSON(w http.ResponseWriter, status int, v any) {
 	buf, err := json.Marshal(v)
 	if err != nil {
-		// Marshalling our own DTO cannot fail on valid data; if it does the
-		// response body would be a lie, so say so with a 500.
+		// Marshalling our own DTO cannot fail on valid data; if it does, say so with a 500 rather than lie.
 		http.Error(w, `{"error":"failed to encode response"}`, http.StatusInternalServerError)
 		return
 	}

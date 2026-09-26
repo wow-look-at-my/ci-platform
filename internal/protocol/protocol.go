@@ -204,8 +204,7 @@ type HeartbeatRequest struct {
 type HeartbeatResponse struct {
 	// Cancel is non-nil when the control plane wants the job stopped; it always carries the reason.
 	Cancel *model.CancelReason `json:"cancel,omitempty"`
-	// LeaseLost tells the runner the job was taken from it and it must stop
-	// without reporting a result.
+	// LeaseLost tells the runner the job was taken from it and it must stop without reporting a result.
 	LeaseLost bool `json:"lease_lost,omitempty"`
 }
 
@@ -250,8 +249,7 @@ type StepEndRequest struct {
 	Number     int                `json:"number"`
 	Conclusion model.Conclusion   `json:"conclusion"`
 	Class      model.FailureClass `json:"class"`
-	// ClassReason is the recorded explanation of the classification decision,
-	// e.g. "registry responded 524 (Cloudflare origin timeout) -> infra".
+	// ClassReason records the classification decision, e.g. "registry responded 524 -> infra".
 	ClassReason string            `json:"class_reason,omitempty"`
 	ExitCode    int               `json:"exit_code"`
 	Outputs     map[string]string `json:"outputs,omitempty"`
@@ -271,8 +269,7 @@ type CompleteRequest struct {
 	Explanation string              `json:"explanation,omitempty"`
 	Outputs     map[string]string   `json:"outputs,omitempty"`
 	Cancel      *model.CancelReason `json:"cancel,omitempty"`
-	// ClassificationLog records every classification decision made during the
-	// attempt so the operator can see why something was called infra.
+	// ClassificationLog records every classification decision made during the attempt.
 	ClassificationLog []string `json:"classification_log,omitempty"`
 }
 
@@ -301,8 +298,7 @@ type AnnotateRequest struct {
 	Annotations []model.Annotation `json:"annotations"`
 }
 
-// Duration is a time.Duration that marshals as a Go duration string, so the
-// wire format is readable during an incident.
+// Duration is a time.Duration that marshals as a readable Go duration string.
 type Duration time.Duration
 
 // MarshalJSON writes the duration as a quoted string like "30s".

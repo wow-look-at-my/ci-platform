@@ -6,21 +6,7 @@ import (
 	"strings"
 )
 
-// GitHub's filter patterns are not standard globs, and the difference is the
-// kind that gets guessed wrong: `?` and `+` are QUANTIFIERS applied to the
-// preceding character, not wildcards. The dialect, per GitHub's filter-pattern
-// documentation and the validator in rhysd/actionlint:
-//
-//	*      zero or more characters, but never `/`
-//	**     zero or more of any character, including `/`
-//	?      zero or one of the PRECEDING character
-//	+      one or more of the PRECEDING character
-//	[abc]  one character from the set, ranges allowed
-//	\x     a literal x
-//	!...   at the start of a pattern, negates it
-//
-// A `+` or `?` at the start of a pattern, or following another special
-// character, is a syntax error rather than something to interpret generously.
+// GitHub's filter dialect is not standard globs: `?` and `+` quantify the preceding character, not wildcards.
 
 // Glob is a compiled filter pattern.
 type Glob struct {
@@ -36,8 +22,7 @@ func (g *Glob) Raw() string { return g.raw }
 // Negated reports whether the pattern began with `!`.
 func (g *Glob) Negated() bool { return g.neg }
 
-// Match reports whether s matches, ignoring negation. Callers combine matches
-// in order, because a later pattern overrides an earlier one.
+// Match reports whether s matches, ignoring negation; callers combine matches in order.
 func (g *Glob) Match(s string) bool { return g.re.MatchString(s) }
 
 // CompileGlob compiles one filter pattern.
@@ -57,9 +42,7 @@ func CompileGlob(pattern string) (*Glob, error) {
 
 	var b strings.Builder
 	b.WriteString("^")
-	// prevAtom is the regexp fragment a following `?` or `+` would quantify.
-	// It is empty when the previous token cannot be quantified, which is what
-	// makes `*?` and a leading `+` errors rather than silently accepted.
+	// prevAtom is the fragment a following `?`/`+` would quantify; empty means the prior token cannot be quantified.
 	prevAtom := ""
 	flush := func() {
 		b.WriteString(prevAtom)

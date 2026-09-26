@@ -22,9 +22,7 @@ import (
 // without a runner process.
 type rig struct {
 	t *testing.T
-	// base is wall-clock, not the fixed epoch: the store stamps leases from
-	// time.Now(), so a rig anchored to a fixed date drifts out of the run
-	// timeout as the day goes on and starts failing in the afternoon.
+	// base is wall-clock, not a fixed epoch: the store stamps leases from time.Now().
 	base  time.Time
 	st    store.Store
 	s     *scheduler.Scheduler
@@ -130,9 +128,7 @@ func TestIncident2_LostRunnerRequeuesRatherThanFailing(t *testing.T) {
 	require.Equal(t, job.ID, claimed.ID)
 	require.Equal(t, model.StatusInProgress, r.job("build").Status)
 
-	// Past the lease, the reaper puts the work back. The store stamps leases
-	// from the wall clock, so the tick that reaps them has to be wall-clock
-	// relative rather than relative to the test's fixed epoch.
+	// Past the lease, the reaper puts the work back; the reaping tick must be wall-clock relative.
 	require.NoError(t, r.s.Tick(ctx, r.base.Add(5*time.Minute)))
 
 	after := r.job("build")
@@ -154,8 +150,7 @@ func TestIncident2_LostRunnerRequeuesRatherThanFailing(t *testing.T) {
 	}
 	assert.True(t, found, "the requeue must record which runner was lost: %+v", r.events(after.ID))
 
-	// Another runner can pick it straight up: a lost lease is immediately
-	// redispatchable, because the backoff belongs to a retry, not a requeue.
+	// Another runner can pick it straight up: a lost lease is immediately redispatchable.
 	again, err := r.st.Dequeue(ctx, "runner-b", []string{"linux"}, time.Minute)
 	require.NoError(t, err)
 	assert.Equal(t, after.ID, again.ID)
@@ -178,8 +173,7 @@ func TestIncident3_CancellationRecordsItsReasonEverywhere(t *testing.T) {
 	require.Equal(t, model.ConclusionCancelled, job.Conclusion)
 	require.NotNil(t, job.Cancel, "the job row carries the reason")
 	assert.Equal(t, model.CancelActorUser, job.Cancel.Actor)
-	// The scheduler appends which job it was, so the sentence a reader sees on
-	// the job says more than the one the operator typed.
+	// The scheduler appends which job it was, so the reader sees more than the operator typed.
 	assert.Contains(t, job.Cancel.Sentence, reason.Sentence)
 	require.NoError(t, job.Cancel.Validate())
 
@@ -244,8 +238,7 @@ jobs:
 		Conclusion:  model.ConclusionInfraFailure,
 		Class:       model.ClassInfra,
 		ClassReason: `classified infra via rule "cloudflare-524": the remote returned HTTP 524`,
-		// Completed at the rig's wall-clock base so the backoff it schedules is
-		// measured from now; the store dispatches on the real clock.
+		// Completed at the rig's wall-clock base so the backoff is measured from now.
 	}, r.base))
 
 	retried := r.job("build")
@@ -262,9 +255,7 @@ jobs:
 	}
 	assert.True(t, explained, "the classification decision must be recorded: %+v", r.events(id))
 
-	// The backoff is real: until it elapses the job is not dispatchable. Before
-	// this was fixed the retry kept the previous attempt's leased queue row, so
-	// NotBefore was discarded and the retry ran instantly.
+	// The backoff is real: until it elapses the job is not dispatchable.
 	_, err = r.st.Dequeue(ctx, "runner-b", []string{"linux"}, time.Minute)
 	require.ErrorIs(t, err, store.ErrNotFound, "the retry must wait out its backoff")
 

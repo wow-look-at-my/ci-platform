@@ -132,8 +132,7 @@ func (a *app) mount(ctx context.Context, cfg *config.Config, st store.Store, sig
 	if err != nil {
 		return fmt.Errorf("oidc key store: %w", err)
 	}
-	// The keyring serves a retired key for as long as a token it signed can
-	// still be valid, so the two TTLs have to agree.
+	// The keyring serves a retired key as long as a token it signed can still be valid; the two TTLs must agree.
 	const idTokenTTL = 15 * time.Minute
 	ring, err := oidc.NewKeyring(ctx, keys, oidc.KeyringOptions{TokenTTL: idTokenTTL})
 	if err != nil {
@@ -150,9 +149,7 @@ func (a *app) mount(ctx context.Context, cfg *config.Config, st store.Store, sig
 		return fmt.Errorf("oidc service: %w", err)
 	}
 
-	// Runner session tokens live for minutes and are renewed from a key the
-	// host holds, so a key generated per process costs a silent
-	// re-authentication on restart and saves an operator a secret to manage.
+	// Runner session tokens live for minutes and renew from a host-held key; a per-process key costs re-auth on restart.
 	runnerSessionKey := make([]byte, 32)
 	if _, err := rand.Read(runnerSessionKey); err != nil {
 		return fmt.Errorf("generate runner session key: %w", err)
@@ -197,11 +194,7 @@ func (a *app) mount(ctx context.Context, cfg *config.Config, st store.Store, sig
 		return fmt.Errorf("web ui: %w", err)
 	}
 
-	// Everything below this line is on the listener job containers reach, so
-	// the operator surface is gated rather than merely unpublished. The
-	// endpoints workflows legitimately call carry their own credentials: the
-	// webhook is HMAC-signed, the runner protocol takes the runner token, and
-	// artifacts, cache and OIDC take a per-job token.
+	// Everything below is on the listener job containers reach, so the operator surface is gated, not just unpublished.
 	sessionKey, err := sessionKey(cfg, a.log)
 	if err != nil {
 		return err
@@ -233,10 +226,7 @@ func (a *app) mount(ctx context.Context, cfg *config.Config, st store.Store, sig
 	a.mux.Handle("/auth/", operator.Handler())
 	a.mux.Handle("/api/v1/", gated)
 	a.mux.Handle("/healthz", gated)
-	// Left open deliberately: it answers a status code and the word "ok", so an
-	// orchestrator can probe liveness without holding a credential and without
-	// learning anything a job container did not already know. /healthz, which
-	// names each degraded subsystem, is gated with the rest of the API.
+	// Left open deliberately: it answers only a status and "ok", nothing a job container did not already know.
 	a.mux.Handle("/.well-known/docker-updater/health", apiSrv.Handler())
 	a.mux.Handle("/.well-known/jwks.json", idTokens.Handler())
 	a.mux.Handle("/.well-known/openid-configuration", idTokens.Handler())
@@ -384,8 +374,7 @@ func newEvaluator(contexts map[string]any, status plan.Status) plan.Evaluator {
 	})
 }
 
-// schedulerAdapter bridges the scheduler to runnerapi's restated Result type,
-// which exists so runnerapi does not depend on the scheduler package.
+// schedulerAdapter bridges the scheduler to runnerapi's restated Result type, so runnerapi need not import scheduler.
 type schedulerAdapter struct{ s *scheduler.Scheduler }
 
 func (a schedulerAdapter) Acquire(ctx context.Context, runnerID string, labels []string, now time.Time) (*protocol.Assignment, error) {
@@ -456,11 +445,7 @@ func (a *app) serviceEnv(runID, jobID int64, attempt int, token string) map[stri
 	base := a.cfg.PublicURL.String()
 	env := map[string]string{}
 
-	// Two different URLs, and this environment carries both. The artifact
-	// endpoints are this platform; GITHUB_SERVER_URL is where the repositories
-	// are. Passing base for both would put this host in front of every
-	// actions/checkout clone -- and this map is applied over the job's base
-	// environment, so it would win.
+	// Two URLs here: artifact endpoints are this platform, GITHUB_SERVER_URL is where repos are; base must not win both.
 	retentionDays := int(a.cfg.ArtifactRetention / (24 * time.Hour))
 	for k, v := range artifacts.RunnerEnv(base, a.cfg.GitHubServerURL.String(), runID, token, retentionDays) {
 		env[k] = v

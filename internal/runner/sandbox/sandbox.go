@@ -272,9 +272,7 @@ func setupErr(ctx context.Context, stage string, err error) *Error {
 func (c *Container) waitForDockerd(ctx context.Context) error {
 	var last error
 	for {
-		// `docker version` is the probe, not `docker info`: info exits 0 with
-		// "Cannot connect to the Docker daemon" in its output, so probing with
-		// it reports a dead daemon as ready.
+		// `docker version` is the probe: `docker info` exits 0 even when the daemon is unreachable.
 		out, err := Capture(ctx, c.opts.Docker, "exec", c.name, "docker", "version", "--format", "{{.Server.Version}}")
 		switch {
 		case err != nil:
@@ -357,15 +355,8 @@ func (c *Container) CopyInto(ctx context.Context, hostDir, containerPath string)
 	return c.copyIn(ctx, strings.TrimSuffix(hostDir, "/")+"/.", containerPath)
 }
 
-// copyIn is the only way files get into the sandbox.
-//
-// A bind mount cannot be used: a file bind-mounted INTO this Docker-in-Docker
-// container cannot be bind-mounted again into a container the inner dockerd
-// spawns, because the inner daemon resolves the source path against the HOST
-// filesystem, where it does not exist. `docker cp` copies the bytes into the
-// container's own filesystem instead, which the inner daemon can then mount.
-// The destination's parent must already exist: `docker cp` does not create
-// parent directories, so every caller mkdir -p's first.
+// copyIn uses docker cp, not a bind mount: the inner dockerd can't remount a bind-mounted file.
+// The destination's parent must already exist.
 func (c *Container) copyIn(ctx context.Context, hostPath, dest string) error {
 	_, err := Capture(ctx, c.opts.Docker, "cp", hostPath, c.name+":"+dest)
 	return err
@@ -437,8 +428,7 @@ func (c *Container) Close(ctx context.Context) error {
 		c.opts.Log(fmt.Sprintf("removed %s %s", what, name))
 	}
 
-	// Container first: the network and volume it holds cannot be removed while
-	// it is attached.
+	// Container first: it holds the network and volume, which can't be removed while it's attached.
 	remove(c.madeContainer, "container", c.name, "rm", "-f", "-v", c.name)
 	remove(c.madeWorkspace, "workspace volume", c.workspace, "volume", "rm", "-f", c.workspace)
 	remove(c.madeNetwork, "network", c.network, "network", "rm", c.network)
