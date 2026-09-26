@@ -3,6 +3,9 @@ description: Installs go-toolchain so a job can run `go-toolchain go ...`, the o
 runs:
   using: composite
   steps:
+    # Exports GO_BUILDCACHE_CONFIG, without which go-toolchain's go refuses to build when CI is set.
+    - uses: wow-look-at-my/actions@secret-server#latest
+
     - name: Install go-toolchain
       shell: bash
       run: |
