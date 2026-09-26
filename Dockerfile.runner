@@ -6,22 +6,26 @@
 # This image needs access to a docker daemon to create each job's sandbox. It
 # does NOT hand that socket to the job: the job gets its own container running
 # its own dockerd, and nothing of the host's daemon reaches it.
-FROM golang:1.25-alpine AS build
+FROM alpine:3.21 AS build
+ADD --chmod=755 "https://dl.pazer.build/go-toolchain?os=linux&arch=amd64" /usr/local/bin/go-toolchain
+ENV GO_TOOLCHAIN_LINKED_GO=1 GOPROXY=https://proxy.golang.org,direct GOSUMDB=sum.golang.org
 WORKDIR /src
 
-RUN --mount=type=cache,target=/go/pkg/mod \
+RUN --mount=type=cache,target=/root/go/pkg/mod \
 	--mount=type=bind,source=go.mod,target=go.mod \
 	--mount=type=bind,source=go.sum,target=go.sum \
-	go mod download
+	go-toolchain go mod download
 
 COPY . .
 
 ARG VERSION=dev
-RUN --mount=type=cache,target=/go/pkg/mod \
+RUN --mount=type=cache,target=/root/go/pkg/mod \
 	--mount=type=cache,target=/root/.cache/go-build \
-	CGO_ENABLED=0 go build -trimpath \
+	go-toolchain go build -trimpath \
 	-ldflags "-s -w -X main.version=${VERSION}" \
 	-o /out/ci-runner ./cmd/ci-runner
+# The build is an APE; its first run rewrites it in place to a native binary, so the exec-form ENTRYPOINT below can start it.
+RUN /out/ci-runner version
 
 FROM alpine:3.21 AS runner
 RUN apk add --no-cache ca-certificates tzdata docker-cli git \
