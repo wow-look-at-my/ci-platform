@@ -13,6 +13,7 @@ import (
 
 	"github.com/wow-look-at-my/ci-platform/internal/model"
 	"github.com/wow-look-at-my/ci-platform/internal/store"
+	"github.com/wow-look-at-my/go-containers/set"
 )
 
 func testEnqueueIdempotent(t *testing.T, f *fixture) {
@@ -108,10 +109,10 @@ func testConcurrentDequeue(t *testing.T, f *fixture) {
 	repo := f.repo(130, "acme", "widget")
 	run := f.run(repo.ID)
 	queuedAt := nowUTC()
-	want := map[int64]bool{}
+	want := set.New[int64]()
 	for i := 0; i < jobs; i++ {
 		j := f.job(run.ID, fmt.Sprintf("job-%d", i), []string{"linux"})
-		want[j.ID] = true
+		want.Add(j.ID)
 		require.NoError(t, f.s.Enqueue(f.ctx, store.QueuedJob{
 			JobID: j.ID, RunID: run.ID, Labels: []string{"linux"}, QueuedAt: queuedAt,
 		}))
@@ -166,7 +167,7 @@ func testConcurrentDequeue(t *testing.T, f *fixture) {
 	require.Len(t, got, jobs, "every job was dequeued")
 	for id, n := range got {
 		require.Equal(t, 1, n, "job %d was dequeued %d times; exactly once is the contract", id, n)
-		require.True(t, want[id], "dequeued a job that was never enqueued: %d", id)
+		require.True(t, want.Contains(id), "dequeued a job that was never enqueued: %d", id)
 	}
 
 	stats, err := f.s.QueueStats(f.ctx, nowUTC())

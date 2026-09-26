@@ -5,11 +5,10 @@ import (
 	"strings"
 
 	"github.com/wow-look-at-my/ci-platform/internal/model"
+	"github.com/wow-look-at-my/go-containers/set"
 	"gopkg.in/yaml.v3"
 )
 
-// Job key allow-lists, from workflow-v1.0.json's `job-factory` and
-// `workflow-job` definitions, plus this platform's own `retry`.
 var (
 	stepsJobKeys = []string{
 		"name", "needs", "if", "runs-on", "environment", "concurrency", "outputs",
@@ -20,7 +19,6 @@ var (
 		"name", "uses", "with", "secrets", "needs", "if", "permissions",
 		"concurrency", "strategy", "retry",
 	}
-	// permissionScopes is workflow-v1.0.json's `permissions-mapping`.
 	permissionScopes = []string{
 		"actions", "artifact-metadata", "attestations", "checks", "contents",
 		"deployments", "discussions", "id-token", "issues", "models", "packages",
@@ -56,10 +54,8 @@ func (p *parser) job(key string, n *yaml.Node) (*model.JobIR, error) {
 		return nil, p.errf(n, "%s must be a mapping, found %s", where, kindName(n))
 	}
 
-	// A job is either a reusable-workflow call or a list of steps, and each
-	// shape has its own key set (workflow-v1.0.json splits them into
-	// `workflow-job` and `job-factory`). Catching the mixture here gives a
-	// better message than "steps is not a known key" would.
+	// Catching the mixture here gives a better message than "steps is not a
+	// known key" would.
 	allowed := stepsJobKeys
 	if hasKey(n, "uses") {
 		if hasKey(n, "steps") {
@@ -404,17 +400,17 @@ func (p *parser) usesRef(n *yaml.Node, where, ref string) error {
 
 func (p *parser) steps(n *yaml.Node, where string) ([]*model.StepIR, error) {
 	var out []*model.StepIR
-	ids := map[string]bool{}
+	ids := set.New[string]()
 	err := p.seq(n, where, func(i int, item *yaml.Node) error {
 		s, err := p.step(item, fmt.Sprintf("%s[%d]", where, i), i+1)
 		if err != nil {
 			return err
 		}
 		if s.ID != "" {
-			if ids[s.ID] {
+			if ids.Contains(s.ID) {
 				return p.errf(item, "%s[%d].id %q is already used by an earlier step", where, i, s.ID)
 			}
-			ids[s.ID] = true
+			ids.Add(s.ID)
 		}
 		out = append(out, s)
 		return nil

@@ -8,6 +8,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"github.com/wow-look-at-my/ci-platform/internal/model"
+	"github.com/wow-look-at-my/go-containers/set"
 )
 
 func load(t *testing.T, name string) *model.Workflow {
@@ -37,11 +38,11 @@ func TestValidCorpusParses(t *testing.T) {
 			require.Equal(t, f, w.Path)
 			require.NotEmpty(t, w.Name)
 			require.Len(t, w.JobOrder, len(w.Jobs), "JobOrder must name every job exactly once")
-			seen := map[string]bool{}
+			seen := set.New[string]()
 			for _, key := range w.JobOrder {
 				require.NotNil(t, w.Jobs[key], "JobOrder names %q but Jobs does not have it", key)
-				require.False(t, seen[key], "JobOrder repeats %q", key)
-				seen[key] = true
+				require.False(t, seen.Contains(key), "JobOrder repeats %q", key)
+				seen.Add(key)
 				require.Equal(t, key, w.Jobs[key].Key)
 				for i, s := range w.Jobs[key].Steps {
 					require.Equal(t, i+1, s.Number)

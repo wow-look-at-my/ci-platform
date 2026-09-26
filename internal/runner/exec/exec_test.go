@@ -14,6 +14,7 @@ import (
 	"github.com/wow-look-at-my/ci-platform/internal/model"
 	"github.com/wow-look-at-my/ci-platform/internal/protocol"
 	"github.com/wow-look-at-my/ci-platform/internal/runner/mask"
+	"github.com/wow-look-at-my/go-containers/set"
 )
 
 type harness struct {
@@ -207,10 +208,10 @@ func TestStepsAfterFailureAreSkipped(t *testing.T) {
 		{Number: 3, Name: "always", Run: "echo cleanup", IfExpr: "always()"},
 	}
 	h := newHarness(t, steps, nil)
-	ran := map[string]bool{}
+	ran := set.New[string]()
 	h.sb.handle = func(sb *fakeSandbox, req RunRequest) (RunResult, error) {
 		script := sb.script(req.Argv[len(req.Argv)-1])
-		ran[script] = true
+		ran.Add(script)
 		if script == "false" {
 			return RunResult{ExitCode: 1}, nil
 		}
@@ -221,8 +222,8 @@ func TestStepsAfterFailureAreSkipped(t *testing.T) {
 	assert.Equal(t, model.ConclusionFailure, res.Conclusion)
 	assert.Equal(t, model.ConclusionSkipped, res.Steps[1].Conclusion)
 	assert.Equal(t, model.ConclusionSuccess, res.Steps[2].Conclusion)
-	assert.False(t, ran["echo no"])
-	assert.True(t, ran["echo cleanup"])
+	assert.False(t, ran.Contains("echo no"))
+	assert.True(t, ran.Contains("echo cleanup"))
 	assert.True(t, h.log.contains("an earlier step failed"))
 }
 

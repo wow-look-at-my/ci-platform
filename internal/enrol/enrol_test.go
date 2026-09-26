@@ -12,6 +12,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/wow-look-at-my/go-containers/set"
 )
 
 func testKey(t *testing.T) (ed25519.PrivateKey, string) {
@@ -22,7 +23,7 @@ func testKey(t *testing.T) (ed25519.PrivateKey, string) {
 }
 
 // The fingerprint is a path segment in the approval API and a string an
-// operator compares by eye. Standard base64's "/" would split it in two.
+// operator compares by eye.
 func TestFingerprint_IsStableAndURLSafe(t *testing.T) {
 	pub, _, err := ed25519.GenerateKey(rand.Reader)
 	require.NoError(t, err)
@@ -114,12 +115,12 @@ func TestSignAndVerify(t *testing.T) {
 }
 
 func TestNewNonce_IsDifferentEveryTime(t *testing.T) {
-	seen := map[string]bool{}
+	seen := set.New[string]()
 	for range 100 {
 		n, err := NewNonce()
 		require.NoError(t, err)
-		require.False(t, seen[n], "a nonce repeated")
-		seen[n] = true
+		require.False(t, seen.Contains(n), "a nonce repeated")
+		seen.Add(n)
 	}
 }
 

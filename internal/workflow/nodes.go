@@ -8,6 +8,7 @@ import (
 
 	"github.com/wow-look-at-my/ci-platform/internal/model"
 	"github.com/wow-look-at-my/ci-platform/internal/workflow/expr"
+	"github.com/wow-look-at-my/go-containers/set"
 	"gopkg.in/yaml.v3"
 )
 
@@ -100,17 +101,17 @@ func (p *parser) each(n *yaml.Node, where string, allowed []string, fn func(key 
 	if n.Kind != yaml.MappingNode {
 		return p.errf(n, "%s must be a mapping, found %s", orRoot(where), kindName(n))
 	}
-	seen := make(map[string]bool, len(n.Content)/2)
+	seen := set.New[string]()
 	for i := 0; i+1 < len(n.Content); i += 2 {
 		kn, vn := n.Content[i], n.Content[i+1]
 		if kn.Kind != yaml.ScalarNode {
 			return p.errf(kn, "%s has a %s where a key name was expected", where, kindName(kn))
 		}
 		key := kn.Value
-		if seen[key] {
+		if seen.Contains(key) {
 			return p.errf(kn, "%s is declared twice; GitHub Actions would silently keep the last one", join(where, key))
 		}
-		seen[key] = true
+		seen.Add(key)
 		// The alias check comes first so a merge key (`<<: *anchor`) is
 		// reported as the alias it is rather than as an unknown key.
 		if err := p.check(vn, join(where, key)); err != nil {

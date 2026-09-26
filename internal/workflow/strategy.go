@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/wow-look-at-my/ci-platform/internal/model"
+	"github.com/wow-look-at-my/go-containers/set"
 	"gopkg.in/yaml.v3"
 )
 
@@ -116,9 +117,9 @@ func (p *parser) matrix(n *yaml.Node, where string) (*model.Matrix, error) {
 }
 
 func appendIncludeKeyOrder(m *model.Matrix, includeNodes []*yaml.Node) {
-	seen := make(map[string]bool, len(m.Order))
+	seen := set.New[string]()
 	for _, k := range m.Order {
-		seen[k] = true
+		seen.Add(k)
 	}
 	for _, row := range includeNodes {
 		if row == nil || row.Kind != yaml.MappingNode {
@@ -126,8 +127,8 @@ func appendIncludeKeyOrder(m *model.Matrix, includeNodes []*yaml.Node) {
 		}
 		for i := 0; i+1 < len(row.Content); i += 2 {
 			key := row.Content[i].Value
-			if key != "" && !seen[key] {
-				seen[key] = true
+			if key != "" && !seen.Contains(key) {
+				seen.Add(key)
 				m.Order = append(m.Order, key)
 			}
 		}
@@ -211,20 +212,20 @@ func (p *parser) checkExcludes(m *model.Matrix, nodes []*yaml.Node, where string
 	if m == nil || !m.FromExpr.Empty() {
 		return nil
 	}
-	known := map[string]bool{}
+	known := set.New[string]()
 	for k := range m.Dimensions {
-		known[k] = true
+		known.Add(k)
 	}
 	for _, row := range m.Include {
 		for k := range row {
-			known[k] = true
+			known.Add(k)
 		}
 	}
 	for i, row := range m.Exclude {
 		for k := range row {
-			if !known[k] {
-				keys := make([]string, 0, len(known))
-				for k := range known {
+			if !known.Contains(k) {
+				keys := make([]string, 0, known.Len())
+				for k := range known.All() {
 					keys = append(keys, k)
 				}
 				sort.Strings(keys)

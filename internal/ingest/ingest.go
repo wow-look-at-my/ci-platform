@@ -23,6 +23,7 @@ import (
 	"github.com/wow-look-at-my/ci-platform/internal/plan"
 	"github.com/wow-look-at-my/ci-platform/internal/store"
 	"github.com/wow-look-at-my/ci-platform/internal/workflow"
+	"github.com/wow-look-at-my/go-containers/set"
 )
 
 // Files reads a repository's workflow files at a ref.
@@ -380,7 +381,7 @@ func (i *Ingester) contexts(repo *model.Repo, run *model.Run, t Trigger) map[str
 // the head commit would miss files changed by earlier commits in the same push,
 // so a paths: filter would silently skip a workflow that should have run.
 func changedPaths(e *webhook.PushEvent) []string {
-	seen := map[string]bool{}
+	seen := set.New[string]()
 	var out []string
 	add := func(c *webhook.Commit) {
 		if c == nil {
@@ -388,8 +389,8 @@ func changedPaths(e *webhook.PushEvent) []string {
 		}
 		for _, group := range [][]string{c.Added, c.Modified, c.Removed} {
 			for _, p := range group {
-				if !seen[p] {
-					seen[p] = true
+				if !seen.Contains(p) {
+					seen.Add(p)
 					out = append(out, p)
 				}
 			}

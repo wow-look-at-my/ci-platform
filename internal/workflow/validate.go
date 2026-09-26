@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/wow-look-at-my/ci-platform/internal/model"
+	"github.com/wow-look-at-my/go-containers/set"
 )
 
 // validate runs the checks that need the whole file: the needs DAG, and the
@@ -33,12 +34,12 @@ func (p *parser) validate() error {
 }
 
 func duplicates(ss []string) string {
-	seen := map[string]bool{}
+	seen := set.New[string]()
 	for _, s := range ss {
-		if seen[s] {
+		if seen.Contains(s) {
 			return s
 		}
-		seen[s] = true
+		seen.Add(s)
 	}
 	return ""
 }

@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/wow-look-at-my/ci-platform/internal/model"
+	"github.com/wow-look-at-my/go-containers/set"
 )
 
 // TopoSort orders job keys so every job follows everything it needs. Ties break
@@ -31,7 +32,7 @@ func TopoSort(w *model.Workflow) ([]string, error) {
 	indeg := make(map[string]int, len(keys))
 	dependents := make(map[string][]string, len(keys))
 	for _, k := range keys {
-		seen := make(map[string]bool)
+		seen := set.New[string]()
 		for _, n := range w.Jobs[k].Needs {
 			if n == k {
 				return nil, fmt.Errorf("plan: job %q needs itself", k)
@@ -39,10 +40,10 @@ func TopoSort(w *model.Workflow) ([]string, error) {
 			if _, ok := w.Jobs[n]; !ok {
 				return nil, fmt.Errorf("plan: job %q needs %q, which the workflow does not define", k, n)
 			}
-			if seen[n] {
+			if seen.Contains(n) {
 				continue
 			}
-			seen[n] = true
+			seen.Add(n)
 			indeg[k]++
 			dependents[n] = append(dependents[n], k)
 		}

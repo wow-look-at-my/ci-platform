@@ -17,6 +17,7 @@ import (
 	"github.com/wow-look-at-my/ci-platform/internal/jobtoken"
 	"github.com/wow-look-at-my/ci-platform/internal/model"
 	"github.com/wow-look-at-my/ci-platform/internal/store"
+	"github.com/wow-look-at-my/go-containers/set"
 )
 
 func splitKeys(raw string) []string {
@@ -53,12 +54,12 @@ func (s *Service) handleList(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	out := ArtifactCacheList{ArtifactCaches: []ArtifactCacheEntry{}}
-	seen := map[string]bool{}
+	seen := set.New[string]()
 	for _, e := range events {
-		if e.Kind != "store" || seen[e.Key] || (key != "" && !strings.HasPrefix(e.Key, key)) {
+		if e.Kind != "store" || seen.Contains(e.Key) || (key != "" && !strings.HasPrefix(e.Key, key)) {
 			continue
 		}
-		seen[e.Key] = true
+		seen.Add(e.Key)
 		out.ArtifactCaches = append(out.ArtifactCaches, ArtifactCacheEntry{
 			CacheKey:     e.Key,
 			CreationTime: e.At.UTC().Format(time.RFC3339),
@@ -262,8 +263,7 @@ func (s *Service) handleCommit(w http.ResponseWriter, r *http.Request) {
 		fmt.Sprintf("stored %d bytes for version %s on ref %s", size, entry.Version, entry.Ref), size)
 
 	if err := s.Evict(ctx, claims.RepoID); err != nil {
-		// The entry is stored; the quota is now over. That is worth reporting
-		// rather than hiding behind a 204.
+		// The entry is stored; the quota is now over.
 		writeErr(w, http.StatusInternalServerError, fmt.Sprintf(
 			"cachesvc: entry %d was stored but enforcing the repository quota failed: %v", id, err))
 		return
@@ -339,9 +339,7 @@ func (s *Service) handleDownload(w http.ResponseWriter, r *http.Request) {
 	_, _ = io.Copy(w, rc)
 }
 
-// handleV2NotImplemented answers the v2 Twirp CacheService. The client only
-// picks v2 when ACTIONS_CACHE_SERVICE_V2 is set in the job environment, which
-// the runner does not do; saying so beats a 404.
+// handleV2NotImplemented answers the v2 Twirp CacheService.
 func (s *Service) handleV2NotImplemented(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusNotImplemented)

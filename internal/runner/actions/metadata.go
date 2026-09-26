@@ -5,6 +5,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/wow-look-at-my/go-containers/set"
 	"gopkg.in/yaml.v3"
 )
 
@@ -241,15 +242,15 @@ func decodeOutputs(n *yaml.Node, m *Metadata) error {
 func (m *Metadata) InputEnv(with map[string]string) (map[string]string, []string, error) {
 	env := map[string]string{}
 	var warnings []string
-	seen := map[string]bool{}
+	seen := set.New[string]()
 
 	names := append([]string(nil), m.InputOrder...)
 	for _, n := range names {
-		seen[n] = true
+		seen.Add(n)
 	}
 	extra := make([]string, 0, len(with))
 	for k := range with {
-		if !seen[k] {
+		if !seen.Contains(k) {
 			extra = append(extra, k)
 		}
 	}

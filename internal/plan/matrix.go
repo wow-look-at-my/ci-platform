@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/wow-look-at-my/ci-platform/internal/model"
+	"github.com/wow-look-at-my/go-containers/set"
 )
 
 // Leg is one expanded matrix combination.
@@ -94,9 +95,9 @@ func ExpandMatrix(m *model.Matrix, ev Evaluator) ([]Leg, error) {
 		}
 	}
 
-	isDim := make(map[string]bool, len(dims))
+	isDim := set.New[string]()
 	for _, k := range dims {
-		isDim[k] = true
+		isDim.Add(k)
 	}
 
 	for _, ex := range resolved.Exclude {
@@ -107,7 +108,7 @@ func ExpandMatrix(m *model.Matrix, ev Evaluator) ([]Leg, error) {
 		// rather than quietly excluding nothing, and so do we: a typo there
 		// silently runs the combination the author meant to remove.
 		for k := range ex {
-			if !isDim[k] {
+			if !isDim.Contains(k) {
 				return nil, fmt.Errorf("matrix exclude key %q does not match any key within the matrix", k)
 			}
 		}
@@ -136,7 +137,7 @@ func ExpandMatrix(m *model.Matrix, ev Evaluator) ([]Leg, error) {
 		for i, c := range combos {
 			conflict := false
 			for k, v := range inc {
-				if !isDim[k] {
+				if !isDim.Contains(k) {
 					continue
 				}
 				bv, ok := base[i][k]
@@ -178,19 +179,19 @@ func ExpandMatrix(m *model.Matrix, ev Evaluator) ([]Leg, error) {
 // source key order survives only if the parser recorded it in Matrix.Order.
 func legOrder(values map[string]any, dims, declared []string) []string {
 	order := presentKeys(values, dims)
-	seen := make(map[string]bool, len(order))
+	seen := set.New[string]()
 	for _, k := range order {
-		seen[k] = true
+		seen.Add(k)
 	}
 	for _, k := range declared {
-		if _, ok := values[k]; ok && !seen[k] {
+		if _, ok := values[k]; ok && !seen.Contains(k) {
 			order = append(order, k)
-			seen[k] = true
+			seen.Add(k)
 		}
 	}
 	extra := make([]string, 0, len(values))
 	for k := range values {
-		if !seen[k] {
+		if !seen.Contains(k) {
 			extra = append(extra, k)
 		}
 	}
@@ -216,13 +217,13 @@ func dimensionOrder(m *model.Matrix) ([]string, error) {
 	if len(m.Dimensions) == 0 {
 		return nil, nil
 	}
-	seen := make(map[string]bool, len(m.Order))
+	seen := set.New[string]()
 	dims := make([]string, 0, len(m.Dimensions))
 	for _, k := range m.Order {
-		if seen[k] {
+		if seen.Contains(k) {
 			return nil, fmt.Errorf("matrix key order names %q twice", k)
 		}
-		seen[k] = true
+		seen.Add(k)
 		if _, ok := m.Dimensions[k]; ok {
 			dims = append(dims, k)
 		}
@@ -230,7 +231,7 @@ func dimensionOrder(m *model.Matrix) ([]string, error) {
 	if len(dims) != len(m.Dimensions) {
 		var missing []string
 		for k := range m.Dimensions {
-			if !seen[k] {
+			if !seen.Contains(k) {
 				missing = append(missing, k)
 			}
 		}
