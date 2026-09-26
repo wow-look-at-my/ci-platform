@@ -62,8 +62,7 @@ func TestDockerSandboxEndToEnd(t *testing.T) {
 	require.Equal(t, 0, res.ExitCode, "inner docker version failed")
 	assert.NotEmpty(t, strings.TrimSpace(ver.String()))
 
-	// A file placed with docker cp is readable inside, including into a
-	// directory that did not exist.
+	// A file placed with docker cp is readable inside, including into a directory that did not exist.
 	const script = "#!/bin/sh\necho from-the-sandbox\n"
 	require.NoError(t, c.WriteFile(ctx, "/home/runner/work/_temp/nested/deep/step.sh", []byte(script), 0o700))
 
@@ -78,13 +77,7 @@ func TestDockerSandboxEndToEnd(t *testing.T) {
 	assert.Equal(t, 0, res.ExitCode)
 	assert.Equal(t, "from-the-sandbox\n", out.String())
 
-	// The footgun this design exists for: a file placed with docker cp lives in
-	// the container's own filesystem, so the INNER daemon can bind-mount it
-	// into a container it spawns. A file bind-mounted in from the host cannot
-	// be, because the inner daemon resolves the source against the host.
-	//
-	// The image is built from the sandbox's own filesystem rather than pulled,
-	// so this holds with no registry access.
+	// The inner daemon can bind-mount a file placed with docker cp, since it lives in its own filesystem.
 	var mounted strings.Builder
 	res, err = c.Run(ctx, exec.RunRequest{
 		Argv: []string{"sh", "-c",
@@ -127,8 +120,7 @@ func TestDockerSandboxHasNoHostSocket(t *testing.T) {
 	require.NoError(t, err)
 	defer c.Close(context.Background())
 
-	// The inner daemon's image list is its own, and the job cannot reach the
-	// host's daemon through a mounted socket.
+	// The inner daemon's image list is its own; the job cannot reach the host's daemon through a mounted socket.
 	var out strings.Builder
 	res, err := c.Run(ctx, exec.RunRequest{
 		Argv:   []string{"sh", "-c", "ls -l /var/run/docker.sock && readlink -f /var/run/docker.sock"},
@@ -136,8 +128,7 @@ func TestDockerSandboxHasNoHostSocket(t *testing.T) {
 	})
 	require.NoError(t, err)
 	t.Logf("socket check (exit %d): %s", res.ExitCode, out.String())
-	// The only socket present is the inner daemon's own, created by dockerd
-	// inside the container; nothing was bind-mounted from the host.
+	// The only socket present is the inner daemon's own; nothing was bind-mounted from the host.
 	assert.NotContains(t, out.String(), "/host")
 }
 

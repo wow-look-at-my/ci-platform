@@ -98,8 +98,7 @@ func TestLogicalOperatorsReturnOperands(t *testing.T) {
 }
 
 func TestShortCircuitSkipsErrors(t *testing.T) {
-	// The right operand is never evaluated, so its unknown named-value never
-	// becomes an error.
+	// The right operand is never evaluated, so its unknown named-value never becomes an error.
 	v, err := New(testCtx()).Eval("true || nosuchcontext.x")
 	require.NoError(t, err)
 	require.Equal(t, true, v)
@@ -221,8 +220,7 @@ func TestWildcard(t *testing.T) {
 	require.Equal(t, true, evalOK(t, "contains(github.event.commits.*.message, 'second')"))
 	require.Equal(t, "first,second", evalOK(t, "join(github.event.commits.*.message)"))
 
-	// Indexing a filtered array applies the index to each ELEMENT, so this is
-	// not "first": a string has no element 0.
+	// Indexing a filtered array applies the index to each ELEMENT; a string has no element 0.
 	require.Equal(t, filtered{}, evalOK(t, "github.event.commits.*.message[0]"))
 	// A wildcard on a non-collection is an empty array, never null.
 	require.Equal(t, filtered{}, evalOK(t, "github.ref_name.*"))

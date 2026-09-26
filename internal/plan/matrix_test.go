@@ -122,8 +122,7 @@ func TestIncludeNeverOverwritesAnOriginalDimension(t *testing.T) {
 	m := &model.Matrix{
 		Dimensions: map[string][]any{"os": {"ubuntu", "windows"}},
 		Order:      []string{"os"},
-		// os=macos matches no combination, so it becomes its own leg rather
-		// than rewriting ubuntu or windows.
+		// os=macos matches no combination, so it becomes its own leg rather than rewriting one.
 		Include: []map[string]any{{"os": "macos", "extra": "yes"}},
 	}
 	legs, err := ExpandMatrix(m, nil)
@@ -167,8 +166,7 @@ func TestExcludeThenIncludeOrdering(t *testing.T) {
 		Dimensions: map[string][]any{"os": {"ubuntu", "windows"}},
 		Order:      []string{"os"},
 		Exclude:    []map[string]any{{"os": "windows"}},
-		// windows was excluded, so this include has nothing to merge into and
-		// is appended as its own leg.
+		// windows was excluded, so this include has nothing to merge into and is appended as its own leg.
 		Include: []map[string]any{{"os": "windows", "note": "readded"}},
 	}
 	legs, err := ExpandMatrix(m, nil)
@@ -211,8 +209,7 @@ func TestMatrixValueRendering(t *testing.T) {
 		"(1, true, 1, x, y)",
 		"(2.5, true, 1, x, y)",
 	})
-	// The leg identity keeps the whole value, so legs differing only
-	// inside an object are still distinguishable.
+	// The leg identity keeps the whole value, so legs differing only inside an object are distinguishable.
 	require.Equal(t, `n=1,b=true,obj={"a":1,"b":""},arr=["x","y"]`, legs[0].Key())
 
 }

@@ -29,15 +29,11 @@ type StoredKey struct {
 	KID        string    `json:"kid"`
 	PrivatePEM string    `json:"private_pem"`
 	CreatedAt  time.Time `json:"created_at"`
-	// RetiredAt is when the key stopped signing. A retired key stays in JWKS
-	// until every token it signed has expired.
+	// RetiredAt is when signing stopped; the key stays in JWKS until every token it signed expires.
 	RetiredAt *time.Time `json:"retired_at,omitempty"`
 }
 
-// KeyStore persists the keyring. Keys must survive a restart: regenerating
-// them in memory would invalidate every token already issued and every
-// verifier's cached JWKS, silently, which is the failure mode this platform
-// exists to avoid.
+// KeyStore persists the keyring; regenerating in memory would silently invalidate every issued token.
 type KeyStore interface {
 	Load(ctx context.Context) ([]StoredKey, error)
 	Save(ctx context.Context, keys []StoredKey) error
@@ -139,10 +135,7 @@ func (b *BlobKeyStore) Save(ctx context.Context, keys []StoredKey) error {
 
 // KeyringOptions configures a Keyring.
 type KeyringOptions struct {
-	// TokenTTL is how long an issued token stays valid. A retired key is served
-	// in JWKS for this long after retirement, then dropped: dropping it sooner
-	// would break tokens still in flight, later would serve a key nothing can
-	// use.
+	// TokenTTL is how long a retired key stays served in JWKS after retirement, to cover tokens in flight.
 	TokenTTL time.Duration
 	Now      func() time.Time
 }
@@ -268,8 +261,7 @@ func (k *Keyring) stored() []StoredKey {
 	for _, e := range k.keys {
 		der, err := x509.MarshalPKCS8PrivateKey(e.priv)
 		if err != nil {
-			// MarshalPKCS8PrivateKey cannot fail for an RSA key produced by
-			// GenerateKey or parsed by decodeKey.
+			// MarshalPKCS8PrivateKey cannot fail for a key from GenerateKey or decodeKey.
 			continue
 		}
 		out = append(out, StoredKey{

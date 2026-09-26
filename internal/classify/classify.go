@@ -29,10 +29,7 @@ type Decision struct {
 	Reason string `json:"reason"`
 	// Evidence is the matched excerpt, truncated and masked.
 	Evidence string `json:"evidence,omitempty"`
-	// Confident is false when the classifier fell back to a default rather than
-	// matching a rule. A non-confident infra call is never made: the default is
-	// always user, because wrongly retrying a user failure wastes an operator's
-	// time while wrongly failing an infra error destroys trust in red builds.
+	// Confident is false on a fallback, not a matched rule; a non-confident call is always user, never infra.
 	Confident bool      `json:"confident"`
 	At        time.Time `json:"at"`
 }
@@ -53,12 +50,9 @@ type Signal struct {
 	ExitCode int
 	// Output is the tail of the step's combined output.
 	Output string
-	// Err is a Go error from the platform's own machinery, e.g. a docker API
-	// call or an HTTP request to the control plane.
+	// Err is a Go error from the platform's own machinery: a docker API call or a control-plane request.
 	Err error
-	// Phase is where the failure happened: "setup", "checkout", "action-fetch",
-	// "run", "upload", "teardown". Failures outside "run" are much more likely
-	// to be ours than the user's.
+	// Phase is where the failure happened; outside "run" it is much more likely ours than the user's.
 	Phase string
 	// HTTPStatus is set when the failure was an HTTP response.
 	HTTPStatus int
@@ -193,8 +187,7 @@ var configRules = []rule{
 
 // Classifier applies the rule set. The zero value is ready to use.
 type Classifier struct {
-	// Extra rules are appended after the built-ins, letting an operator teach
-	// the platform about a failure mode specific to their environment.
+	// Extra rules are appended after the built-ins, for a failure mode specific to one environment.
 	Extra []Rule
 	// Now is injectable for tests.
 	Now func() time.Time

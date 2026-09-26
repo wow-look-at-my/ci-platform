@@ -37,8 +37,7 @@ import (
 	"github.com/wow-look-at-my/ci-platform/test/fakes"
 )
 
-// operatorToken is what the suite signs its API reads with. The control plane
-// refuses to start without one.
+// operatorToken is what the suite signs its API reads with; the control plane refuses to start without one.
 const operatorToken = "e2e-operator-token-0123456789"
 
 // controlPlane is a running instance under test.
@@ -47,8 +46,7 @@ type controlPlane struct {
 	GitHub *fakes.GitHub
 	cmd    *exec.Cmd
 	out    *bytes.Buffer
-	// repo is unique per test: each control plane gets its own database file,
-	// but distinct repositories keep a failure legible.
+	// repo is unique per test, so distinct repositories keep a failure legible even with a shared database file.
 	repoID   int64
 	repoName string
 }
@@ -73,8 +71,7 @@ func start(t *testing.T, workflows map[string]string) *controlPlane {
 	cmd.Env = append(os.Environ(),
 		"CIPLATFORM_LISTEN=127.0.0.1:"+port,
 		"CIPLATFORM_PUBLIC_URL=http://ci.localhost:"+port,
-		// The stand-in GitHub is where the repositories are, so it is also
-		// where a browser would be sent to sign in.
+		// The stand-in GitHub is where the repositories are, so it is also where sign-in would redirect.
 		"CIPLATFORM_GITHUB_SERVER_URL=http://github.localhost",
 		"CIPLATFORM_ALLOWED_OWNERS=acme",
 		"CIPLATFORM_ADMIN_LOGINS=PazerOP",
@@ -191,8 +188,7 @@ func (c *controlPlane) runs(t *testing.T) []map[string]any {
 	return c.runsAt(t, "/api/v1/runs?repo=acme/"+c.repoName)
 }
 
-// allRuns asks without a repository filter, which is how a test proves nothing
-// was created anywhere rather than nothing was created for one repository.
+// allRuns asks without a repository filter, proving nothing was created anywhere, not just for one repository.
 func (c *controlPlane) allRuns(t *testing.T) []map[string]any {
 	t.Helper()
 	return c.runsAt(t, "/api/v1/runs")
@@ -255,11 +251,7 @@ var (
 	binErr  error
 )
 
-// TestMain owns the one control-plane binary every test in this package runs.
-//
-// It is built once rather than per test because the whole package shares a
-// 30-second budget, and a dozen `go build` invocations spend it on work that
-// produces the same bytes every time.
+// TestMain owns the one control-plane binary every test in this package runs, built once to fit a 30-second budget.
 func TestMain(m *testing.M) {
 	code := m.Run()
 	if binDir != "" {

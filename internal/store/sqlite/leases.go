@@ -102,9 +102,7 @@ func (s *Store) ReapExpiredLeases(ctx context.Context, now time.Time) ([]*model.
 	now = now.UTC()
 	var jobs []*model.Job
 	err := s.tx(ctx, func(tx *sql.Tx) error {
-		// The expired rows are read before they are updated: the runner_id is
-		// about to be cleared, and the event has to name the runner that
-		// vanished rather than say "the runner".
+		// Read before update: the runner_id is about to be cleared, and the event must name it.
 		const find = `
 SELECT job_id, run_id, runner_id, requeue_count FROM job_queue
 WHERE state = 'leased' AND lease_expires_at <= ?
@@ -150,10 +148,7 @@ RETURNING ` + jobCols
 			if err != nil {
 				return mapErr("sqlite: ReapExpiredLeases", err)
 			}
-			// The stored row is unleased, but the returned copy keeps the
-			// runner it lost so the caller can name it. Without this the
-			// requeue can only say "the runner", which is the report the
-			// operator cannot act on.
+			// The returned copy keeps the runner it lost so the caller can name it in the report.
 			j.RunnerID = r.runnerID
 			jobs = append(jobs, j)
 

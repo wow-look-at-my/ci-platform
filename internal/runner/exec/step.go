@@ -192,8 +192,7 @@ func (e *Executor) completeFailure(ctx context.Context, res StepResult, spec pro
 		res.Duration = time.Since(started)
 	}
 	if spec.ContinueOnError {
-		// The step still reports what really happened; only the job's verdict
-		// changes, exactly as continue-on-error promises.
+		// The step still reports what really happened; only the job's verdict changes.
 		res.Conclusion = model.ConclusionSuccess
 		e.platform(spec.Number, fmt.Sprintf("step %q failed but continue-on-error is set, so the job continues", res.Name))
 	} else {

@@ -26,22 +26,18 @@ const DefaultMinInterval = 2 * time.Second
 type ReporterOptions struct {
 	// MinInterval bounds how often one check run is written. Default 2s.
 	MinInterval time.Duration
-	// FinalAttempts is how many times a completion update is retried before it
-	// is reported as lost. Default 3.
+	// FinalAttempts is how many times a completion update retries before it is reported lost. Default 3.
 	FinalAttempts int
 	// FinalBackoff is the first retry delay for a completion update.
 	FinalBackoff time.Duration
 	Logger       *slog.Logger
 	Now          func() time.Time
 	Sleep        func(context.Context, time.Duration) error
-	// OnCheckRunID is called after a check run is created so the caller can
-	// persist Job.CheckRunID. Errors here are the caller's problem, not ours.
+	// OnCheckRunID is called after a check run is created so the caller can persist Job.CheckRunID.
 	OnCheckRunID func(jobID, checkRunID int64)
-	// Actions are attached to a completed check run when the Update does not
-	// set its own. A non-nil empty slice on the Update means "no buttons".
+	// Actions attach to a completed check run when the Update sets none; an empty slice means none.
 	Actions []Action
-	// DisableTicker turns off background flushing; pending updates then move
-	// only on Report, Flush, or Close. Used by tests.
+	// DisableTicker turns off background flushing; updates then move only on Report, Flush, or Close.
 	DisableTicker bool
 }
 
@@ -164,8 +160,7 @@ func (r *Reporter) Report(ctx context.Context, u Update) error {
 	}
 	prev := st.pending
 	if prev != nil {
-		// A newer update supersedes the queued one, but annotations queued and
-		// not yet delivered must not be lost with it.
+		// A newer update supersedes the queued one, but its undelivered annotations must not be lost.
 		u.Annotations = mergeAnnotations(prev.Annotations, u.Annotations)
 	}
 	st.pending = &u

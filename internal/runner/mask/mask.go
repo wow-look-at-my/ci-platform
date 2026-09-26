@@ -15,14 +15,10 @@ import (
 // Placeholder is what a redacted value is replaced with.
 const Placeholder = "***"
 
-// MinLength skips values too short to redact usefully. Masking a 1-character
-// secret would black out most of a build log while hiding nothing.
+// MinLength skips values too short to redact usefully; a 1-char secret would black out logs, hiding nothing.
 const MinLength = 3
 
-// Masker holds the registered secret values and their renderings.
-//
-// It is safe for concurrent use: log lines are masked on the emitting
-// goroutine while ::add-mask:: registrations arrive from output parsing.
+// Masker holds the registered secret values and renderings; safe for concurrent use.
 type Masker struct {
 	mu       sync.RWMutex
 	values   map[string]struct{}
@@ -97,8 +93,7 @@ func (m *Masker) build() *strings.Replacer {
 	for v := range m.values {
 		vals = append(vals, v)
 	}
-	// Longest first: strings.Replacer prefers the earliest-listed pattern at a
-	// given position, so a value that is a prefix of another must not win.
+	// Longest first: strings.Replacer prefers the earliest-listed pattern, so a prefix value must not win.
 	sort.Slice(vals, func(i, j int) bool {
 		if len(vals[i]) != len(vals[j]) {
 			return len(vals[i]) > len(vals[j])

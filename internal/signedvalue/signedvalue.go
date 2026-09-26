@@ -18,9 +18,7 @@ import (
 // Key signs and opens envelopes. It is the raw HMAC key.
 type Key []byte
 
-// ErrBadSignature means the value was not produced by this key. It is
-// deliberately the same error for a forged signature and a mangled one: the
-// caller has no use for the difference, and neither does whoever sent it.
+// ErrBadSignature means the value was not produced by this key; a forged and a mangled signature look alike.
 var ErrBadSignature = errors.New("signedvalue: signature does not verify")
 
 // Sign wraps a payload. The result is URL-safe and cookie-safe.

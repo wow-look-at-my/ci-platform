@@ -33,8 +33,7 @@ type OAuthOptions struct {
 	ClientSecret string
 	// RedirectURL must match the callback URL registered on the App.
 	RedirectURL string
-	// AuthorizeURL, TokenURL and APIBaseURL default to github.com and
-	// api.github.com. They exist so the flow can be pointed at a test server.
+	// AuthorizeURL, TokenURL and APIBaseURL default to github.com and api.github.com, to point the flow at a test server.
 	AuthorizeURL string
 	TokenURL     string
 	APIBaseURL   string
@@ -70,9 +69,7 @@ func (a *Auth) githubLogin(w http.ResponseWriter, r *http.Request) {
 	q.Set("client_id", a.oauth.ClientID)
 	q.Set("redirect_uri", a.oauth.RedirectURL)
 	q.Set("state", state)
-	// No scopes: the only thing this flow needs to learn is which account is
-	// signing in, and an unscoped user-to-server token already answers that.
-	// Asking for more would be asking for access nothing here uses.
+	// No scopes: this flow only needs to learn which account is signing in, which an unscoped token already answers.
 	q.Set("scope", "")
 	http.Redirect(w, r, a.oauth.AuthorizeURL+"?"+q.Encode(), http.StatusFound)
 }
@@ -123,9 +120,7 @@ func (a *Auth) githubCallback(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if !a.admins.Contains(login) {
-		// Say who was refused. A sign-in that fails without naming the account
-		// is indistinguishable from a broken deployment, and the operator is
-		// usually one typo away from the answer.
+		// Say who was refused: an unnamed failure looks like a broken deployment, and the fix is often one typo away.
 		a.log.Warn("refused a dashboard sign-in", "login", login, "admins", a.admins.String())
 		a.fail(w, http.StatusForbidden, fmt.Sprintf(
 			"%s is not an administrator of this instance. Add the account to CIPLATFORM_ADMIN_LOGINS "+
@@ -158,8 +153,7 @@ func (a *Auth) exchangeCode(ctx context.Context, code string) (string, error) {
 		return "", err
 	}
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	// Without this GitHub answers form-encoded, which is a different parse for
-	// no benefit.
+	// Without this GitHub answers form-encoded, a different parse for no benefit.
 	req.Header.Set("Accept", "application/json")
 
 	resp, err := a.http.Do(req)

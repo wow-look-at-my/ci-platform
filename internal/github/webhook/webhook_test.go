@@ -232,8 +232,7 @@ func TestCheckRunRerequestedAndRequestedAction(t *testing.T) {
 	require.Len(t, sink.action, 1)
 	assert.Equal(t, "rerun_failed", sink.action[0].RequestedAction.Identifier)
 
-	// A requested_action with no identifier is a 5xx: it is a delivery we
-	// handle that we could not act on.
+	// A requested_action with no identifier is a 5xx: a handled delivery we could not act on.
 	w = deliver(t, h, "check_run", `{"action":"requested_action","check_run":{"id":5}}`)
 	assert.Equal(t, http.StatusInternalServerError, w.Code)
 

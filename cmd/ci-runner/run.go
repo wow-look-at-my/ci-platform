@@ -25,8 +25,7 @@ import (
 // config is every setting the runner takes, from flags or environment.
 type config struct {
 	url string
-	// keyPath holds this host's Ed25519 identity. It is generated on first
-	// start, so there is no secret for anybody to invent or type.
+	// keyPath holds this host's Ed25519 identity, generated on first start so there is no secret to invent.
 	keyPath       string
 	name          string
 	id            string
@@ -38,9 +37,7 @@ type config struct {
 	imageCacheVol string
 	sandboxImage  string
 	actionsAPI    string
-	// actionsToken is a separate credential from the control-plane token: it is
-	// sent to an external host on every uses: resolution, so reusing the
-	// control-plane token would hand that host our runner credential.
+	// actionsToken is separate from the control-plane token: it goes to an external host on every uses: resolution.
 	actionsToken   string
 	setupTimeout   time.Duration
 	pollWait       time.Duration
@@ -104,8 +101,7 @@ func runCommand(ctx context.Context, fs *flag.FlagSet, args []string) error {
 		return err
 	}
 
-	// Declared as the interface: a typed-nil *Resolver would satisfy the
-	// agent's nil check and then panic on first use.
+	// Declared as the interface: a typed-nil *Resolver would satisfy the agent's nil check, then panic on use.
 	var resolver exec.ActionResolver
 	if c.actionsAPI != "" {
 		resolver = actions.NewResolver(filepath.Join(c.stateDir, "actions"),
@@ -173,9 +169,7 @@ func (c *config) validate() error {
 	return nil
 }
 
-// approvalPoll is how often a runner waiting to be approved asks again. An
-// operator approving a host is a human action taken minutes or hours later, so
-// this is patient rather than tight.
+// approvalPoll is how often an unapproved runner asks again; operator approval is a human action, so this is patient.
 const approvalPoll = 15 * time.Second
 
 // credentials loads or creates this host's key, enrols it, and waits until an
@@ -298,8 +292,7 @@ func envInt(key string, def int) int {
 	}
 	var n int
 	if _, err := fmt.Sscanf(v, "%d", &n); err != nil {
-		// A set-but-unparseable value is a typo the operator needs to see, not
-		// a silent revert to the default.
+		// A set-but-unparseable value is a typo the operator needs to see, not a silent revert to default.
 		fmt.Fprintf(os.Stderr, "ci-runner: %s=%q is not a number\n", key, v)
 		os.Exit(2)
 	}

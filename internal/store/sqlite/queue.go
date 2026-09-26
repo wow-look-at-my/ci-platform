@@ -53,10 +53,8 @@ func (s *Store) Enqueue(ctx context.Context, q store.QueuedJob) error {
 		if q.RunID != 0 && q.RunID != runID {
 			return fmt.Errorf("sqlite: Enqueue: job %d belongs to run %d, not %d", q.JobID, runID, q.RunID)
 		}
-		// The caller states the attempt because it is half of the dispatch
-		// idempotency key. Disagreeing with the job row means the caller and
-		// the store have different ideas about which attempt this is, which
-		// would let the same attempt dispatch twice; refuse rather than pick.
+		// The caller states the attempt: it is half the dispatch idempotency key. Disagreement risks the
+		// same attempt dispatching twice, so this refuses rather than picks.
 		if q.Attempt != 0 {
 			if q.Attempt != attempt {
 				return fmt.Errorf("sqlite: Enqueue: job %d is on attempt %d, caller enqueued attempt %d",
@@ -103,9 +101,7 @@ func (s *Store) DropFromQueue(ctx context.Context, jobID int64) error {
 	return nil
 }
 
-// labelsSatisfied is the eligibility clause: every label the job requires must
-// be present in the runner's set. json_each walks the job's labels, and the
-// NOT EXISTS fails the row on the first one the runner lacks.
+// labelsSatisfied requires every label the job needs be in the runner's set; NOT EXISTS fails on the first missing one.
 const labelsSatisfied = `
 NOT EXISTS (
     SELECT 1 FROM json_each(job_queue.labels) AS need

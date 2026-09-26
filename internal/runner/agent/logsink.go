@@ -35,8 +35,7 @@ type LogSink struct {
 	stop   chan struct{}
 	closed bool
 	wg     sync.WaitGroup
-	// OnError is called when a batch cannot be delivered, so a failure to ship
-	// logs is visible rather than silently dropped.
+	// OnError is called when a batch cannot be delivered, so a shipping failure is visible, not dropped.
 	OnError func(error)
 }
 

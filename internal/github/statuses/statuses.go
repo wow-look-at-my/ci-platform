@@ -29,20 +29,17 @@ const MaxContext = 255
 type State string
 
 const (
-	// StateError is "something went wrong that is not your build" -- the legacy
-	// API's only slot for an infrastructure or configuration failure.
+	// StateError marks an infrastructure or configuration failure, distinct from a broken build.
 	StateError   State = "error"
 	StateFailure State = "failure"
 	StatePending State = "pending"
 	StateSuccess State = "success"
 )
 
-// AllBuildsContext is the org-owned aggregate context this package refuses to
-// post.
+// AllBuildsContext is the org-owned aggregate context this package refuses to post.
 const AllBuildsContext = "all-builds"
 
-// ErrForbiddenContext is returned when a caller tries to post a reserved
-// context.
+// ErrForbiddenContext is returned when a caller tries to post a reserved context.
 var ErrForbiddenContext = errors.New("statuses: forbidden context")
 
 // StateFor maps a platform status and conclusion onto the legacy states.
@@ -61,8 +58,7 @@ func StateFor(s model.Status, c model.Conclusion) State {
 	case model.ConclusionInfraFailure, model.ConclusionConfigError, model.ConclusionActionRequired:
 		return StateError
 	case model.ConclusionCancelled:
-		// A cancelled job did not pass. Reporting success here would let a
-		// cancellation satisfy a required check.
+		// A cancelled job did not pass; reporting success would let a cancellation satisfy a required check.
 		return StateError
 	case model.ConclusionSkipped, model.ConclusionNeutral, model.ConclusionStale:
 		return StateSuccess
@@ -82,8 +78,7 @@ type Status struct {
 
 // Options configures a Reporter.
 type Options struct {
-	// ForbiddenContexts are refused in addition to all-builds, which can never
-	// be removed from the set.
+	// ForbiddenContexts are refused in addition to all-builds, which stays in the set unconditionally.
 	ForbiddenContexts []string
 	Logger            *slog.Logger
 }

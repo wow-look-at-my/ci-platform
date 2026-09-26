@@ -15,12 +15,10 @@ type Evaluator interface {
 	Eval(raw string) (any, error)
 }
 
-// EvaluatorFactory builds an Evaluator over a set of named contexts
-// ("github", "env", "needs", "matrix", "strategy", "vars", "secrets", "inputs", ...).
+// EvaluatorFactory builds an Evaluator over a set of named contexts (github, env, needs, matrix, strategy, ...).
 type EvaluatorFactory func(contexts map[string]any, status Status) Evaluator
 
-// Status is what success(), failure() and cancelled() answer inside an
-// expression. Exactly one of all of them is true for a given evaluation.
+// Status is what success(), failure() and cancelled() answer inside an expression; exactly one is ever true.
 type Status struct{ Success, Failure, Cancelled bool }
 
 // EvalString evaluates an Expr to text, short-circuiting literals so a literal
@@ -83,9 +81,7 @@ func EvalInt(ev Evaluator, e model.Expr, def int) (int, error) {
 	return n, nil
 }
 
-// evalValue evaluates e to a typed value. An Expr that is exactly one ${{ }}
-// yields that expression's value, so fromJSON can produce a list or an object;
-// a template with text around its expressions yields the interpolated string.
+// evalValue evaluates e to a typed value: an Expr that is exactly one ${{ }} yields that value untyped, else a string.
 func evalValue(ev Evaluator, e model.Expr) (any, error) {
 	if body, ok := e.Sole(); ok {
 		return ev.Eval(body)

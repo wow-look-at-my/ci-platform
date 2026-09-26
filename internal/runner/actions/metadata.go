@@ -14,8 +14,7 @@ type Metadata struct {
 	Name        string
 	Description string
 	Inputs      map[string]Input
-	// InputOrder preserves declaration order so INPUT_ env vars and error
-	// messages are deterministic.
+	// InputOrder preserves declaration order so INPUT_ env vars and error messages are deterministic.
 	InputOrder []string
 	Outputs    map[string]Output
 	Runs       Runs
@@ -33,8 +32,7 @@ type Input struct {
 // Output is one declared output.
 type Output struct {
 	Description string
-	// Value is the ${{ }} expression a composite action computes its output
-	// from; empty for JavaScript actions, which write to $GITHUB_OUTPUT.
+	// Value is the ${{ }} expression a composite action computes its output from; empty for JS actions.
 	Value string
 }
 
@@ -48,8 +46,7 @@ type Runs struct {
 	PostIf string
 	Steps  []CompositeStep
 
-	// Docker action fields, parsed so the unsupported failure can name what it
-	// found rather than reporting an empty runs: block.
+	// Docker action fields, parsed so an unsupported failure can name what it found.
 	Image      string
 	Entrypoint string
 	Args       []string
@@ -277,8 +274,7 @@ func (m *Metadata) InputEnv(with map[string]string) (map[string]string, []string
 	return env, warnings, nil
 }
 
-// InputEnvName maps an input name to its environment variable: upper-cased with
-// spaces replaced by underscores, matching the Actions runner.
+// InputEnvName maps an input name to its environment variable: upper-cased, spaces to underscores.
 func InputEnvName(name string) string {
 	return "INPUT_" + strings.ToUpper(strings.ReplaceAll(name, " ", "_"))
 }

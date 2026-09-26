@@ -21,22 +21,15 @@ import (
 	"github.com/wow-look-at-my/ci-platform/internal/github/webhook"
 )
 
-// Guard wraps a webhook.Sink and drops every delivery from an account the
-// policy does not allow.
-//
-// It sits at the delivery boundary rather than inside ingest because ingest is
-// not the only sink method that starts work: the check-run re-run buttons reach
-// the scheduler directly. One gate in front of all seven leaves no second door.
+// Guard wraps a webhook.Sink and drops every delivery from an account the policy does not allow.
+// It sits at the delivery boundary, not inside ingest, because re-run buttons reach the scheduler directly too.
 type Guard struct {
 	next   webhook.Sink
 	owners *ghaccounts.Set
 	log    *slog.Logger
 }
 
-// NewGuard wraps next. A refused delivery is answered 200 -- it was understood,
-// and there is nothing for GitHub to redeliver -- and logged with the account
-// that sent it, so an install the operator does want is one log line away from
-// being spotted.
+// NewGuard wraps next. A refused delivery is answered 200 (nothing for GitHub to redeliver) and logged with its account.
 func NewGuard(next webhook.Sink, owners *ghaccounts.Set, log *slog.Logger) *Guard {
 	if log == nil {
 		log = slog.Default()
@@ -63,9 +56,7 @@ func (g *Guard) Push(ctx context.Context, e *webhook.PushEvent) error {
 	return g.next.Push(ctx, e)
 }
 
-// PullRequest gates on the BASE repository, which is the one whose runners and
-// credentials a pull request run would use. A fork head belongs to whoever
-// opened it and is governed by fork approval, not by this list.
+// PullRequest gates on the base repository, whose runners and credentials the run would use; a fork head is governed by fork approval instead.
 func (g *Guard) PullRequest(ctx context.Context, e *webhook.PullRequestEvent) error {
 	if !g.allowed(e.Meta) {
 		return nil

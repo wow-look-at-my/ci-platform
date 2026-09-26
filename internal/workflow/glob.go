@@ -144,12 +144,8 @@ func CompileGlobs(patterns []string) (GlobSet, error) {
 	return out, nil
 }
 
-// Matches reports whether s is selected by the set.
-//
-// Order matters and the last matching pattern wins, which is how GitHub lets a
-// `!` pattern carve an exception out of a broad one and a later positive
-// pattern put part of it back. A set containing only negative patterns selects
-// everything they do not exclude.
+// Matches reports whether s is selected by the set; the last matching pattern wins. An all-negative set
+// selects everything not excluded.
 func (gs GlobSet) Matches(s string) bool {
 	if len(gs) == 0 {
 		return true
@@ -170,8 +166,7 @@ func (gs GlobSet) Matches(s string) bool {
 	return selected
 }
 
-// MatchesAny reports whether any of the candidates is selected, which is the
-// rule for `paths:`: a run happens when at least one changed file matches.
+// MatchesAny is the `paths:` rule: a run happens when at least one changed file matches.
 func (gs GlobSet) MatchesAny(candidates []string) bool {
 	for _, c := range candidates {
 		if gs.Matches(c) {
