@@ -3,6 +3,10 @@ name: CI
 on:
   push:
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   id-token: write
   contents: write
@@ -13,7 +17,7 @@ permissions:
 
 jobs:
   test:
-    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: wow-look-at-my/go-toolchain@master
@@ -21,7 +25,7 @@ jobs:
   # The committed web/ bundle is what go:embed ships. A stale bundle is a
   # silent lie about what the UI does, so a mismatch fails the build.
   web-bundle:
-    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
@@ -32,7 +36,7 @@ jobs:
   # The demo site: the real UI against a snapshot captured from the real API.
   # Published per branch, so a UI change can be looked at before it is merged.
   demo:
-    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
@@ -59,7 +63,7 @@ jobs:
   # buildhost tags each push with its branch and only moves :latest on the
   # default branch.
   images:
-    runs-on: ${{ vars.CI_RUNNER_DIND || 'ubuntu-latest' }}
+    runs-on: ubuntu-latest
     strategy:
       matrix:
         include:
@@ -86,7 +90,7 @@ jobs:
   # A job name is what branch protection matches on, so a change here breaks
   # somebody's merge queue silently.
   conformance:
-    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
@@ -96,7 +100,7 @@ jobs:
 
   # One test per incident in docs/incidents.md.
   chaos:
-    runs-on: ${{ vars.CI_RUNNER_DIND || 'ubuntu-latest' }}
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
@@ -109,7 +113,7 @@ jobs:
   # Runs real workflows through a real control plane and a real runner, using
   # unmodified actions/checkout, actions/cache, and actions/upload-artifact.
   e2e:
-    runs-on: ${{ vars.CI_RUNNER_DIND || 'ubuntu-latest' }}
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
