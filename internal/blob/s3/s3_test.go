@@ -84,7 +84,7 @@ func (f *fakeS3) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		if id := q.Get("uploadId"); id != "" {
 			n, _ := strconv.Atoi(q.Get("partNumber"))
 			f.parts[id][n] = body
-			w.Header().Set("ETag", fmt.Sprintf("%q", n))
+			w.Header().Set("ETag", strconv.Quote(strconv.Itoa(n)))
 			w.WriteHeader(http.StatusOK)
 			return
 		}
