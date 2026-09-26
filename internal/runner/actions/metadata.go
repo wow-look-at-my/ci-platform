@@ -5,6 +5,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/wow-look-at-my/go-containers/set"
 	"gopkg.in/yaml.v3"
 )
 
@@ -13,8 +14,7 @@ type Metadata struct {
 	Name        string
 	Description string
 	Inputs      map[string]Input
-	// InputOrder preserves declaration order so INPUT_ env vars and error
-	// messages are deterministic.
+	// InputOrder preserves declaration order so INPUT_ env vars and error messages are deterministic.
 	InputOrder []string
 	Outputs    map[string]Output
 	Runs       Runs
@@ -32,8 +32,7 @@ type Input struct {
 // Output is one declared output.
 type Output struct {
 	Description string
-	// Value is the ${{ }} expression a composite action computes its output
-	// from; empty for JavaScript actions, which write to $GITHUB_OUTPUT.
+	// Value is the ${{ }} expression a composite action computes its output from; empty for JS actions.
 	Value string
 }
 
@@ -47,8 +46,7 @@ type Runs struct {
 	PostIf string
 	Steps  []CompositeStep
 
-	// Docker action fields, parsed so the unsupported failure can name what it
-	// found rather than reporting an empty runs: block.
+	// Docker action fields, parsed so an unsupported failure can name what it found.
 	Image      string
 	Entrypoint string
 	Args       []string
@@ -241,15 +239,15 @@ func decodeOutputs(n *yaml.Node, m *Metadata) error {
 func (m *Metadata) InputEnv(with map[string]string) (map[string]string, []string, error) {
 	env := map[string]string{}
 	var warnings []string
-	seen := map[string]bool{}
+	seen := set.New[string]()
 
 	names := append([]string(nil), m.InputOrder...)
 	for _, n := range names {
-		seen[n] = true
+		seen.Add(n)
 	}
 	extra := make([]string, 0, len(with))
 	for k := range with {
-		if !seen[k] {
+		if !seen.Contains(k) {
 			extra = append(extra, k)
 		}
 	}
@@ -276,8 +274,7 @@ func (m *Metadata) InputEnv(with map[string]string) (map[string]string, []string
 	return env, warnings, nil
 }
 
-// InputEnvName maps an input name to its environment variable: upper-cased with
-// spaces replaced by underscores, matching the Actions runner.
+// InputEnvName maps an input name to its environment variable: upper-cased, spaces to underscores.
 func InputEnvName(name string) string {
 	return "INPUT_" + strings.ToUpper(strings.ReplaceAll(name, " ", "_"))
 }

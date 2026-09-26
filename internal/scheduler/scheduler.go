@@ -32,28 +32,21 @@ type Options struct {
 	NewEval plan.EvaluatorFactory
 	// MintJobToken issues the per-job bearer token carried in an assignment.
 	MintJobToken func(runID, jobID int64, attempt int) (string, error)
-	// ServiceEnv builds the artifact/cache/OIDC environment for a job, given
-	// the token just minted for it. Optional: absent, a job simply has no
-	// artifact or cache service to talk to, which those actions report.
+	// ServiceEnv builds a job's artifact/cache/OIDC environment; optional, absent means no such service.
 	ServiceEnv func(runID, jobID int64, attempt int, token string) map[string]string
 	// Notify fires when a run on the repo's default branch ends non-success.
 	Notify func(ctx context.Context, n Notification)
 
-	// LeaseTTL is how long a dispatched job's lease survives without a
-	// heartbeat before Tick requeues it.
+	// LeaseTTL is how long a dispatched job's lease survives without a heartbeat before Tick requeues it.
 	LeaseTTL time.Duration
-	// SetupTimeout bounds the setup phase separately from execution; exceeding
-	// it is an infra failure, because no user command has run yet.
+	// SetupTimeout bounds the setup phase; exceeding it is an infra failure, since no user command has run.
 	SetupTimeout time.Duration
 	// DefaultJobTimeout applies to a job that declares no timeout-minutes.
 	DefaultJobTimeout time.Duration
 	// RunTimeout bounds a whole run.
 	RunTimeout time.Duration
 
-	// ServerURL is where the repositories are, handed to a job as
-	// GITHUB_SERVER_URL. It is NOT this platform's address: a job reads it to
-	// build a clone URL or a commit link, and the endpoints a job calls back on
-	// travel separately in ServiceEnv.
+	// ServerURL is GITHUB_SERVER_URL, not this platform's own address; callbacks travel via ServiceEnv.
 	ServerURL string
 	// RequireForkApproval holds a fork PR's jobs until a maintainer approves.
 	RequireForkApproval bool
@@ -85,8 +78,7 @@ type Scheduler struct {
 
 	mu    sync.Mutex
 	plans map[int64]*plan.Plan
-	// stepTimeouts caches the evaluated per-step budgets of the assignment a
-	// runner is currently executing, so Tick can enforce them as a backstop.
+	// stepTimeouts caches a running assignment's per-step budgets so Tick can enforce them as a backstop.
 	stepTimeouts map[int64]map[int]time.Duration
 }
 
@@ -111,9 +103,7 @@ func New(st store.Store, opts Options) *Scheduler {
 	}
 }
 
-// ErrNoPlan is returned when the scheduler is asked about a run whose plan it
-// does not hold. Guessing at the retry policy or step list of a run planned by
-// a previous process would produce a job that looks right and is not.
+// ErrNoPlan is returned when asked about a run whose plan the scheduler does not hold.
 var ErrNoPlan = errors.New("scheduler: no plan registered for this run")
 
 func (s *Scheduler) planFor(runID int64) (*plan.Plan, error) {
@@ -126,10 +116,8 @@ func (s *Scheduler) planFor(runID int64) (*plan.Plan, error) {
 	return p, nil
 }
 
-// RegisterPlan hands the scheduler a plan for a run it is not already driving.
-// Re-running a finished run needs this: the plan is dropped when the run
-// completes, so the caller re-plans the workflow and registers it again rather
-// than the scheduler inventing a job list it no longer has.
+// RegisterPlan hands the scheduler a plan for a run it is not already driving. A finished run's
+// plan is dropped, so re-running it means the caller re-plans and registers again.
 func (s *Scheduler) RegisterPlan(runID int64, p *plan.Plan) error {
 	if p == nil || len(p.Jobs) == 0 {
 		return fmt.Errorf("scheduler: run %d was given an empty plan", runID)

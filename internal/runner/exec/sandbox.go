@@ -9,8 +9,7 @@ import (
 // RunRequest is one command to run inside the sandbox.
 type RunRequest struct {
 	Argv []string
-	// Env is the complete environment; the sandbox adds nothing of its own, so
-	// no control-plane credential can leak into a step.
+	// Env is the complete environment; the sandbox adds nothing, so no control-plane credential leaks in.
 	Env        map[string]string
 	WorkingDir string
 	Stdout     io.Writer
@@ -34,7 +33,6 @@ type Sandbox interface {
 	RemoveAll(ctx context.Context, path string) error
 	// CopyInto places a host directory's contents at containerPath.
 	CopyInto(ctx context.Context, hostDir, containerPath string) error
-	// LookPath resolves a binary on the sandbox's PATH. A missing binary is an
-	// error, never an empty string treated as "found nothing, carry on".
+	// LookPath resolves a binary on the sandbox's PATH; a miss is an error, never an empty "carry on".
 	LookPath(ctx context.Context, bin string) (string, error)
 }

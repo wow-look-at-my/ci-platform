@@ -217,8 +217,7 @@ func TestWriteFileMkdirsBeforeDockerCp(t *testing.T) {
 
 	after := d.joined()[before:]
 	require.GreaterOrEqual(t, len(after), 2)
-	// docker cp does not create parent directories, so the mkdir must come
-	// first or the copy fails.
+	// docker cp does not create parent directories, so the mkdir must come first or the copy fails.
 	assert.Contains(t, after[0], "mkdir -p /home/runner/work/_temp")
 	assert.Contains(t, after[1], "cp ")
 	assert.Contains(t, after[1], "ci-job-42-1:/home/runner/work/_temp/step.sh")
@@ -390,8 +389,7 @@ func TestImageCacheVolumeIsCreatedWhenAbsent(t *testing.T) {
 }
 
 func TestConcurrentJobsSerializeOnTheSharedImageCache(t *testing.T) {
-	// Two dockerds sharing one /var/lib/docker corrupt it, so the second
-	// sandbox must wait rather than quietly share.
+	// Two dockerds sharing one /var/lib/docker corrupt it, so the second sandbox must wait, not share.
 	lockDir := t.TempDir()
 	d := &fakeDocker{}
 	opts := newTestOptions(t, d)
@@ -464,9 +462,7 @@ func TestSetupErrorMessage(t *testing.T) {
 }
 
 func TestReadinessRejectsADaemonThatAnswersEmpty(t *testing.T) {
-	// `docker info` exits 0 with "Cannot connect to the Docker daemon" in its
-	// output, which is why readiness is probed with `docker version` and an
-	// empty server version is treated as not ready.
+	// `docker info` exits 0 even when disconnected, so readiness uses `docker version`; empty means not ready.
 	d := &fakeDocker{respond: func(args []string, n int) (int, string, error) {
 		if isVersionProbe(args) {
 			return 0, "\n", nil

@@ -46,7 +46,7 @@ func newHarness(t *testing.T, w *model.Workflow, mods ...func(*Options)) *harnes
 	t.Helper()
 	h := &harness{t: t, st: newFakeStore()}
 	opts := Options{
-		NewEval:      fakeFactory,
+		NewEval:      realFactory,
 		ServerURL:    "https://ci.example.com",
 		MintJobToken: func(runID, jobID int64, attempt int) (string, error) { return "tok", nil },
 		Notify:       func(_ context.Context, n Notification) { h.notes = append(h.notes, n) },
@@ -70,7 +70,7 @@ func newHarness(t *testing.T, w *model.Workflow, mods ...func(*Options)) *harnes
 	p, err := plan.Build(w, plan.Input{
 		Run:      h.run,
 		Contexts: map[string]any{"github": map[string]any{"ref": "refs/heads/feature"}},
-		NewEval:  fakeFactory,
+		NewEval:  realFactory,
 	})
 	require.Nil(t, err)
 

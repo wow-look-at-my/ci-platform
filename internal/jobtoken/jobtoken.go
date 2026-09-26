@@ -66,8 +66,7 @@ var DefaultScopes = []Scope{
 // ActionsResultsScopePrefix is the scope entry @actions/artifact looks for.
 const ActionsResultsScopePrefix = "Actions.Results"
 
-// backendIDNamespace derives stable UUIDv5 backend IDs. It is a constant so
-// the same run always produces the same ID across control-plane restarts.
+// backendIDNamespace derives stable UUIDv5 backend IDs across control-plane restarts.
 var backendIDNamespace = uuid.MustParse("6b2f4a1e-6c1f-5a0c-9d3b-2f0a7c4e51d8")
 
 // BackendRunID is the workflowRunBackendId for a run.
@@ -93,8 +92,7 @@ type Claims struct {
 	// Ref is the job's git ref, carried so cache ref-scoping needs no lookup.
 	Ref    string  `json:"ref,omitempty"`
 	Scopes []Scope `json:"scopes"`
-	// Scp is the Actions-compatible space-separated scope string. The toolkit
-	// reads this and nothing else in this struct.
+	// Scp is the Actions-compatible space-separated scope string; the toolkit reads only this field.
 	Scp string `json:"scp"`
 
 	jwt.RegisteredClaims
@@ -133,8 +131,7 @@ type Job struct {
 	ExpiresAt time.Time
 }
 
-// Lookup resolves the job a Mint call names. The scheduler owns this data; the
-// token package refuses to guess it.
+// Lookup resolves the job a Mint call names; the scheduler owns this data, not this package.
 type Lookup func(runID, jobID int64, attempt int) (Job, error)
 
 // Options configures a Signer.
@@ -143,8 +140,7 @@ type Options struct {
 	Key []byte
 	// Issuer is this control plane's URL, recorded as the "iss" claim.
 	Issuer string
-	// Grace extends a token past the job's deadline so an upload in flight when
-	// the job ends still lands.
+	// Grace extends a token past the job's deadline so an in-flight upload still lands.
 	Grace  time.Duration
 	Lookup Lookup
 	Now    func() time.Time
@@ -159,8 +155,7 @@ type Signer struct {
 	now    func() time.Time
 }
 
-// MinKeyLen is the shortest HMAC key accepted. A shorter key is a
-// configuration error, not something to pad.
+// MinKeyLen is the shortest HMAC key accepted; a shorter key is a configuration error.
 const MinKeyLen = 32
 
 // New validates o and returns a Signer.
@@ -250,8 +245,7 @@ func (s *Signer) Mint(runID, jobID int64, attempt int) (string, error) {
 	return s.MintJob(j)
 }
 
-// ErrUnauthorized is the class of every verification failure. The wrapped
-// error always names the specific reason.
+// ErrUnauthorized is the class of every verification failure; the wrapped error names the specific reason.
 var ErrUnauthorized = errors.New("jobtoken: unauthorized")
 
 // Verify parses and checks a token, returning the reason on failure.
@@ -367,8 +361,7 @@ func (v *Verifier) Middleware(next http.Handler) http.Handler {
 	})
 }
 
-// Check verifies a request without wrapping a handler, for services that need
-// the claims before routing. It returns an empty reason on success.
+// Check verifies a request without wrapping a handler, for services needing claims before routing.
 func (v *Verifier) Check(r *http.Request) (claims *Claims, status int, reason string) {
 	return v.check(r)
 }
@@ -399,15 +392,7 @@ func (s *Signer) urlSigningKey() []byte {
 const (
 	ParamExpires   = "exp"
 	ParamSignature = "sig"
-	// ParamSignedParams names the query parameters the signature covers.
-	//
-	// The signature deliberately does not cover the whole query: the Azure
-	// Storage SDK appends comp=block, blockid=, and comp=blocklist to the
-	// upload URL after it is handed over, and covering those would make every
-	// block upload fail its own signature. Only the path, the expiry, and the
-	// parameters present at signing time are covered, which is how a real SAS
-	// behaves. Anything a caller must not be able to change belongs in the
-	// path or in a parameter set before signing.
+	// ParamSignedParams names the query parameters the signature covers; params added after signing are uncovered.
 	ParamSignedParams = "sp"
 )
 
@@ -459,8 +444,7 @@ func (s *Signer) VerifyURL(u *url.URL) error {
 	if s.now().After(time.Unix(exp, 0)) {
 		return fmt.Errorf("%w: url signature expired at %s", ErrUnauthorized, time.Unix(exp, 0).UTC().Format(time.RFC3339))
 	}
-	// Only the covered parameters are fed back in; anything the client
-	// appended afterwards is outside the signature by design.
+	// Only the covered parameters are fed back in; anything appended afterwards is outside the signature by design.
 	covered := url.Values{ParamExpires: {expRaw}}
 	if names := q.Get(ParamSignedParams); names != "" {
 		covered.Set(ParamSignedParams, names)

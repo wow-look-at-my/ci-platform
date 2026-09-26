@@ -1,6 +1,7 @@
 package operatorauth
 
 import (
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -40,7 +41,7 @@ func newFakeGitHub(t *testing.T, login string) *fakeGitHub {
 			return
 		}
 		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(`{"login":"` + f.login + `"}`))
+		require.NoError(t, json.NewEncoder(w).Encode(map[string]string{"login": f.login}))
 	})
 	f.srv = httptest.NewServer(mux)
 	t.Cleanup(f.srv.Close)
@@ -195,8 +196,6 @@ func TestGitHubCallback_ClearsTheStateCookie(t *testing.T) {
 	assert.True(t, cleared)
 }
 
-// GitHub reports a refused exchange as 200 with an error field, so a handler
-// that trusts the status code signs in a session with no token behind it.
 func TestGitHubCallback_TreatsAnErrorBodyAsAFailure(t *testing.T) {
 	f := newFakeGitHub(t, "PazerOP")
 	f.tokenBody = `{"error":"bad_verification_code","error_description":"The code passed is incorrect or expired."}`

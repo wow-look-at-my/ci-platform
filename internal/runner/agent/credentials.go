@@ -18,15 +18,11 @@ import (
 	"github.com/wow-look-at-my/ci-platform/internal/protocol"
 )
 
-// TokenSource supplies the bearer token for each control-plane call.
-//
-// It is an interface because the token is short-lived by design: a runner holds
-// a key, not a password, and trades a signature for a few minutes of access
-// whenever it needs one.
+// TokenSource supplies the bearer token for each control-plane call: a runner trades a
+// signature for a short-lived token rather than holding a password.
 type TokenSource interface {
 	Token(ctx context.Context) (string, error)
-	// Invalidate discards the cached token after the control plane rejects it,
-	// so the next call signs a fresh one instead of replaying a dead one.
+	// Invalidate discards the cached token so the next call signs a fresh one.
 	Invalidate()
 }
 
@@ -39,16 +35,9 @@ func (s StaticToken) Token(context.Context) (string, error) { return string(s), 
 // Invalidate does nothing: there is nothing to refresh.
 func (s StaticToken) Invalidate() {}
 
-// PlaintextWarning returns a sentence to log when a runner is about to talk to
-// the control plane in the clear, and "" when it is not.
-//
-// It is a warning rather than a refusal because a LAN deployment pointing
-// straight at the coordinator is a legitimate, wanted setup. What is not
-// legitimate is doing it without knowing: an assignment carries the job's
-// secrets and its token, so on a network somebody else is on, "plain HTTP"
-// means "those secrets are readable".
-//
-// Loopback is exempt: there is no network to sniff.
+// PlaintextWarning returns a sentence to log when a runner is about to talk to the control
+// plane in the clear, and "" when it is not (a warning, not a refusal: LAN deployments are
+// legitimate). Loopback is exempt: there is no network to sniff.
 func PlaintextWarning(baseURL string) string {
 	u, err := url.Parse(baseURL)
 	if err != nil || u.Scheme != "http" {
@@ -63,10 +52,7 @@ func PlaintextWarning(baseURL string) string {
 		"point this runner at the https public URL instead if it is not."
 }
 
-// ErrNotApproved is what a host gets until an operator approves its
-// fingerprint. It is a distinct error because it is not a fault: it is the
-// normal state of a machine somebody just set up, and the runner waits it out
-// rather than crash-looping.
+// ErrNotApproved is the normal state of a freshly set-up host; the runner waits it out.
 var ErrNotApproved = errors.New("agent: this runner host has not been approved yet")
 
 // Credentials proves this host's identity with its Ed25519 key and keeps a
@@ -158,9 +144,7 @@ func (c *Credentials) Enrol(ctx context.Context, name, os, arch, version string,
 	return out, nil
 }
 
-// renewBefore is how much of a token's life is left when it is replaced. A
-// token that expires mid-job would fail a log flush or a completion report,
-// which is the one moment a runner cannot afford to lose access.
+// renewBefore is the token life left when it is replaced, before it can expire mid-job.
 const renewBefore = 2 * time.Minute
 
 // Token returns a valid session token, exchanging a signature for a new one

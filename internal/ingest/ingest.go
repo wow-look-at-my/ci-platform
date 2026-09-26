@@ -23,13 +23,11 @@ import (
 	"github.com/wow-look-at-my/ci-platform/internal/plan"
 	"github.com/wow-look-at-my/ci-platform/internal/store"
 	"github.com/wow-look-at-my/ci-platform/internal/workflow"
+	"github.com/wow-look-at-my/go-containers/set"
 )
 
 // Files reads a repository's workflow files at a ref.
-//
-// The installation id is passed explicitly rather than looked up: it arrives on
-// every webhook delivery, and resolving it again would be a second call that
-// can fail for reasons the delivery already answered.
+// The installation id is passed explicitly: it arrives on every delivery, and looking it up again could fail on its own.
 type Files interface {
 	ListWorkflowFiles(ctx context.Context, installationID int64, repo gh.Repo, ref string) ([]gh.WorkflowFile, error)
 	GetFileContents(ctx context.Context, installationID int64, repo gh.Repo, path, ref string) (*gh.FileContent, error)
@@ -47,10 +45,7 @@ type Options struct {
 	Starter Starter
 	NewEval plan.EvaluatorFactory
 
-	// GitHubServerURL and GitHubAPIURL fill the github context. They point at
-	// GitHub, not at this platform: a workflow reading github.server_url is
-	// building a repository or commit link, and github.api_url is what
-	// actions/github-script calls.
+	// GitHubServerURL and GitHubAPIURL fill the github context; they point at GitHub itself, not this platform.
 	GitHubServerURL string
 	GitHubAPIURL    string
 	Logger          *slog.Logger
@@ -99,8 +94,7 @@ type Trigger struct {
 	Inputs       map[string]any
 	// InstallationID is the App installation the delivery came from.
 	InstallationID int64
-	// WorkflowPath, when set, restricts ingest to one workflow file, which is
-	// what workflow_dispatch names.
+	// WorkflowPath, when set, restricts ingest to one workflow file, as named by workflow_dispatch.
 	WorkflowPath string
 	Raw          json.RawMessage
 }
@@ -162,9 +156,7 @@ func (i *Ingester) Installation(ctx context.Context, e *webhook.InstallationEven
 	return nil
 }
 
-// CheckRunRerequested, CheckSuiteRerequested, and RequestedAction are wired by
-// the caller to the scheduler's re-run entry points; ingest only creates runs
-// from events, so these are not its job.
+// CheckRunRerequested, CheckSuiteRerequested, and RequestedAction are wired to the scheduler's re-run entry points.
 func (i *Ingester) CheckRunRerequested(context.Context, *webhook.CheckRunEvent) error { return nil }
 
 // CheckSuiteRerequested is a no-op here for the same reason.
@@ -211,8 +203,7 @@ func (i *Ingester) handleFile(ctx context.Context, repo *model.Repo, ghRepo gh.R
 
 	w, perr := workflow.Parse(f.Path, content.Content)
 	if perr != nil {
-		// A workflow that cannot be parsed produces a failed run carrying the
-		// parse error. Skipping it would leave the commit looking clean.
+		// A workflow that cannot be parsed produces a failed run carrying the parse error, not a silently clean commit.
 		return i.failRun(ctx, repo, t, f.Path, f.Name, model.ClassConfig, perr.Error())
 	}
 
@@ -220,8 +211,7 @@ func (i *Ingester) handleFile(ctx context.Context, repo *model.Repo, ghRepo gh.R
 		Name: t.Event, Ref: t.Ref, Action: t.Action, ChangedPaths: t.ChangedPaths,
 	})
 	if err != nil {
-		// A filter that cannot be compiled is a config error, not a reason to
-		// quietly not run.
+		// A filter that cannot be compiled is a config error, not a reason to quietly skip the run.
 		return i.failRun(ctx, repo, t, f.Path, w.Name, model.ClassConfig, err.Error())
 	}
 	if !dec.Match {
@@ -380,7 +370,7 @@ func (i *Ingester) contexts(repo *model.Repo, run *model.Run, t Trigger) map[str
 // the head commit would miss files changed by earlier commits in the same push,
 // so a paths: filter would silently skip a workflow that should have run.
 func changedPaths(e *webhook.PushEvent) []string {
-	seen := map[string]bool{}
+	seen := set.New[string]()
 	var out []string
 	add := func(c *webhook.Commit) {
 		if c == nil {
@@ -388,8 +378,8 @@ func changedPaths(e *webhook.PushEvent) []string {
 		}
 		for _, group := range [][]string{c.Added, c.Modified, c.Removed} {
 			for _, p := range group {
-				if !seen[p] {
-					seen[p] = true
+				if !seen.Contains(p) {
+					seen.Add(p)
 					out = append(out, p)
 				}
 			}

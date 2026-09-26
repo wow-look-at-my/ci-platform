@@ -24,6 +24,10 @@ import (
 var version = "dev"
 
 func main() {
+	if len(os.Args) == 2 && os.Args[1] == "-version" {
+		fmt.Println(version)
+		return
+	}
 	log := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelInfo}))
 	slog.SetDefault(log)
 

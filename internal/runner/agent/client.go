@@ -34,9 +34,7 @@ type ControlPlane interface {
 	Release(ctx context.Context, req protocol.ReleaseRequest) error
 }
 
-// Error is a failed control-plane call. It carries its own classification: the
-// control plane being unreachable is the platform's failure, never the
-// workflow's, and no caller has to re-derive that.
+// Error is a failed control-plane call; it carries its own classification, since that failure is always the platform's.
 type Error struct {
 	Path     string
 	Status   int
@@ -61,9 +59,7 @@ func (e *Error) Class() model.FailureClass { return e.Decision.Class }
 type ClientConfig struct {
 	// BaseURL is the control plane root, e.g. https://ci.example.com.
 	BaseURL string
-	// Tokens supplies the bearer token for each call. A runner holds a key
-	// rather than a password, so the token it sends is short-lived and is
-	// re-signed as needed.
+	// Tokens supplies the bearer token for each call; a runner holds a key, so tokens are short-lived and re-signed.
 	Tokens TokenSource
 	HTTP   *http.Client
 	// MaxAttempts bounds retries per call. Zero means the default.
@@ -241,9 +237,7 @@ func (c *Client) once(ctx context.Context, path string, payload []byte) (int, []
 	if err != nil {
 		return resp.StatusCode, nil, err
 	}
-	// A rejected token is the expected outcome of a control-plane restart,
-	// which discards the key it signed tokens with. Dropping the cached one
-	// turns that into one retry rather than a runner that never recovers.
+	// A rejected token is expected after a control-plane restart; dropping the cached one costs one retry, not a stall.
 	if resp.StatusCode == http.StatusUnauthorized {
 		c.cfg.Tokens.Invalidate()
 	}

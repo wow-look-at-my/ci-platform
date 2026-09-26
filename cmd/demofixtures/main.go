@@ -118,8 +118,7 @@ func capture() (map[string]json.RawMessage, error) {
 	srv := api.New(api.Config{
 		Store: st, Logs: logs, Controller: refusingController{},
 		Blobs: blobOpener{blobs},
-		// A fixed clock keeps "3m ago" style output stable, so recapturing an
-		// unchanged seed produces an unchanged file.
+		// A fixed clock keeps "3m ago" style output stable, so an unchanged seed recaptures unchanged.
 		Now: func() time.Time { return demoseed.Now },
 	})
 	ts := httptest.NewServer(srv.Handler())
@@ -157,10 +156,7 @@ func get(url string) (json.RawMessage, error) {
 	return json.Marshal(v)
 }
 
-// refusingController satisfies the API's collaborator check without pretending
-// the demo can act. Nothing calls it: the demo's own client answers cancel and
-// re-run without a request. It exists so /healthz does not report a missing
-// scheduler in a snapshot where that would be misleading noise.
+// refusingController satisfies the API's collaborator check so /healthz does not report a missing scheduler.
 type refusingController struct{}
 
 func (refusingController) Cancel(context.Context, int64, model.CancelReason) error { return errDemo }

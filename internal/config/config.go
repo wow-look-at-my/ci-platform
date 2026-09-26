@@ -23,23 +23,16 @@ import (
 
 // Config is the control plane's resolved configuration.
 type Config struct {
-	// PublicURL is the base URL browsers and runners reach this instance on.
-	// Any hostname is fine: it is served to clients as ACTIONS_RESULTS_URL and
-	// friends, which carry no host restriction.
+	// PublicURL is the base URL browsers and runners reach this instance on; served to clients as ACTIONS_RESULTS_URL.
 	PublicURL *url.URL
 	Listen    string
 
-	// GitHubServerURL is where the REPOSITORIES live, which is a different
-	// question from where this platform lives. actions/checkout builds its
-	// clone URL from it, and @actions/artifact's isGhes() reads it and refuses
-	// to run against a host it does not recognise; see docs/deviations.md.
+	// GitHubServerURL is where the repositories live, not where this platform runs; see docs/deviations.md.
 	GitHubServerURL *url.URL
 
-	// DatabaseURL is the SQLite file path, or the literal "memory" for the
-	// in-memory store.
+	// DatabaseURL is the SQLite file path, or the literal "memory" for the in-memory store.
 	DatabaseURL string
-	// AllowEphemeralStore permits the in-memory store, which loses everything
-	// on restart. Off by default so a production deploy cannot get it silently.
+	// AllowEphemeralStore permits the in-memory store, which loses everything on restart.
 	AllowEphemeralStore bool
 
 	GitHubAPIURL   *url.URL
@@ -47,37 +40,21 @@ type Config struct {
 	AppPrivateKey  []byte
 	WebhookSecret  string
 	JobTokenSecret []byte
-	// RunnerSessionTTL bounds a runner's session token. It is also the longest
-	// a revoked host keeps working, because approval is re-read on every
-	// renewal.
-	//
-	// There is no runner credential to configure: a host proves itself with a
-	// key it generated, and the key that signs these tokens is generated at
-	// startup. A restart costs every runner one silent re-authentication.
+	// RunnerSessionTTL bounds a runner's session token, and thus the longest a revoked host keeps working.
 	RunnerSessionTTL time.Duration
-	// OperatorToken gates the REST API and the UI. Every job container can
-	// route to this instance -- it has to, to upload artifacts -- so an
-	// ungated /api/v1 is reachable from inside any workflow, including a fork
-	// PR's.
+	// OperatorToken gates the REST API and UI; every job container can reach this instance too, so it must be set.
 	OperatorToken string
-	// RequireForkApproval holds a fork PR's jobs until a maintainer approves.
-	// On by default: a fork PR is a stranger's code on your runners.
+	// RequireForkApproval holds a fork PR's jobs until a maintainer approves; on by default.
 	RequireForkApproval bool
 
-	// AllowedOwners are the accounts whose repositories may run work here.
-	// A published App can be installed by anybody, and an install this list
-	// does not name gets nothing: no run, no token, no API call.
+	// AllowedOwners are the accounts whose repositories may run work here; an install this list omits gets nothing.
 	AllowedOwners *ghaccounts.Set
 	// AdminLogins are the accounts that may sign in to the dashboard.
 	AdminLogins *ghaccounts.Set
-	// OAuthClientID and OAuthClientSecret are the GitHub App's own OAuth
-	// credentials, used for the user-to-server flow behind "Sign in with
-	// GitHub". They are on the App's settings page; no second App is needed.
+	// OAuthClientID and OAuthClientSecret are the GitHub App's own OAuth credentials, from its settings page.
 	OAuthClientID     string
 	OAuthClientSecret string
-	// SessionSecret signs dashboard session cookies. Optional: a random key is
-	// generated at startup when it is unset, which ends every session on
-	// restart.
+	// SessionSecret signs dashboard session cookies; unset generates a random key at startup, ending sessions on restart.
 	SessionSecret string
 	// SessionTTL bounds how long a signed-in dashboard session lasts.
 	SessionTTL time.Duration
@@ -103,8 +80,7 @@ type Config struct {
 	CacheQuota        int64
 }
 
-// MissingError lists every configuration problem at once, so an operator fixes
-// them in one pass instead of restarting once per missing variable.
+// MissingError lists every configuration problem at once, so an operator fixes them in one pass.
 type MissingError struct{ Problems []string }
 
 func (e *MissingError) Error() string {
@@ -195,9 +171,7 @@ func (c *Config) Validate() error {
 	if c.GitHubServerURL == nil {
 		return errors.New("config: GitHub server URL is not set")
 	}
-	// The isGhes() rule is about where the REPOSITORIES are, not where this
-	// platform is. Checking it against the public URL would reject a perfectly
-	// good deployment hostname and leave the real setting unchecked.
+	// isGhes() cares where the repositories are, not where this platform runs; check GitHubServerURL, not PublicURL.
 	if err := artifacts.ValidateServerURL(c.GitHubServerURL.String()); err != nil {
 		return fmt.Errorf("config: CIPLATFORM_GITHUB_SERVER_URL: %w", err)
 	}

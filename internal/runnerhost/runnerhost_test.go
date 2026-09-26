@@ -20,8 +20,7 @@ import (
 // what the supervisor decides to run is.
 type fakeDocker struct {
 	calls []string
-	// state answers `inspect -f {{.State.Status}}` per container name. A name
-	// that is absent answers as no such container.
+	// state answers `inspect -f {{.State.Status}}` per container name; an absent name answers as no such container.
 	state map[string]string
 	// imageID answers `image inspect`.
 	imageID string
@@ -155,8 +154,7 @@ func TestReconcile_StartsThePool(t *testing.T) {
 	assert.Equal(t, "running", d.state["ci-runner-basement-0"])
 	assert.Equal(t, "running", d.state["ci-runner-basement-1"])
 	assert.True(t, d.ran("volume create ci-runner-basement-0-images"))
-	// The key is copied in rather than mounted or handed over in the
-	// environment, where `docker inspect` would show it.
+	// The key is copied in, not mounted or passed as an env var, where `docker inspect` would show it.
 	assert.True(t, d.ran("cp /var/lib/ci-runner-host/host.key ci-runner-basement-0:/var/lib/ci-runner/host.key"))
 	assert.False(t, d.ran("host.key:/"), "the key must not be bind-mounted")
 	assert.True(t, d.ran("CI_CONTROL_PLANE_URL=http://192.168.1.84:8080"))
@@ -204,14 +202,12 @@ func TestUpdate_DrainsEachRunnerBeforeReplacingIt(t *testing.T) {
 	d.calls = nil
 	require.NoError(t, h.update(context.Background()))
 
-	// stop -t 7200 is the drain: docker asks politely and waits two hours for
-	// the job to finish before it would resort to killing anything.
+	// stop -t 7200 is the drain: docker waits two hours for the job to finish before it would kill anything.
 	assert.True(t, d.ran("stop -t 7200 ci-runner-basement-0"))
 	assert.True(t, d.ran("stop -t 7200 ci-runner-basement-1"))
 	assert.Equal(t, 2, d.count("create --name"))
 
-	// One at a time: the first runner is back before the second is touched, so
-	// the host never drops to no capacity.
+	// One at a time: the first runner is back before the second is touched, so the host never drops to no capacity.
 	first := indexOf(d.calls, "start ci-runner-basement-0")
 	second := indexOf(d.calls, "stop -t 7200 ci-runner-basement-1")
 	assert.Less(t, first, second, "both runners were taken down before either came back")

@@ -45,8 +45,7 @@ const (
 	EnvRuntimeToken = "ACTIONS_RUNTIME_TOKEN"
 	EnvRunID        = "GITHUB_RUN_ID"
 	EnvServerURL    = "GITHUB_SERVER_URL"
-	// EnvRetentionDays caps what the action asks for, before the service
-	// clamps it again.
+	// EnvRetentionDays caps what the action asks for, before the service clamps it again.
 	EnvRetentionDays = "GITHUB_RETENTION_DAYS"
 )
 
@@ -56,8 +55,7 @@ var EnvNames = []string{
 	EnvResultsURL, EnvRuntimeURL, EnvRuntimeToken, EnvRunID, EnvServerURL, EnvRetentionDays,
 }
 
-// RequiredServerURLSuffixes are the GITHUB_SERVER_URL host endings
-// @actions/artifact accepts. "github.com" is accepted as an exact host.
+// RequiredServerURLSuffixes are accepted GITHUB_SERVER_URL host endings; "github.com" is also an exact match.
 var RequiredServerURLSuffixes = []string{".ghe.com", ".localhost"}
 
 // ValidateServerURL reports whether a URL will survive the client's isGhes()
@@ -94,8 +92,7 @@ func RunnerEnv(baseURL, serverURL string, runID int64, jobToken string, maxReten
 	base := strings.TrimSuffix(baseURL, "/")
 	return map[string]string{
 		EnvResultsURL: base,
-		// The v3 client builds `${ACTIONS_RUNTIME_URL}_apis/...`, so this one
-		// keeps its trailing slash.
+		// The v3 client builds `${ACTIONS_RUNTIME_URL}_apis/...`, so this keeps its trailing slash.
 		EnvRuntimeURL:    base + "/",
 		EnvRuntimeToken:  jobToken,
 		EnvRunID:         strconv.FormatInt(runID, 10),
@@ -104,8 +101,8 @@ func RunnerEnv(baseURL, serverURL string, runID int64, jobToken string, maxReten
 	}
 }
 
-// Store is the persistence this service needs. It is narrower than store.Store
-// so the service can be tested without a whole store implementation.
+// Store is the persistence this service needs, narrower than store.Store so it
+// can be tested without a whole store implementation.
 type Store interface {
 	store.Artifacts
 	store.Events
@@ -116,8 +113,7 @@ type Options struct {
 	Store  Store
 	Blob   blob.Store
 	Signer *jobtoken.Signer
-	// BaseURL is the public URL of this service; upload and download URLs are
-	// built from it.
+	// BaseURL is the public URL of this service; upload and download URLs are built from it.
 	BaseURL string
 	// DefaultRetentionDays applies when the client asks for nothing.
 	DefaultRetentionDays int
@@ -125,12 +121,9 @@ type Options struct {
 	MaxRetentionDays int
 	// RepoQuotaBytes caps one repository's stored artifacts.
 	RepoQuotaBytes int64
-	// RepoUsage reports a repository's current artifact bytes. Required
-	// alongside RepoQuotaBytes; the store contract has no usage query, so the
-	// caller supplies one.
+	// RepoUsage reports a repository's current artifact bytes; required alongside RepoQuotaBytes.
 	RepoUsage func(ctx context.Context, repoID int64) (int64, error)
-	// QuotaDisabled runs with no quota at all. It must be set explicitly: a
-	// quota that silently does nothing is worse than none.
+	// QuotaDisabled runs with no quota at all; must be set explicitly rather than inferred.
 	QuotaDisabled bool
 	// SignedURLTTL bounds a download URL's life.
 	SignedURLTTL time.Duration
@@ -209,9 +202,7 @@ func New(opts Options) (*Service, error) {
 
 // Route paths outside the Twirp surface.
 const (
-	// PathUpload is the Azure-shaped upload endpoint. It has four path
-	// segments because the Azure SDK parses container and blob names out of
-	// the URL and rejects a path with fewer.
+	// PathUpload has four path segments: the Azure SDK parses container and blob names from the URL.
 	PathUpload   = "/_apis/results/artifacts/upload/"
 	PathDownload = "/_apis/results/artifacts/download/"
 )
@@ -320,8 +311,7 @@ func (s *Service) createArtifact(w http.ResponseWriter, r *http.Request, claims 
 	}
 
 	if err := s.checkQuota(ctx, claims.RepoID); err != nil {
-		// "insufficient usage" is the substring @actions/artifact matches to
-		// raise its storage-quota error, which is the message a user can act on.
+		// "insufficient usage" is the substring @actions/artifact matches to raise its quota error.
 		writeTwirpError(w, CodeResourceExhausted, "artifacts: insufficient usage: "+err.Error())
 		return
 	}
@@ -361,8 +351,7 @@ func (s *Service) expiryFor(requested string) time.Time {
 	}
 	t, err := time.Parse(time.RFC3339, requested)
 	if err != nil || t.After(max) || !t.After(now) {
-		// An unparseable or out-of-range expiry falls back to the maximum
-		// rather than to "never": an artifact with no expiry is a leak.
+		// An unparseable or out-of-range expiry falls back to the maximum: no expiry is a leak.
 		return max
 	}
 	return t

@@ -12,9 +12,7 @@ import (
 	"github.com/wow-look-at-my/ci-platform/internal/model"
 )
 
-// APIVersion is bumped on any breaking change; the control plane rejects a
-// runner announcing a version it does not understand rather than silently
-// misinterpreting its payloads.
+// APIVersion is bumped on breaking changes; the control plane rejects an unrecognized version.
 const APIVersion = "1"
 
 // Endpoint paths, all under /runner/v1.
@@ -29,9 +27,7 @@ const (
 	PathRelease   = "/runner/v1/release"
 	PathAnnotate  = "/runner/v1/annotate"
 	PathSetup     = "/runner/v1/setup"
-	// PathEnrol and PathSession are the only two routes on this surface that
-	// answer without a session token. They cannot require one: they are how a
-	// host gets one. Both are signature-verified instead.
+	// PathEnrol and PathSession answer without a session token; both are signature-verified instead.
 	PathEnrol   = "/runner/v1/enrol"
 	PathSession = "/runner/v1/session"
 )
@@ -47,10 +43,7 @@ type EnrolRequest struct {
 	Arch       string   `json:"arch,omitempty"`
 	Version    string   `json:"version,omitempty"`
 	Labels     []string `json:"labels,omitempty"`
-	// Timestamp, Nonce and Signature prove the sender holds the private half.
-	// Without them anybody could enrol somebody else's public key and leave the
-	// operator approving a fingerprint that belongs to a machine they do not
-	// control.
+	// Timestamp, Nonce and Signature prove the sender holds the private key.
 	Timestamp int64  `json:"timestamp"`
 	Nonce     string `json:"nonce"`
 	Signature string `json:"signature"`
@@ -68,8 +61,7 @@ type EnrolResponse struct {
 type SessionRequest struct {
 	APIVersion  string `json:"api_version"`
 	Fingerprint string `json:"fingerprint"`
-	// RunnerID names which of the host's runners this token is for, so a host
-	// running several does not have them share one identity.
+	// RunnerID identifies which of the host's runners this token is for.
 	RunnerID  string `json:"runner_id"`
 	Timestamp int64  `json:"timestamp"`
 	Nonce     string `json:"nonce"`
@@ -80,9 +72,7 @@ type SessionRequest struct {
 type SessionResponse struct {
 	Token     string    `json:"token"`
 	ExpiresAt time.Time `json:"expires_at"`
-	// Labels are what the operator allows this host to serve. A runner
-	// registering with more than these has them dropped, so the answer is sent
-	// back rather than left to be discovered as jobs that never arrive.
+	// Labels are what the operator allows this host to serve; a runner registering more has them dropped.
 	Labels []string `json:"labels,omitempty"`
 }
 
@@ -127,8 +117,7 @@ type Assignment struct {
 	RunID   int64 `json:"run_id"`
 	JobID   int64 `json:"job_id"`
 	Attempt int   `json:"attempt"`
-	// IdempotencyKey is "<run_id>/<job_id>/<attempt>"; the runner refuses to
-	// start a key it has already started.
+	// IdempotencyKey is "<run_id>/<job_id>/<attempt>"; the runner refuses to restart an already-started key.
 	IdempotencyKey string `json:"idempotency_key"`
 
 	JobName   string   `json:"job_name"`
@@ -139,16 +128,13 @@ type Assignment struct {
 	HeadRef   string   `json:"head_ref"`
 	Labels    []string `json:"labels"`
 
-	// Steps are fully resolved except for expressions that depend on earlier
-	// steps in this same job, which the runner evaluates as it goes.
+	// Steps are fully resolved except expressions depending on earlier steps, evaluated as the runner goes.
 	Steps []StepSpec `json:"steps"`
 	// Env is the job-level environment, already expression-evaluated.
 	Env map[string]string `json:"env"`
-	// Contexts carries the evaluated github/runner/needs/matrix/strategy/vars
-	// contexts so the runner can finish evaluating step-level expressions.
+	// Contexts carries the evaluated github/runner/needs/matrix/strategy/vars contexts for step expressions.
 	Contexts map[string]any `json:"contexts"`
-	// Secrets are injected per job and masked by value in logs. They are never
-	// written to the workspace.
+	// Secrets are injected per job, masked by value in logs, and never written to the workspace.
 	Secrets map[string]string `json:"secrets,omitempty"`
 
 	Container *ContainerSpec            `json:"container,omitempty"`
@@ -158,19 +144,13 @@ type Assignment struct {
 	// SetupTimeout bounds the "stuck in setup" state separately from execution.
 	SetupTimeout Duration `json:"setup_timeout"`
 
-	// JobToken is a per-job scoped bearer token for the artifact, cache, log,
-	// and OIDC endpoints. It carries no repository write access and expires
-	// with the job.
+	// JobToken is a per-job scoped bearer token for the artifact, cache, log, and OIDC endpoints.
 	JobToken  string `json:"job_token"`
 	ServerURL string `json:"server_url"`
-	// ServiceEnv is the environment the artifact, cache, and OIDC clients
-	// discover their endpoints through. The control plane builds it because it
-	// owns those URLs and mints the token; a runner deriving them itself would
-	// be guessing at the server it is talking to.
+	// ServiceEnv is the environment through which artifact, cache, and OIDC clients discover their endpoints.
 	ServiceEnv map[string]string `json:"service_env,omitempty"`
 
-	// Retry is the resolved job-level policy, so the runner can report an
-	// attempt as retryable without asking.
+	// Retry is the resolved job-level policy, so the runner can report an attempt retryable without asking.
 	Retry model.RetryPolicy `json:"retry"`
 
 	// DefaultShell and WorkingDirectory come from defaults.run.
@@ -196,8 +176,7 @@ type StepSpec struct {
 	ContinueOnError  bool               `json:"continue_on_error,omitempty"`
 	TimeoutMinutes   int                `json:"timeout_minutes,omitempty"`
 	Retry            *model.RetryPolicy `json:"retry,omitempty"`
-	// PreAction and PostAction mark synthesized steps from an action's
-	// pre:/post: entrypoints, which run outside the normal if: rules.
+	// PreAction and PostAction mark synthesized steps from pre:/post: entrypoints, run outside if: rules.
 	PreAction  bool `json:"pre,omitempty"`
 	PostAction bool `json:"post,omitempty"`
 }
@@ -223,11 +202,9 @@ type HeartbeatRequest struct {
 // HeartbeatResponse carries control-plane-initiated instructions back, which is
 // how a cancellation reaches a running job.
 type HeartbeatResponse struct {
-	// Cancel is non-nil when the control plane wants this job stopped, and it
-	// always carries the reason: there is no unexplained cancellation path.
+	// Cancel is non-nil when the control plane wants the job stopped; it always carries the reason.
 	Cancel *model.CancelReason `json:"cancel,omitempty"`
-	// LeaseLost tells the runner the job was taken from it and it must stop
-	// without reporting a result.
+	// LeaseLost tells the runner the job was taken from it and it must stop without reporting a result.
 	LeaseLost bool `json:"lease_lost,omitempty"`
 }
 
@@ -272,8 +249,7 @@ type StepEndRequest struct {
 	Number     int                `json:"number"`
 	Conclusion model.Conclusion   `json:"conclusion"`
 	Class      model.FailureClass `json:"class"`
-	// ClassReason is the recorded explanation of the classification decision,
-	// e.g. "registry responded 524 (Cloudflare origin timeout) -> infra".
+	// ClassReason records the classification decision, e.g. "registry responded 524 -> infra".
 	ClassReason string            `json:"class_reason,omitempty"`
 	ExitCode    int               `json:"exit_code"`
 	Outputs     map[string]string `json:"outputs,omitempty"`
@@ -293,8 +269,7 @@ type CompleteRequest struct {
 	Explanation string              `json:"explanation,omitempty"`
 	Outputs     map[string]string   `json:"outputs,omitempty"`
 	Cancel      *model.CancelReason `json:"cancel,omitempty"`
-	// ClassificationLog records every classification decision made during the
-	// attempt so the operator can see why something was called infra.
+	// ClassificationLog records every classification decision made during the attempt.
 	ClassificationLog []string `json:"classification_log,omitempty"`
 }
 
@@ -323,8 +298,7 @@ type AnnotateRequest struct {
 	Annotations []model.Annotation `json:"annotations"`
 }
 
-// Duration is a time.Duration that marshals as a Go duration string, so the
-// wire format is readable during an incident.
+// Duration is a time.Duration that marshals as a readable Go duration string.
 type Duration time.Duration
 
 // MarshalJSON writes the duration as a quoted string like "30s".

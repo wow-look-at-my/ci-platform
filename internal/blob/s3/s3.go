@@ -32,22 +32,19 @@ const DefaultPartSize = 8 << 20
 // Config describes one bucket. Every field without a documented default is
 // required; New reports which one is missing rather than failing at first use.
 type Config struct {
-	// Endpoint is the service root, e.g. https://s3.us-east-1.amazonaws.com or
-	// http://minio:9000.
+	// Endpoint is the service root, e.g. https://s3.us-east-1.amazonaws.com or http://minio:9000.
 	Endpoint        string
 	Region          string
 	Bucket          string
 	AccessKeyID     string
 	SecretAccessKey string
 	SessionToken    string
-	// UsePathStyle addresses the bucket as {endpoint}/{bucket}/{key}, which is
-	// what MinIO and most non-AWS implementations want.
+	// UsePathStyle addresses the bucket as {endpoint}/{bucket}/{key}, what most non-AWS implementations want.
 	UsePathStyle bool
 	HTTPClient   *http.Client
 	// PartSize is the multipart part size; defaults to DefaultPartSize.
 	PartSize int64
-	// MultipartThreshold is the size above which an upload goes multipart;
-	// defaults to PartSize.
+	// MultipartThreshold is the size above which an upload goes multipart; defaults to PartSize.
 	MultipartThreshold int64
 	// Now exists so tests can pin the signing time.
 	Now func() time.Time
@@ -332,8 +329,7 @@ func (s *Store) completeMultipart(ctx context.Context, key string, u *url.URL, u
 	if !ok(resp) {
 		return errorFrom("complete multipart upload", key, resp)
 	}
-	// S3 can report a failure inside a 200 body on this call, so the body is
-	// inspected rather than trusted.
+	// S3 can report a failure inside a 200 body on this call, so the body is inspected rather than trusted.
 	payload, rerr := io.ReadAll(io.LimitReader(resp.Body, 64<<10))
 	resp.Body.Close()
 	if rerr != nil {

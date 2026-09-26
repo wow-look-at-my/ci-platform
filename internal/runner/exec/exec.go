@@ -17,15 +17,13 @@ import (
 	"github.com/wow-look-at-my/ci-platform/internal/runner/mask"
 )
 
-// Evaluator evaluates workflow expressions. It is declared here rather than
-// imported so this package does not depend on the expression implementation.
+// Evaluator evaluates workflow expressions, declared here so this package need not import the implementation.
 type Evaluator interface {
 	EvalString(string) (string, error)
 	EvalBool(string) (bool, error)
 }
 
-// EvaluatorFactory builds an Evaluator over the contexts visible at one point
-// in the job, plus the job's current status.
+// EvaluatorFactory builds an Evaluator over the contexts visible at one point in the job, plus its status.
 type EvaluatorFactory func(contexts map[string]any, status Status) Evaluator
 
 // Status is the job status an `if:` expression sees through success(),
@@ -59,8 +57,7 @@ type StepResult struct {
 	Number int
 	Name   string
 	StepID string
-	// Outcome is what happened; Conclusion is what the job acts on, which
-	// differs only when continue-on-error is set.
+	// Outcome is what happened; Conclusion (what the job acts on) differs only under continue-on-error.
 	Outcome     model.Conclusion
 	Conclusion  model.Conclusion
 	Class       model.FailureClass
@@ -90,9 +87,7 @@ type Config struct {
 	Reporter   Reporter
 	Masker     *mask.Masker
 	Classifier *classify.Classifier
-	// NewEvaluator is required for any job with an `if:` or a composite action;
-	// its absence is reported when one is reached, never silently treated as
-	// true.
+	// NewEvaluator is required for an `if:` or composite action; its absence is reported, never treated as true.
 	NewEvaluator EvaluatorFactory
 	Actions      ActionResolver
 
@@ -106,8 +101,7 @@ type Config struct {
 	// MaxCompositeDepth bounds nested composite `uses:` recursion.
 	MaxCompositeDepth int
 
-	// RuntimeToken and IDTokenRequestURL are minted by the control plane and
-	// injected verbatim; the runner never constructs them.
+	// RuntimeToken and IDTokenRequestURL are minted by the control plane and injected verbatim.
 	RuntimeToken      string
 	IDTokenRequestURL string
 	ResultsURL        string
@@ -127,8 +121,7 @@ type Executor struct {
 	jobEnv    map[string]string
 	extraPath []string
 	stepsCtx  map[string]any
-	// classifications is the full decision log the control plane records, so
-	// an operator can see why anything was called infra.
+	// classifications is the full decision log the control plane records, for auditing why anything was called infra.
 	classifications []string
 	posts           []postAction
 	failed          bool

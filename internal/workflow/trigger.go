@@ -9,21 +9,17 @@ import (
 
 // Event is what actually happened, as far as trigger matching is concerned.
 type Event struct {
-	// Name is the webhook event: "push", "pull_request", "workflow_dispatch",
-	// "schedule", or any other event name.
+	// Name is the webhook event: "push", "pull_request", "workflow_dispatch", "schedule", etc.
 	Name string
-	// Ref is the full ref, e.g. "refs/heads/main" or "refs/tags/v1.2.3". For a
-	// pull_request it is the BASE ref, which is what branches: filters against.
+	// Ref is the full ref; for a pull_request it is the BASE ref, what branches: filters against.
 	Ref string
 	// Action is the webhook's activity type, e.g. "opened" or "synchronize".
 	Action string
-	// ChangedPaths are the repo-relative paths the event touched. An empty
-	// slice with a paths filter present means the filter cannot be satisfied.
+	// ChangedPaths empty with a paths filter present means the filter cannot be satisfied.
 	ChangedPaths []string
 }
 
-// Decision is why a workflow did or did not trigger. The reason is recorded
-// rather than inferred, so "why didn't my workflow run?" has an answer.
+// Decision is why a workflow did or did not trigger, recorded rather than inferred later.
 type Decision struct {
 	Match bool
 	// Reason is a complete sentence naming the filter that decided it.

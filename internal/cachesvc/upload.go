@@ -17,6 +17,7 @@ import (
 	"github.com/wow-look-at-my/ci-platform/internal/jobtoken"
 	"github.com/wow-look-at-my/ci-platform/internal/model"
 	"github.com/wow-look-at-my/ci-platform/internal/store"
+	"github.com/wow-look-at-my/go-containers/set"
 )
 
 func splitKeys(raw string) []string {
@@ -53,12 +54,12 @@ func (s *Service) handleList(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	out := ArtifactCacheList{ArtifactCaches: []ArtifactCacheEntry{}}
-	seen := map[string]bool{}
+	seen := set.New[string]()
 	for _, e := range events {
-		if e.Kind != "store" || seen[e.Key] || (key != "" && !strings.HasPrefix(e.Key, key)) {
+		if e.Kind != "store" || seen.Contains(e.Key) || (key != "" && !strings.HasPrefix(e.Key, key)) {
 			continue
 		}
-		seen[e.Key] = true
+		seen.Add(e.Key)
 		out.ArtifactCaches = append(out.ArtifactCaches, ArtifactCacheEntry{
 			CacheKey:     e.Key,
 			CreationTime: e.At.UTC().Format(time.RFC3339),
@@ -119,9 +120,7 @@ func (s *Service) handleReserve(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusInternalServerError, fmt.Sprintf("cachesvc: open upload for %q: %v", req.Key, err))
 		return
 	}
-	// The declared size checked above is a claim about the body, not the body.
-	// Without this the limit is advisory and a client that lies about its size
-	// writes whatever it likes.
+	// The declared size checked above is a claim about the body; without this limit a lying client writes anything.
 	upload.LimitBytes(s.maxSize)
 	s.mu.Lock()
 	s.uploads[entry.ID] = upload
@@ -242,8 +241,7 @@ func (s *Service) handleCommit(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	size, _, err := upload.Commit(ctx, req.Size)
 	if err != nil {
-		// The archive is incomplete, so the entry must not become visible. A
-		// half-written cache is worse than no cache: it fails jobs downstream.
+		// The archive is incomplete, so the entry must not become visible; a half-written cache fails jobs downstream.
 		_ = upload.Abort(ctx)
 		writeErr(w, http.StatusBadRequest, "cachesvc: "+err.Error())
 		return
@@ -262,8 +260,7 @@ func (s *Service) handleCommit(w http.ResponseWriter, r *http.Request) {
 		fmt.Sprintf("stored %d bytes for version %s on ref %s", size, entry.Version, entry.Ref), size)
 
 	if err := s.Evict(ctx, claims.RepoID); err != nil {
-		// The entry is stored; the quota is now over. That is worth reporting
-		// rather than hiding behind a 204.
+		// The entry is stored; the quota is now over.
 		writeErr(w, http.StatusInternalServerError, fmt.Sprintf(
 			"cachesvc: entry %d was stored but enforcing the repository quota failed: %v", id, err))
 		return
@@ -313,8 +310,7 @@ func (s *Service) handleDownload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// The client ranges over the archive when it downloads concurrently, so
-	// http.ServeContent is used for its Range handling.
+	// The client ranges over the archive when downloading concurrently, so http.ServeContent handles Range.
 	rc, err := s.blob.Get(r.Context(), storageKey(id))
 	if errors.Is(err, blob.ErrNotFound) {
 		http.Error(w, fmt.Sprintf("cachesvc: entry %d has no stored archive", id), http.StatusNotFound)
@@ -331,17 +327,14 @@ func (s *Service) handleDownload(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Length", strconv.FormatInt(entry.SizeBytes, 10))
 	}
 	if rs, ok := rc.(io.ReadSeeker); ok {
-		// ServeContent brings Range handling, which the client uses when it
-		// downloads an archive with concurrent range requests.
+		// ServeContent brings Range handling, used when the client downloads an archive with concurrent requests.
 		http.ServeContent(w, r, "cache", entry.CreatedAt, rs)
 		return
 	}
 	_, _ = io.Copy(w, rc)
 }
 
-// handleV2NotImplemented answers the v2 Twirp CacheService. The client only
-// picks v2 when ACTIONS_CACHE_SERVICE_V2 is set in the job environment, which
-// the runner does not do; saying so beats a 404.
+// handleV2NotImplemented answers the v2 Twirp CacheService.
 func (s *Service) handleV2NotImplemented(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusNotImplemented)

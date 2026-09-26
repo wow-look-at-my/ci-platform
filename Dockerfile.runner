@@ -6,20 +6,23 @@
 # This image needs access to a docker daemon to create each job's sandbox. It
 # does NOT hand that socket to the job: the job gets its own container running
 # its own dockerd, and nothing of the host's daemon reaches it.
-FROM golang:1.25-alpine AS build
+FROM alpine:3.21 AS build
+ADD --chmod=755 "https://dl.pazer.build/go-toolchain?os=linux&arch=amd64" /usr/local/bin/go-toolchain
+# Docker mounts /dev/shm noexec, so an APE unpacks its loader into /tmp.
+ENV GO_TOOLCHAIN_LINKED_GO=1 GOPROXY=https://proxy.golang.org,direct GOSUMDB=sum.golang.org APE_LOADERDIR=/tmp
 WORKDIR /src
 
-RUN --mount=type=cache,target=/go/pkg/mod \
+RUN --mount=type=cache,target=/root/go/pkg/mod \
 	--mount=type=bind,source=go.mod,target=go.mod \
 	--mount=type=bind,source=go.sum,target=go.sum \
-	go mod download
+	go-toolchain go mod download
 
 COPY . .
 
 ARG VERSION=dev
-RUN --mount=type=cache,target=/go/pkg/mod \
+RUN --mount=type=cache,target=/root/go/pkg/mod \
 	--mount=type=cache,target=/root/.cache/go-build \
-	CGO_ENABLED=0 go build -trimpath \
+	go-toolchain go build -trimpath \
 	-ldflags "-s -w -X main.version=${VERSION}" \
 	-o /out/ci-runner ./cmd/ci-runner
 
@@ -27,9 +30,12 @@ FROM alpine:3.21 AS runner
 RUN apk add --no-cache ca-certificates tzdata docker-cli git \
 	&& mkdir -p /var/lib/ci-runner
 COPY --from=build /out/ci-runner /usr/local/bin/ci-runner
+ENV APE_LOADERDIR=/tmp
+# The binary is an APE, which the kernel will not exec directly; /bin/sh runs its header, which boots it through the loader.
+RUN ["/bin/sh", "/usr/local/bin/ci-runner", "version"]
 # /var/lib/ci-runner is deliberately NOT a declared VOLUME. Under runner-host it
 # is the container's own layer, so removing the container is what makes the next
 # runner's storage genuinely fresh. Run the image by hand and you want the
 # opposite -- mount something there, or the identity key is regenerated on every
 # restart and the host needs approving again.
-ENTRYPOINT ["/usr/local/bin/ci-runner"]
+ENTRYPOINT ["/bin/sh", "/usr/local/bin/ci-runner"]

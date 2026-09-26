@@ -27,21 +27,16 @@ type Options struct {
 	Image string
 	// DockerHost is the OUTER daemon. The job container never sees it.
 	DockerHost string
-	// ImageCacheVolume is the shared volume mounted at the inner daemon's
-	// /var/lib/docker, so a cold pull is paid once per runner rather than once
-	// per job.
+	// ImageCacheVolume is the volume mounted at the inner daemon's /var/lib/docker, shared across jobs.
 	ImageCacheVolume string
-	// LockDir holds the cache volume's lock file. Two dockerds sharing one
-	// graph directory corrupt it, so the volume is used under an exclusive
-	// lock rather than silently shared.
+	// LockDir holds the cache volume's lock file; two dockerds sharing one graph directory corrupt it.
 	LockDir string
 
 	// WorkspaceDir and TempDir are paths inside the container.
 	WorkspaceDir string
 	TempDir      string
 
-	// SetupTimeout bounds the whole setup phase. Exceeding it is an infra
-	// failure; there is no path where setup hangs forever.
+	// SetupTimeout bounds the whole setup phase; exceeding it is an infra failure, never a hang.
 	SetupTimeout time.Duration
 	// ReadyPoll is how often the inner dockerd is probed.
 	ReadyPoll time.Duration
@@ -124,8 +119,7 @@ type Container struct {
 	lock       *fileLock
 	removed    bool
 	hostTmpDir string
-	// Only what was actually created is removed, so teardown never reports a
-	// failure for a resource that never existed.
+	// Only what was actually created is removed, so teardown never reports removing a nonexistent resource.
 	madeWorkspace bool
 	madeNetwork   bool
 	madeContainer bool
@@ -164,8 +158,7 @@ func Create(ctx context.Context, opts Options) (_ *Container, report *SetupRepor
 	}
 	defer func() {
 		if err != nil {
-			// A half-built sandbox is torn down here; the caller only ever
-			// holds a container it can use.
+			// A half-built sandbox is torn down here, so the caller only ever holds a usable container.
 			_ = c.Close(context.WithoutCancel(ctx))
 		}
 	}()
@@ -208,9 +201,8 @@ func Create(ctx context.Context, opts Options) (_ *Container, report *SetupRepor
 	sw.mark("image_pull")
 
 	sw = report.begin()
-	// A network of its own. The Docker-in-Docker entrypoint always publishes an
-	// unauthenticated daemon API on 2375 inside the container; on the shared
-	// default bridge that is root access to this job from every other job.
+	// A network of its own: DinD's unauthenticated daemon API on 2375 would be root access to
+	// this job from every other job on a shared bridge.
 	if _, nerr := Capture(ctx, opts.Docker, "network", "create", c.network); nerr != nil {
 		return nil, report, setupErr(ctx, "network_create", nerr)
 	}
@@ -222,20 +214,16 @@ func Create(ctx context.Context, opts Options) (_ *Container, report *SetupRepor
 		"run", "-d",
 		"--name", c.name,
 		"--network", c.network,
-		// Privileged is what makes an inner dockerd possible at all; the
-		// isolation comes from it being a throwaway container with its own
-		// image store and network, not from dropping privileges.
+		// Privileged enables the inner dockerd; isolation is the throwaway container, not dropped privileges.
 		"--privileged",
-		// TLS between the job and its own local daemon buys nothing and adds a
-		// certificate dance to every readiness probe.
+		// TLS to the job's own local daemon buys nothing and adds a cert dance to every readiness probe.
 		"-e", "DOCKER_TLS_CERTDIR=",
 		"-v", c.workspace + ":" + opts.WorkspaceDir,
 	}
 	if opts.ImageCacheVolume != "" {
 		args = append(args, "-v", opts.ImageCacheVolume+":/var/lib/docker")
 	}
-	// No -v /var/run/docker.sock and no control-plane credentials: a job can
-	// reach only its own inner daemon.
+	// No docker.sock mount and no control-plane credentials: a job reaches only its own inner daemon.
 	args = append(args, opts.Image)
 	if _, rerr := Capture(ctx, opts.Docker, args...); rerr != nil {
 		return nil, report, setupErr(ctx, "container_create", rerr)
@@ -284,9 +272,7 @@ func setupErr(ctx context.Context, stage string, err error) *Error {
 func (c *Container) waitForDockerd(ctx context.Context) error {
 	var last error
 	for {
-		// `docker version` is the probe, not `docker info`: info exits 0 with
-		// "Cannot connect to the Docker daemon" in its output, so probing with
-		// it reports a dead daemon as ready.
+		// `docker version` is the probe: `docker info` exits 0 even when the daemon is unreachable.
 		out, err := Capture(ctx, c.opts.Docker, "exec", c.name, "docker", "version", "--format", "{{.Server.Version}}")
 		switch {
 		case err != nil:
@@ -369,15 +355,8 @@ func (c *Container) CopyInto(ctx context.Context, hostDir, containerPath string)
 	return c.copyIn(ctx, strings.TrimSuffix(hostDir, "/")+"/.", containerPath)
 }
 
-// copyIn is the only way files get into the sandbox.
-//
-// A bind mount cannot be used: a file bind-mounted INTO this Docker-in-Docker
-// container cannot be bind-mounted again into a container the inner dockerd
-// spawns, because the inner daemon resolves the source path against the HOST
-// filesystem, where it does not exist. `docker cp` copies the bytes into the
-// container's own filesystem instead, which the inner daemon can then mount.
-// The destination's parent must already exist: `docker cp` does not create
-// parent directories, so every caller mkdir -p's first.
+// copyIn uses docker cp, not a bind mount: the inner dockerd can't remount a bind-mounted file.
+// The destination's parent must already exist.
 func (c *Container) copyIn(ctx context.Context, hostPath, dest string) error {
 	_, err := Capture(ctx, c.opts.Docker, "cp", hostPath, c.name+":"+dest)
 	return err
@@ -449,8 +428,7 @@ func (c *Container) Close(ctx context.Context) error {
 		c.opts.Log(fmt.Sprintf("removed %s %s", what, name))
 	}
 
-	// Container first: the network and volume it holds cannot be removed while
-	// it is attached.
+	// Container first: it holds the network and volume, which can't be removed while it's attached.
 	remove(c.madeContainer, "container", c.name, "rm", "-f", "-v", c.name)
 	remove(c.madeWorkspace, "workspace volume", c.workspace, "volume", "rm", "-f", c.workspace)
 	remove(c.madeNetwork, "network", c.network, "network", "rm", c.network)

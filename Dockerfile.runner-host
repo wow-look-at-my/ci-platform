@@ -9,20 +9,23 @@
 # build in flight is never interrupted by the supervisor's own restart.
 #
 # It needs the docker socket, because managing containers is its whole job.
-FROM golang:1.25-alpine AS build
+FROM alpine:3.21 AS build
+ADD --chmod=755 "https://dl.pazer.build/go-toolchain?os=linux&arch=amd64" /usr/local/bin/go-toolchain
+# Docker mounts /dev/shm noexec, so an APE unpacks its loader into /tmp.
+ENV GO_TOOLCHAIN_LINKED_GO=1 GOPROXY=https://proxy.golang.org,direct GOSUMDB=sum.golang.org APE_LOADERDIR=/tmp
 WORKDIR /src
 
-RUN --mount=type=cache,target=/go/pkg/mod \
+RUN --mount=type=cache,target=/root/go/pkg/mod \
 	--mount=type=bind,source=go.mod,target=go.mod \
 	--mount=type=bind,source=go.sum,target=go.sum \
-	go mod download
+	go-toolchain go mod download
 
 COPY . .
 
 ARG VERSION=dev
-RUN --mount=type=cache,target=/go/pkg/mod \
+RUN --mount=type=cache,target=/root/go/pkg/mod \
 	--mount=type=cache,target=/root/.cache/go-build \
-	CGO_ENABLED=0 go build -trimpath \
+	go-toolchain go build -trimpath \
 	-ldflags "-s -w -X main.version=${VERSION}" \
 	-o /out/runner-host ./cmd/runner-host
 
@@ -30,8 +33,11 @@ FROM alpine:3.21 AS runner-host
 RUN apk add --no-cache ca-certificates tzdata docker-cli \
 	&& mkdir -p /var/lib/ci-runner-host
 COPY --from=build /out/runner-host /usr/local/bin/runner-host
+ENV APE_LOADERDIR=/tmp
+# The binary is an APE, which the kernel will not exec directly; /bin/sh runs its header, which boots it through the loader.
+RUN ["/bin/sh", "/usr/local/bin/runner-host", "-version"]
 # The identity key lives here. Mount it: a key that does not survive a restart
 # means a new fingerprint to approve every time this container is replaced,
 # which is exactly the toil this design exists to remove.
 VOLUME /var/lib/ci-runner-host
-ENTRYPOINT ["/usr/local/bin/runner-host"]
+ENTRYPOINT ["/bin/sh", "/usr/local/bin/runner-host"]

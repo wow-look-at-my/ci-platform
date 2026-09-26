@@ -18,9 +18,8 @@ import (
 	"github.com/wow-look-at-my/ci-platform/internal/runner/mask"
 )
 
-// Sandbox is the per-job execution environment the agent builds. The concrete
-// implementation is internal/runner/sandbox; the interface keeps the agent's
-// loop testable without docker.
+// Sandbox is the per-job execution environment the agent builds, kept abstract so the
+// loop is testable without docker.
 type Sandbox interface {
 	exec.Sandbox
 	WorkspaceDir() string
@@ -58,8 +57,7 @@ type Config struct {
 
 	// PollWait is how long an acquire poll may be held open.
 	PollWait time.Duration
-	// HeartbeatInterval and LogFlushInterval are defaults; the control plane's
-	// register response overrides them.
+	// HeartbeatInterval and LogFlushInterval are defaults; the register response overrides them.
 	HeartbeatInterval time.Duration
 	LogFlushInterval  time.Duration
 	LogBatchSize      int
@@ -83,8 +81,7 @@ type Agent struct {
 type jobHandle struct {
 	assignment *protocol.Assignment
 	cancel     context.CancelFunc
-	// released marks a job already handed back, so shutdown does not release
-	// it twice.
+	// released marks a job already handed back, so shutdown does not release it twice.
 	released bool
 }
 
@@ -181,8 +178,7 @@ func (a *Agent) pollLoop(ctx context.Context, slot int) {
 			if ctx.Err() != nil {
 				return
 			}
-			// The control plane being unreachable is infra, and it is logged
-			// as such rather than retried silently forever.
+			// An unreachable control plane is infra, logged as such rather than retried silently forever.
 			a.log.Error("acquire failed", "slot", slot, "err", err, "class", classOf(err))
 			if sleepCtx(ctx, a.cfg.IdleDelay) != nil {
 				return
@@ -282,8 +278,7 @@ func (a *Agent) runJob(parent context.Context, asg *protocol.Assignment) {
 
 	hb.stop()
 	if hb.leaseLost() {
-		// The lease was taken from us. Reporting a result now would overwrite
-		// whatever the new owner is doing.
+		// The lease was taken from us; reporting a result now would overwrite the new owner.
 		log.Warn("lease lost; abandoning the job without reporting a result")
 		sink.Line(0, "platform", "", "the control plane took this job's lease; the runner stopped without reporting a result")
 		return
@@ -434,8 +429,7 @@ func (a *Agent) heartbeatInterval() time.Duration {
 
 func (a *Agent) release(ctx context.Context, asg *protocol.Assignment, reason model.CancelReason) {
 	if err := reason.Validate(); err != nil {
-		// A release with no explanation is exactly the incident this platform
-		// exists to prevent, so it is repaired loudly rather than sent.
+		// A release with no explanation is the incident this platform exists to prevent.
 		a.log.Error("refusing to release without a reason", "err", err)
 		reason.Sentence = fmt.Sprintf("runner %s released job %d attempt %d without recording a reason, which is a runner defect", a.cfg.RunnerID, asg.JobID, asg.Attempt)
 		reason.Actor = model.CancelActorRunnerLost

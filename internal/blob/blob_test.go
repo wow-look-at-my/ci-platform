@@ -77,8 +77,7 @@ func newDiskStore(t *testing.T) *disk.Store {
 	return s
 }
 
-// noPutAtStore wraps a store and refuses ranged writes, standing in for the S3
-// driver so the staged-chunk path is exercised without a network.
+// noPutAtStore wraps a store and refuses ranged writes, exercising the staged-chunk path without a network.
 type noPutAtStore struct {
 	blob.Store
 	putAtCalls int

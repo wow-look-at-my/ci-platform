@@ -26,10 +26,9 @@ import (
 // fakeS3 is enough of the S3 REST API to drive the driver: single PUT,
 // multipart, GET with Range, HEAD, and DELETE.
 type fakeS3 struct {
-	mu      sync.Mutex
-	objects map[string][]byte
-	parts   map[string]map[int][]byte
-	// completeReturns200Error reproduces S3 reporting a failure inside a 200.
+	mu                      sync.Mutex
+	objects                 map[string][]byte
+	parts                   map[string]map[int][]byte
 	completeReturns200Error bool
 	lastAuth                string
 	aborted                 bool
@@ -84,7 +83,7 @@ func (f *fakeS3) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		if id := q.Get("uploadId"); id != "" {
 			n, _ := strconv.Atoi(q.Get("partNumber"))
 			f.parts[id][n] = body
-			w.Header().Set("ETag", fmt.Sprintf("%q", n))
+			w.Header().Set("ETag", strconv.Quote(strconv.Itoa(n)))
 			w.WriteHeader(http.StatusOK)
 			return
 		}

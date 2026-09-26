@@ -20,6 +20,7 @@ import (
 	"github.com/wow-look-at-my/ci-platform/internal/cachesvc"
 	"github.com/wow-look-at-my/ci-platform/internal/jobtoken"
 	"github.com/wow-look-at-my/ci-platform/internal/model"
+	"github.com/wow-look-at-my/go-containers/set"
 )
 
 const (
@@ -228,8 +229,6 @@ func TestCommitRejectsSizeMismatch(t *testing.T) {
 	assert.Contains(t, decode[map[string]string](t, commit)["message"], "declared as 99")
 }
 
-// TestMissIs204 is load-bearing: the client treats any non-2xx other than 204
-// as an error, so a 404 on a miss fails the whole step.
 func TestMissIs204(t *testing.T) {
 	h := newHarness(t, jobtoken.DefaultScopes, nil)
 	resp := h.do(t, http.MethodGet, lookupPath([]string{"nothing-here"}, version), nil, nil)
@@ -274,12 +273,12 @@ func TestRestoreKeysSemantics(t *testing.T) {
 	})
 
 	// The event trail records which key each hit matched on.
-	matched := map[string]bool{}
+	matched := set.New[string]()
 	for _, e := range h.store.eventsOfKind("hit") {
-		matched[e.MatchedOn] = true
+		matched.Add(e.MatchedOn)
 	}
-	assert.True(t, matched["deps-exact"])
-	assert.True(t, matched["deps-linux"], "a prefix hit records the restore key that matched, not the entry's key")
+	assert.True(t, matched.Contains("deps-exact"))
+	assert.True(t, matched.Contains("deps-linux"), "a prefix hit records the restore key that matched, not the entry's key")
 }
 
 // TestRefScoping: a branch reads its own entries and the default branch's, and

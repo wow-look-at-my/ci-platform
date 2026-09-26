@@ -34,9 +34,7 @@ const DefaultUserAgent = "ci-platform/1.0"
 var (
 	// ErrNotFound is returned for a 404.
 	ErrNotFound = errors.New("github: not found")
-	// ErrRateLimited is returned once retries are exhausted against a rate
-	// limit. It is never swallowed: an update that could not be delivered is
-	// reported, not dropped.
+	// ErrRateLimited is returned once retries are exhausted against a rate limit; never swallowed.
 	ErrRateLimited = errors.New("github: rate limit exhausted")
 	// ErrNoToken is returned when no credential is configured.
 	ErrNoToken = errors.New("github: no token source configured")
@@ -61,8 +59,7 @@ func (r Repo) path() string {
 	return "/repos/" + url.PathEscape(r.Owner) + "/" + url.PathEscape(r.Name)
 }
 
-// TokenSource yields the credential for the next request. It is called per
-// request so an installation token can be refreshed transparently.
+// TokenSource yields the credential for the next request, called per request so a token can refresh transparently.
 type TokenSource interface {
 	Token(ctx context.Context) (string, error)
 }
@@ -73,8 +70,7 @@ type TokenSourceFunc func(ctx context.Context) (string, error)
 // Token implements TokenSource.
 func (f TokenSourceFunc) Token(ctx context.Context) (string, error) { return f(ctx) }
 
-// StaticToken is a fixed credential, for tests and for GHES PAT deployments
-// that do not use the Checks API.
+// StaticToken is a fixed credential, for tests and GHES PAT deployments that do not use the Checks API.
 type StaticToken string
 
 // Token implements TokenSource. An empty StaticToken is a configuration error,
@@ -193,8 +189,7 @@ type Options struct {
 	Tokens     TokenSource
 	HTTPClient *http.Client
 	UserAgent  string
-	// MaxRetries is the number of retries after the first attempt. Zero means
-	// the default of 3; a negative value disables retrying entirely.
+	// MaxRetries is retries after the first attempt; zero means the default of 3, negative disables retrying.
 	MaxRetries  int
 	BaseBackoff time.Duration
 	MaxBackoff  time.Duration
@@ -279,8 +274,7 @@ func NewClient(opts Options) (*Client, error) {
 	if hc == nil {
 		hc = &http.Client{Timeout: 30 * time.Second}
 	}
-	// Clone rather than mutate the caller's client: the transport wrapper is
-	// ours, the client is not.
+	// Clone rather than mutate the caller's client: the transport wrapper is ours, the client is not.
 	cp := *hc
 	cp.Transport = &rateTransport{base: cp.Transport, record: c.recordRate}
 	c.hc = &cp

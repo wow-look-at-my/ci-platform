@@ -19,10 +19,7 @@ import (
 	"github.com/wow-look-at-my/ci-platform/internal/store"
 )
 
-// timeLayout is how every timestamp is stored: fixed-width, UTC, nanoseconds
-// always present. Fixed width is the point -- string comparison in SQL is then
-// chronological comparison, which is what the queue's not_before and the
-// reaper's lease_expires_at rely on.
+// timeLayout is a fixed-width UTC timestamp; string comparison in SQL is then chronological comparison.
 const timeLayout = "2006-01-02T15:04:05.000000000Z"
 
 // Store implements store.Store against SQLite.
@@ -43,13 +40,11 @@ func Open(ctx context.Context, path string) (*Store, error) {
 	dsn := path
 	if !strings.Contains(dsn, "?") {
 		dsn += "?" + strings.Join([]string{
-			// WAL keeps a reader from blocking the writer, which is what lets
-			// the API serve while the scheduler writes.
+			// WAL keeps a reader from blocking the writer, so the API can serve while the scheduler writes.
 			"_pragma=journal_mode(WAL)",
 			// Wait rather than fail on a busy database.
 			"_pragma=busy_timeout(5000)",
-			// The schema's ON DELETE CASCADE is load-bearing; SQLite ignores
-			// every foreign key unless this is on.
+			// The schema's ON DELETE CASCADE relies on this; SQLite ignores foreign keys otherwise.
 			"_pragma=foreign_keys(1)",
 			"_pragma=synchronous(NORMAL)",
 		}, "&")
@@ -59,11 +54,7 @@ func Open(ctx context.Context, path string) (*Store, error) {
 	if err != nil {
 		return nil, fmt.Errorf("sqlite: open %s: %w", path, err)
 	}
-	// One connection. SQLite takes a database-wide write lock, so concurrent
-	// writers would spend their time colliding and retrying; serializing them
-	// here costs nothing on a single-node control plane and makes the queue's
-	// claim-then-lease sequence atomic without row locks. A ":memory:" database
-	// additionally IS the connection -- a second one would see an empty schema.
+	// One connection: SQLite's write lock makes serializing writers here free; ":memory:" IS the connection.
 	db.SetMaxOpenConns(1)
 	db.SetMaxIdleConns(1)
 	db.SetConnMaxLifetime(0)
@@ -75,8 +66,7 @@ func Open(ctx context.Context, path string) (*Store, error) {
 	return &Store{db: db}, nil
 }
 
-// DB exposes the handle for callers that need a raw query (health probes,
-// ad-hoc reporting).
+// DB exposes the handle for callers that need a raw query (health probes, ad-hoc reporting).
 func (s *Store) DB() *sql.DB { return s.db }
 
 // Durable reports true: a control-plane restart preserves every queued job.
@@ -87,10 +77,9 @@ func (s *Store) Close() error { return s.db.Close() }
 
 // tx runs fn inside a transaction, rolling back on error.
 //
-// Every write goes through here with BEGIN IMMEDIATE semantics: SQLite would
-// otherwise start a deferred transaction that takes its write lock at the first
-// write, so a read-then-write sequence could see the database change underneath
-// it and fail at commit instead of at the read.
+// Every write goes through here with BEGIN IMMEDIATE semantics: SQLite takes the write
+// lock immediately, so a read-then-write sequence cannot see the database change from
+// under it and fail at commit rather than at the read.
 func (s *Store) tx(ctx context.Context, fn func(*sql.Tx) error) error {
 	t, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -115,8 +104,7 @@ func mapErr(op string, err error) error {
 	if errors.Is(err, sql.ErrNoRows) {
 		return store.ErrNotFound
 	}
-	// The driver reports constraint violations as text; SQLITE_CONSTRAINT_UNIQUE
-	// and _PRIMARYKEY are the two a caller acts on.
+	// The driver reports constraint violations as text; SQLITE_CONSTRAINT_UNIQUE/_PRIMARYKEY are what callers act on.
 	msg := err.Error()
 	if strings.Contains(msg, "UNIQUE constraint failed") || strings.Contains(msg, "PRIMARY KEY constraint failed") {
 		return fmt.Errorf("%s: %w: %s", op, store.ErrConflict, msg)
@@ -142,8 +130,7 @@ func parseTS(s string) (time.Time, error) {
 	}
 	t, err := time.Parse(timeLayout, s)
 	if err != nil {
-		// A row written by something other than this package is a corruption we
-		// report rather than paper over with a zero time.
+		// A row written by something other than this package is a corruption we report, not paper over.
 		return time.Time{}, fmt.Errorf("sqlite: %q is not a stored timestamp: %w", s, err)
 	}
 	return t.UTC(), nil

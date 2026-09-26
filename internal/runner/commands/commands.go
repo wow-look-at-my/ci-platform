@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/wow-look-at-my/ci-platform/internal/model"
+	"github.com/wow-look-at-my/go-containers/set"
 )
 
 // Command is one parsed ::name key=value::message line.
@@ -20,7 +21,6 @@ type Command struct {
 // Param returns a parameter value, or "" when absent.
 func (c Command) Param(k string) string { return c.Params[k] }
 
-// intParam parses a numeric parameter, returning 0 when absent or malformed.
 func (c Command) intParam(k string) int {
 	n, err := strconv.Atoi(strings.TrimSpace(c.Params[k]))
 	if err != nil {
@@ -76,8 +76,7 @@ func parseParams(s string) map[string]string {
 	return out
 }
 
-// unescapeData reverses the message escaping. %25 is decoded last so an
-// encoded percent cannot be re-interpreted as the start of another escape.
+// unescapeData reverses the message escaping.
 func unescapeData(s string) string {
 	s = strings.ReplaceAll(s, "%0D", "\r")
 	s = strings.ReplaceAll(s, "%0A", "\n")
@@ -176,9 +175,6 @@ func (p *Processor) Line(text string) (out string, group string, emit bool) {
 	case "stop-commands":
 		token := cmd.Value
 		if err := validateStopToken(token); err != nil {
-			// A guessable token lets untrusted output disable command
-			// processing and then re-enable it at will (CVE-2020-15228), so an
-			// invalid one fails the step rather than pausing.
 			return "Error: " + err.Error(), p.Group(), true
 		}
 		if p.h.Mask != nil && len(token) > 6 {
@@ -255,18 +251,16 @@ func labelFor(name string) string {
 
 // knownCommands are the names Parse dispatches on. A stop-commands token equal
 // to one of them would be swallowed as that command instead of resuming.
-var knownCommands = map[string]bool{
-	"error": true, "warning": true, "notice": true,
-	"group": true, "endgroup": true, "add-mask": true,
-	"set-output": true, "save-state": true, "stop-commands": true,
-	"echo": true, "debug": true,
-}
+var knownCommands = set.Of[string]("error", "warning", "notice",
+	"group", "endgroup", "add-mask",
+	"set-output", "save-state", "stop-commands",
+	"echo", "debug")
 
 func validateStopToken(token string) error {
 	switch {
 	case token == "":
 		return fmt.Errorf("::stop-commands:: requires a resume token")
-	case knownCommands[strings.ToLower(token)]:
+	case knownCommands.Contains(strings.ToLower(token)):
 		return fmt.Errorf("::stop-commands:: token %q is a workflow command name and cannot resume", token)
 	case strings.EqualFold(token, "pause-logging"):
 		return fmt.Errorf("::stop-commands:: token %q is guessable and is not accepted", token)

@@ -15,12 +15,10 @@ type Evaluator interface {
 	Eval(raw string) (any, error)
 }
 
-// EvaluatorFactory builds an Evaluator over a set of named contexts
-// ("github", "env", "needs", "matrix", "strategy", "vars", "secrets", "inputs", ...).
+// EvaluatorFactory builds an Evaluator over a set of named contexts (github, env, needs, matrix, strategy, ...).
 type EvaluatorFactory func(contexts map[string]any, status Status) Evaluator
 
-// Status is what success(), failure() and cancelled() answer inside an
-// expression. Exactly one of the three is true for a given evaluation.
+// Status is what success(), failure() and cancelled() answer inside an expression; exactly one is ever true.
 type Status struct{ Success, Failure, Cancelled bool }
 
 // EvalString evaluates an Expr to text, short-circuiting literals so a literal
@@ -72,7 +70,7 @@ func EvalInt(ev Evaluator, e model.Expr, def int) (int, error) {
 	if ev == nil {
 		return 0, fmt.Errorf("expression %q needs an evaluator and none was supplied", e.Raw)
 	}
-	v, err := ev.Eval(e.Raw)
+	v, err := evalValue(ev, e)
 	if err != nil {
 		return 0, err
 	}
@@ -81,6 +79,14 @@ func EvalInt(ev Evaluator, e model.Expr, def int) (int, error) {
 		return 0, fmt.Errorf("expression %q evaluated to %v, which is not a number", e.Raw, v)
 	}
 	return n, nil
+}
+
+// evalValue evaluates e to a typed value: an Expr that is exactly one ${{ }} yields that value untyped, else a string.
+func evalValue(ev Evaluator, e model.Expr) (any, error) {
+	if body, ok := e.Sole(); ok {
+		return ev.Eval(body)
+	}
+	return ev.EvalString(e.Raw)
 }
 
 func toInt(v any) (int, bool) {
