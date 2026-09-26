@@ -12,6 +12,7 @@ import (
 	"github.com/wow-look-at-my/ci-platform/internal/model"
 	"github.com/wow-look-at-my/ci-platform/internal/protocol"
 	"github.com/wow-look-at-my/ci-platform/internal/runner/actions"
+	"github.com/wow-look-at-my/go-containers/set"
 )
 
 // fakeSandbox is an in-memory stand-in for the DinD container, so the executor
@@ -189,10 +190,10 @@ func (r *recordingReporter) Annotate(_ context.Context, a []model.Annotation) er
 type fakeEvaluator struct {
 	contexts map[string]any
 	status   Status
-	fail     map[string]bool
+	fail     set.Set[string]
 }
 
-func newFakeEvaluatorFactory(fail map[string]bool) EvaluatorFactory {
+func newFakeEvaluatorFactory(fail set.Set[string]) EvaluatorFactory {
 	return func(contexts map[string]any, status Status) Evaluator {
 		return &fakeEvaluator{contexts: contexts, status: status, fail: fail}
 	}
@@ -200,7 +201,7 @@ func newFakeEvaluatorFactory(fail map[string]bool) EvaluatorFactory {
 
 func (f *fakeEvaluator) EvalBool(expr string) (bool, error) {
 	expr = strings.TrimSpace(expr)
-	if f.fail[expr] {
+	if f.fail.Contains(expr) {
 		return false, fmt.Errorf("unrecognized named-value %q", expr)
 	}
 	switch expr {
@@ -244,7 +245,7 @@ func (f *fakeEvaluator) EvalString(s string) (string, error) {
 
 // lookup walks a dotted path through the contexts map.
 func (f *fakeEvaluator) lookup(path string) (string, error) {
-	if f.fail[path] {
+	if f.fail.Contains(path) {
 		return "", fmt.Errorf("unrecognized named-value %q", path)
 	}
 	var cur any = f.contexts

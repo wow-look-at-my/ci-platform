@@ -1,6 +1,7 @@
 package operatorauth
 
 import (
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -40,7 +41,7 @@ func newFakeGitHub(t *testing.T, login string) *fakeGitHub {
 			return
 		}
 		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(`{"login":"` + f.login + `"}`))
+		require.NoError(t, json.NewEncoder(w).Encode(map[string]string{"login": f.login}))
 	})
 	f.srv = httptest.NewServer(mux)
 	t.Cleanup(f.srv.Close)

@@ -168,7 +168,7 @@ func (g *GitHub) serve(w http.ResponseWriter, r *http.Request) {
 		g.mu.Unlock()
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(code)
-		fmt.Fprintf(w, `{"message":"injected failure %d"}`, code)
+		_ = json.NewEncoder(w).Encode(map[string]string{"message": fmt.Sprintf("injected failure %d", code)})
 		return
 	}
 	g.mu.Unlock()

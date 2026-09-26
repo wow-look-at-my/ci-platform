@@ -332,8 +332,20 @@ func (k *Keyring) JWKS() JWKS {
 // thumbprint derives a kid from the public key, so the same key always has the
 // same id no matter how many times it is loaded.
 func thumbprint(pub *rsa.PublicKey) string {
-	n := base64.RawURLEncoding.EncodeToString(pub.N.Bytes())
-	e := base64.RawURLEncoding.EncodeToString(big.NewInt(int64(pub.E)).Bytes())
-	sum := sha256.Sum256([]byte(`{"e":"` + e + `","kty":"RSA","n":"` + n + `"}`))
+	// RFC 7638 hashes the required members in lexicographic order; the field
+	// order here is that order.
+	doc, err := json.Marshal(struct {
+		E   string `json:"e"`
+		Kty string `json:"kty"`
+		N   string `json:"n"`
+	}{
+		E:   base64.RawURLEncoding.EncodeToString(big.NewInt(int64(pub.E)).Bytes()),
+		Kty: "RSA",
+		N:   base64.RawURLEncoding.EncodeToString(pub.N.Bytes()),
+	})
+	if err != nil {
+		panic(fmt.Sprintf("oidc: marshalling a JWK thumbprint input: %v", err))
+	}
+	sum := sha256.Sum256(doc)
 	return base64.RawURLEncoding.EncodeToString(sum[:])
 }
