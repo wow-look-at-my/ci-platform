@@ -1,4 +1,3 @@
-# syntax=docker/dockerfile:1
 
 # The control plane. The web UI is bundled by cmd/buildweb (esbuild via its Go
 # API) and go:embed'ed, so no Node toolchain exists in this image or in CI.
