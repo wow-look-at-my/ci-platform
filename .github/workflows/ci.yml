@@ -2,8 +2,10 @@ name: CI
 
 on:
   push:
+    branches: ['**']
 
 permissions:
+  pull-requests: write
   id-token: write
   contents: write
   actions: read
