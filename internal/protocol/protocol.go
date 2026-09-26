@@ -134,8 +134,7 @@ type Assignment struct {
 	Env map[string]string `json:"env"`
 	// Contexts carries the evaluated github/runner/needs/matrix/strategy/vars contexts for step expressions.
 	Contexts map[string]any `json:"contexts"`
-	// Secrets are injected per job and masked by value in logs. They are never
-	// written to the workspace.
+	// Secrets are injected per job, masked by value in logs, and never written to the workspace.
 	Secrets map[string]string `json:"secrets,omitempty"`
 
 	Container *ContainerSpec            `json:"container,omitempty"`
@@ -145,9 +144,7 @@ type Assignment struct {
 	// SetupTimeout bounds the "stuck in setup" state separately from execution.
 	SetupTimeout Duration `json:"setup_timeout"`
 
-	// JobToken is a per-job scoped bearer token for the artifact, cache, log,
-	// and OIDC endpoints. It carries no repository write access and expires
-	// with the job.
+	// JobToken is a per-job scoped bearer token for the artifact, cache, log, and OIDC endpoints.
 	JobToken  string `json:"job_token"`
 	ServerURL string `json:"server_url"`
 	// ServiceEnv is the environment the artifact, cache, and OIDC clients

@@ -50,8 +50,7 @@ type Run struct {
 	// Cancel is set whenever Conclusion is cancelled. Never nil in that case.
 	Cancel *CancelReason `json:"cancel,omitempty"`
 
-	// EventPayload is the raw webhook body, kept so the github context can be
-	// rebuilt on re-run without re-fetching.
+	// EventPayload is the raw webhook body, kept to rebuild the github context on re-run.
 	EventPayload json.RawMessage `json:"-"`
 	// Inputs are workflow_dispatch inputs, already defaulted and type-checked.
 	Inputs map[string]any `json:"inputs,omitempty"`

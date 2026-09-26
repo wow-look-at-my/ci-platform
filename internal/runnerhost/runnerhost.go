@@ -174,9 +174,7 @@ func (h *Host) ensureSlot(ctx context.Context, slot int) error {
 	case state == "":
 		return h.create(ctx, slot)
 	default:
-		// Exited, dead, or created-but-never-started. Whatever it was, its
-		// storage is not fresh any more, so the container goes and a new one
-		// takes its place rather than being restarted in place.
+		// Not running, so its storage is stale; replace it rather than restart in place.
 		h.log.Warn("runner is not running; replacing it", "container", name, "state", state)
 		if err := h.remove(ctx, name); err != nil {
 			return err
@@ -281,8 +279,7 @@ func (h *Host) create(ctx context.Context, slot int) error {
 		"create", "--name", name,
 		"--label", "ci-platform.runner-host=" + h.opts.Name,
 		"--label", "ci-platform.slot=" + strconv.Itoa(slot),
-		// The supervisor decides when a runner goes away; Docker restarting it
-		// behind our back would skip the draining and the fresh storage.
+		// The supervisor decides when a runner goes away, not Docker's own restart policy.
 		"--restart", "no",
 		"-e", "CI_CONTROL_PLANE_URL=" + h.opts.ControlPlaneURL,
 		"-e", "CI_RUNNER_LABELS=" + strings.Join(h.opts.Labels, ","),
