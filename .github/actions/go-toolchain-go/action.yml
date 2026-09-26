@@ -14,6 +14,10 @@ runs:
         chmod +x /tmp/go-toolchain
         /tmp/go-toolchain version
         sudo cp /tmp/go-toolchain /usr/local/bin/go-toolchain
+        # Named go, the binary is the go command, so a test that execs `go` gets the org's Go rather than the runner's.
+        mkdir -p "$RUNNER_TEMP/go-bin"
+        ln -s /usr/local/bin/go-toolchain "$RUNNER_TEMP/go-bin/go"
+        echo "$RUNNER_TEMP/go-bin" >> "$GITHUB_PATH"
         # go-toolchain's go carries no go.env, so the proxy and checksum database are named here.
         {
           echo "GO_TOOLCHAIN_LINKED_GO=1"
