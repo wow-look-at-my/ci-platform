@@ -1,0 +1,33 @@
+name: go-toolchain go
+description: Installs go-toolchain so a job can run `go-toolchain go ...`, the org's Go, and lets the kernel exec the APE binaries it builds.
+runs:
+  using: composite
+  steps:
+    - name: Install go-toolchain
+      shell: bash
+      run: |
+        set -euo pipefail
+        curl -fL --compressed --connect-timeout 20 --max-time 120 -o /tmp/go-toolchain "https://dl.pazer.build/go-toolchain?os=${RUNNER_OS}&arch=${RUNNER_ARCH}"
+        chmod +x /tmp/go-toolchain
+        /tmp/go-toolchain version
+        sudo cp /tmp/go-toolchain /usr/local/bin/go-toolchain
+        # go-toolchain's go carries no go.env, so the proxy and checksum database are named here.
+        {
+          echo "GO_TOOLCHAIN_LINKED_GO=1"
+          echo "GOPROXY=https://proxy.golang.org,direct"
+          echo "GOSUMDB=sum.golang.org"
+        } >> "$GITHUB_ENV"
+
+    - name: Register the APE binfmt handler
+      shell: bash
+      run: |
+        set -euo pipefail
+        dir=/proc/sys/fs/binfmt_misc
+        if [ -e "$dir/APE" ]; then
+          exit 0
+        fi
+        if [ ! -e "$dir/register" ]; then
+          sudo mount -t binfmt_misc binfmt_misc "$dir"
+        fi
+        printf '%s\n' ':APE:M::\x4d\x5a\x71\x46\x70\x44\x3d\x27::/bin/sh:' | sudo tee "$dir/register" > /dev/null
+        test -e "$dir/APE"

@@ -26,10 +26,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
-        with:
-          go-version-file: go.mod
-      - run: go run ./cmd/buildweb -check
+      - uses: ./.github/actions/go-toolchain-go
+      - run: go-toolchain go run ./cmd/buildweb -check
 
   # The demo site: the real UI against a snapshot captured from the real API.
   # Published per branch, so a UI change can be looked at before it is merged.
@@ -37,13 +35,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
-        with:
-          go-version-file: go.mod
+      - uses: ./.github/actions/go-toolchain-go
       # A stale snapshot would show shapes the API no longer returns, which is
       # the one thing a demo of this platform must not do.
-      - run: go run ./cmd/demofixtures -check
-      - run: go run ./cmd/buildweb -demo -out demo-site
+      - run: go-toolchain go run ./cmd/demofixtures -check
+      - run: go-toolchain go run ./cmd/buildweb -demo -out demo-site
       - name: Site branch name
         id: sitename
         uses: wow-look-at-my/actions@typescript#latest
@@ -91,22 +87,18 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
-        with:
-          go-version-file: go.mod
-      - run: go test ./test/conformance/... -count=1
+      - uses: ./.github/actions/go-toolchain-go
+      - run: go-toolchain go test ./test/conformance/... -count=1
 
   # One test per incident in docs/incidents.md.
   chaos:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
-        with:
-          go-version-file: go.mod
+      - uses: ./.github/actions/go-toolchain-go
       - env:
           CIPLATFORM_TEST_DOCKER: "1"
-        run: go test ./test/chaos/... -count=1 -timeout 20m
+        run: go-toolchain go test ./test/chaos/... -count=1 -timeout 20m
 
   # Runs real workflows through a real control plane and a real runner, using
   # unmodified actions/checkout, actions/cache, and actions/upload-artifact.
@@ -114,9 +106,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
-        with:
-          go-version-file: go.mod
+      - uses: ./.github/actions/go-toolchain-go
       - env:
           CIPLATFORM_TEST_DOCKER: "1"
-        run: go test ./test/e2e/... -count=1 -timeout 30m
+        run: go-toolchain go test ./test/e2e/... -count=1 -timeout 30m
