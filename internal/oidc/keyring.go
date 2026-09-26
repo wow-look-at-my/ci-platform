@@ -21,8 +21,7 @@ import (
 	"github.com/wow-look-at-my/ci-platform/internal/blob"
 )
 
-// KeyBits is the RSA modulus size. RS256 with 2048 bits is what GitHub's own
-// OIDC keys use, and what every verifier already accepts.
+// KeyBits is the RSA modulus size.
 const KeyBits = 2048
 
 // StoredKey is one signing key as persisted.
@@ -44,7 +43,6 @@ type KeyStore interface {
 	Save(ctx context.Context, keys []StoredKey) error
 }
 
-// FileKeyStore persists the keyring to a JSON file with 0600 permissions.
 type FileKeyStore struct{ path string }
 
 // NewFileKeyStore stores keys at path.
@@ -332,8 +330,6 @@ func (k *Keyring) JWKS() JWKS {
 // thumbprint derives a kid from the public key, so the same key always has the
 // same id no matter how many times it is loaded.
 func thumbprint(pub *rsa.PublicKey) string {
-	// RFC 7638 hashes the required members in lexicographic order; the field
-	// order here is that order.
 	doc, err := json.Marshal(struct {
 		E   string `json:"e"`
 		Kty string `json:"kty"`

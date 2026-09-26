@@ -196,8 +196,6 @@ func TestGitHubCallback_ClearsTheStateCookie(t *testing.T) {
 	assert.True(t, cleared)
 }
 
-// GitHub reports a refused exchange as 200 with an error field, so a handler
-// that trusts the status code signs in a session with no token behind it.
 func TestGitHubCallback_TreatsAnErrorBodyAsAFailure(t *testing.T) {
 	f := newFakeGitHub(t, "PazerOP")
 	f.tokenBody = `{"error":"bad_verification_code","error_description":"The code passed is incorrect or expired."}`
