@@ -177,9 +177,7 @@ func TestPushTagRef(t *testing.T) {
 
 func TestPullRequestForkDetection(t *testing.T) {
 	h, sink := newHandler(t)
-	body := `{"action":"opened","number":12,"pull_request":{"number":12,"draft":false,
-		"head":{"ref":"feature","sha":"headsha","repo":{"id":2,"full_name":"fork/ci-platform"}},
-		"base":{"ref":"master","sha":"basesha","repo":{"id":1,"full_name":"wow-look-at-my/ci-platform"}}}}`
+	body := fx("webhook_180.json")
 	w := deliver(t, h, "pull_request", body)
 	require.Equal(t, http.StatusOK, w.Code)
 	require.Len(t, sink.pr, 1)
