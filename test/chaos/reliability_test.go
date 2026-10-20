@@ -102,14 +102,7 @@ func (r *rig) events(jobID int64) []store.Event {
 	return evs
 }
 
-const oneJob = `name: CI
-on: push
-jobs:
-  build:
-    runs-on: [linux]
-    steps:
-      - run: make build
-`
+var oneJob = fx("reliability_105.yml")
 
 // The lease is the mechanism; a missed heartbeat is the trigger.
 func TestIncident2_LostRunnerRequeuesRatherThanFailing(t *testing.T) {
@@ -208,23 +201,8 @@ func TestCancellationWithoutAReasonIsRefused(t *testing.T) {
 // failure never does.
 func TestInfraFailureRetriesAndUserFailureDoesNot(t *testing.T) {
 	ctx := context.Background()
-	// A short, explicit backoff so the test can prove the delay is honoured
-	// without waiting out the default a few seconds.
-	r := newRig(t, `name: CI
-on: push
-jobs:
-  build:
-    runs-on: [linux]
-    retry:
-      attempts: 3
-      on: [infra]
-      backoff: fixed
-      initial: 150ms
-      max: 150ms
-      jitter: false
-    steps:
-      - run: make build
-`)
+	// A short, explicit backoff so the test can prove the delay is honoured without waiting out the default a few seconds.
+	r := newRig(t, fx("reliability_213.yml"))
 	require.NoError(t, r.s.Tick(ctx, r.base))
 	id := r.job("build").ID
 
@@ -296,15 +274,7 @@ func TestIncident5_DefaultBranchFailureFiresTheAlarm(t *testing.T) {
 // A run whose only job was skipped is not a success, and the rollup says so.
 func TestSkippedRunIsNotASuccess(t *testing.T) {
 	ctx := context.Background()
-	r := newRig(t, `name: CI
-on: push
-jobs:
-  build:
-    runs-on: [linux]
-    if: github.ref == 'refs/heads/never'
-    steps:
-      - run: make build
-`)
+	r := newRig(t, fx("reliability_299.yml"))
 	require.NoError(t, r.s.Tick(ctx, r.base))
 
 	job := r.job("build")

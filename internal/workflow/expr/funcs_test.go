@@ -300,7 +300,7 @@ func TestToJSONShape(t *testing.T) {
 	e := New(Context{"m": map[string]any{"b": 1, "a": []any{true, nil}}})
 	got, err := e.Eval("toJSON(m)")
 	require.NoError(t, err)
-	require.Equal(t, "{\n  \"a\": [\n    true,\n    null\n  ],\n  \"b\": 1\n}", got)
+	require.Equal(t, fx("funcs_303.json"), got)
 
 	// NaN and Infinity have no JSON spelling and are written as null.
 	got, err = e.Eval("toJSON(NaN)")

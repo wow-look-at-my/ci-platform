@@ -1,0 +1,5 @@
+runs-on: x
+container:
+  options: --cpus 1
+steps:
+  - run: y

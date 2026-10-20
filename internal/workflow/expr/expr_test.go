@@ -253,7 +253,7 @@ func TestFunctions(t *testing.T) {
 		{"join(fromJSON('[1,2]'), '')", "12"},
 		{"fromJSON('3') == 3", true},
 		{"fromJSON('{\"a\":1}').a", 1.0},
-		{"toJSON(fromJSON('[1,2]'))", "[\n  1,\n  2\n]"},
+		{"toJSON(fromJSON('[1,2]'))", fx("expr_256.json")},
 		{"toJSON('x')", "\"x\""},
 		{"toJSON(null)", "null"},
 	}

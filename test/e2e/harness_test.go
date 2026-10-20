@@ -224,21 +224,7 @@ func (c *controlPlane) waitForRuns(t *testing.T, n int) []map[string]any {
 	return nil
 }
 
-const ciWorkflow = `name: CI
-on:
-  push:
-    branches: [main]
-jobs:
-  build:
-    runs-on: [self-hosted, linux]
-    steps:
-      - run: make build
-  test:
-    runs-on: [self-hosted, linux]
-    needs: [build]
-    steps:
-      - run: make test
-`
+var ciWorkflow = fx("harness_227.yml")
 
 // nextID keeps repo identities distinct across tests in one process.
 var nextID atomic.Int64

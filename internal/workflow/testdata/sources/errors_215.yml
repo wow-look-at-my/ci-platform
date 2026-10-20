@@ -1,0 +1,8 @@
+runs-on: x
+retry:
+  attempts: 2
+  backoff: none
+  initial: 0s
+  max: 0s
+steps:
+  - run: y

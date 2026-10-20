@@ -1,0 +1,6 @@
+runs-on: x
+container:
+  image: golang
+  entrypoint: /bin/sh
+steps:
+  - run: y

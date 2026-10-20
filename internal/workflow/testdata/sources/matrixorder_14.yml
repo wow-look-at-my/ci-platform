@@ -1,0 +1,6 @@
+on: push
+jobs:
+  publish:
+    runs-on: x
+    strategy:
+      matrix:

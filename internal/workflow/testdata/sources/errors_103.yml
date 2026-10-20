@@ -1,0 +1,5 @@
+runs-on: x
+concurrency:
+  cancel-in-progress: true
+steps:
+  - run: y

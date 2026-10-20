@@ -1,0 +1,6 @@
+name: inner
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      run: echo inner

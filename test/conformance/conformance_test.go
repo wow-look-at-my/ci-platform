@@ -173,21 +173,7 @@ func TestThisRepositoryOwnWorkflowIsFullySupported(t *testing.T) {
 // The parts of our own CI that do not use the features of a later phase plan
 // correctly. The gap is service containers specifically and not something broader.
 func TestOurOwnTestJobPlansCorrectly(t *testing.T) {
-	got := analyse("ci.yml", []byte(`name: CI
-on:
-  push:
-permissions:
-  id-token: write
-  contents: write
-  actions: read
-  checks: read
-jobs:
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: wow-look-at-my/go-toolchain@v1
-`))
+	got := analyse("ci.yml", []byte(fx("conformance_176.yml")))
 	require.Empty(t, got.ParseError)
 	require.True(t, got.Supported, "%v", got.Unsupported)
 	assert.Equal(t, []string{"test"}, got.JobNames)
@@ -204,57 +190,23 @@ func TestJobNamesMatchGitHub(t *testing.T) {
 	}{
 		{
 			name: "unmatrixed job uses its key",
-			src: `on: push
-jobs:
-  build:
-    runs-on: x
-    steps: [{run: y}]
-`,
+			src: fx("conformance_207.yml"),
 			want: []string{"build"},
 		},
 		{
 			name: "matrix legs carry their values in declaration order",
-			src: `on: push
-jobs:
-  test:
-    runs-on: x
-    strategy:
-      matrix:
-        os: [linux, macos]
-        go: ["1.24"]
-    steps: [{run: y}]
-`,
+			src: fx("conformance_217.yml"),
 			want: []string{"test (linux, 1.24)", "test (macos, 1.24)"},
 		},
 		{
 			// The shape the operator called out: an include-only key contributes a segment, in file order.
 			name: "include-only keys contribute a segment",
-			src: `on: push
-jobs:
-  publish:
-    runs-on: x
-    strategy:
-      matrix:
-        image: [claude-host/agent-host]
-        include:
-          - image: claude-host/agent-host
-            dockerfile: Dockerfile
-    steps: [{run: y}]
-`,
+			src: fx("conformance_232.yml"),
 			want: []string{"publish (claude-host/agent-host)"},
 		},
 		{
 			name: "an explicit name is used as-is with no suffix appended",
-			src: `on: push
-jobs:
-  build:
-    name: Build the thing
-    runs-on: x
-    strategy:
-      matrix:
-        os: [linux, macos]
-    steps: [{run: y}]
-`,
+			src: fx("conformance_248.yml"),
 			want: []string{"Build the thing", "Build the thing"},
 		},
 	}

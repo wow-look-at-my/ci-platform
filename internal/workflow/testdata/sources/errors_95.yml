@@ -1,0 +1,6 @@
+runs-on: x
+steps:
+  - id: s
+    run: a
+  - id: s
+    run: b

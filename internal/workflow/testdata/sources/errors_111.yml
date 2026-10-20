@@ -1,0 +1,5 @@
+runs-on: x
+env:
+  A: [1]
+steps:
+  - run: y

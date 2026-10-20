@@ -136,13 +136,7 @@ func TestHandlerRejectsOversizeBody(t *testing.T) {
 	assert.Equal(t, http.StatusRequestEntityTooLarge, w.Code)
 }
 
-const pushBody = `{
-	"ref":"refs/heads/main","before":"aaa","after":"bbb","created":false,"deleted":false,"forced":true,
-	"head_commit":{"id":"bbb","message":"fix the thing"},
-	"repository":{"id":9,"name":"ci-platform","full_name":"wow-look-at-my/ci-platform","private":true,"default_branch":"master","owner":{"id":1,"login":"wow-look-at-my","type":"Organization"}},
-	"sender":{"id":2,"login":"PazerOP","type":"User"},
-	"installation":{"id":4242}
-}`
+var pushBody = fx("webhook_139.json")
 
 func TestHandlerDispatchesPushAndKeepsRawBody(t *testing.T) {
 	h, sink := newHandler(t)

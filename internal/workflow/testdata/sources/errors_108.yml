@@ -1,0 +1,2 @@
+uses: o/r/.github/workflows/w.yml@v1
+secrets: everything

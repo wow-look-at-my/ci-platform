@@ -1,0 +1,14 @@
+name: CI
+on:
+  push:
+    branches: [main]
+jobs:
+  build:
+    runs-on: [self-hosted, linux]
+    steps:
+      - run: make build
+  test:
+    runs-on: [self-hosted, linux]
+    needs: [build]
+    steps:
+      - run: make test

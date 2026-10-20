@@ -1,0 +1,4 @@
+runs-on: x
+steps:
+  - uses: o/r@v1
+    working-directory: /tmp

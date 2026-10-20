@@ -1,0 +1,19 @@
+
+name: Composite
+description: d
+inputs:
+  greeting:
+    default: hi
+outputs:
+  result:
+    description: r
+    value: ${{ steps.one.outputs.v }}
+runs:
+  using: composite
+  steps:
+    - id: one
+      run: echo ${{ inputs.greeting }}
+      shell: bash
+    - uses: actions/checkout@v4
+      with:
+        ref: main
