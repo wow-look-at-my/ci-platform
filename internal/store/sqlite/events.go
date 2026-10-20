@@ -9,8 +9,7 @@ import (
 	"github.com/wow-look-at-my/ci-platform/internal/store"
 )
 
-// execer is what *sql.DB and *sql.Tx have in common here, so an event written
-// inside a queue transaction and one written on its own share a code path.
+// execer is what *sql.DB and *sql.Tx have in common here.
 type execer interface {
 	ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error)
 }

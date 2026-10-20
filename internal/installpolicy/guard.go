@@ -7,7 +7,7 @@
 // the App hands every stranger who clicks Install a shell on the runner fleet.
 //
 // So an install by an account the operator did not name is inert: no run, no
-// job token, no check run, and no GitHub API call made on its behalf.
+// job token, no check run. And no GitHub API call made on its behalf.
 //
 // see docs/security.md
 package installpolicy
@@ -21,15 +21,15 @@ import (
 	"github.com/wow-look-at-my/ci-platform/internal/github/webhook"
 )
 
-// Guard wraps a webhook.Sink and drops every delivery from an account the policy does not allow.
-// It sits at the delivery boundary, not inside ingest, because re-run buttons reach the scheduler directly too.
+// Guard wraps a webhook.Sink and drops every delivery from an account the
+// policy does not allow.
 type Guard struct {
 	next   webhook.Sink
 	owners *ghaccounts.Set
 	log    *slog.Logger
 }
 
-// NewGuard wraps next. A refused delivery is answered 200 (nothing for GitHub to redeliver) and logged with its account.
+// NewGuard wraps next.
 func NewGuard(next webhook.Sink, owners *ghaccounts.Set, log *slog.Logger) *Guard {
 	if log == nil {
 		log = slog.Default()

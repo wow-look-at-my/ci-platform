@@ -12,10 +12,7 @@ import (
 	"github.com/wow-look-at-my/ci-platform/internal/model"
 )
 
-// Context holds the named-value contexts: "github", "env", "vars", "secrets",
-// "job", "jobs", "steps", "runner", "needs", "strategy", "matrix", "inputs".
-// A name absent from the map is an error, never null: a workflow referring to a
-// context that does not exist here is a config error.
+// Context holds the named-value contexts: "github", "env", "vars", "secrets", "job", "jobs", "steps", "runner", "needs", "strategy", "matrix".
 type Context map[string]any
 
 // Status governs success()/failure()/always()/cancelled().
@@ -48,9 +45,7 @@ func (e *Evaluator) WithStatus(s Status) *Evaluator {
 }
 
 // WithFS returns a copy that can evaluate hashFiles(). root is the workspace
-// directory within fsys that patterns are matched relative to; "" means the
-// root of fsys itself. Without this, hashFiles() is an error rather than a
-// fabricated digest.
+// directory within fsys that patterns are matched relative to.
 func (e *Evaluator) WithFS(fsys fs.FS, root string) *Evaluator {
 	c := *e
 	c.fsys = fsys

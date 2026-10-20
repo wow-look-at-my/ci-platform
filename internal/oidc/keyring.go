@@ -159,7 +159,7 @@ type keyEntry struct {
 }
 
 // NewKeyring loads the keyring, generating and persisting a first key when the
-// store is empty. A key that cannot be persisted is a startup failure: an
+// store is empty. A key that cannot be persisted is a startup failure. An
 // in-memory fallback would invalidate every token on the next restart without
 // anyone being told.
 func NewKeyring(ctx context.Context, store KeyStore, opts KeyringOptions) (*Keyring, error) {

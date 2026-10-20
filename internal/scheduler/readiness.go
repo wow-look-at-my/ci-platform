@@ -87,8 +87,8 @@ func computeNeeds(pj *plan.PlannedJob, byKey map[string][]*model.Job, runCancell
 // needsResult reduces a job's legs to the needs context value, deliberately not through model.Aggregate:
 // Aggregate answers "what to tell someone"; needsResult answers "should dependents run", matching GitHub
 // Actions, where a skipped-plus-successful matrix leg is success. Gating through Aggregate instead skips
-// a deploy job over an unrelated filtered leg -- incident 5 in docs/incidents.md. The real conclusion
-// still flows into the rollup and check run.
+// a deploy job over an unrelated filtered leg -- a later incident in docs/incidents.md. The real
+// conclusion still flows into the rollup and check run.
 func needsResult(cs []model.Conclusion) string {
 	if len(cs) == 0 {
 		return "skipped"
@@ -158,7 +158,7 @@ func matrixContext(pj *plan.PlannedJob) any {
 	return pj.Matrix
 }
 
-// admitReadyJobs is the dispatch decision: what may go on the queue now, what
+// admitReadyJobs is the dispatch decision. What may go on the queue now, what
 // is skipped, and what waits for a concurrency group or a max-parallel slot.
 func (s *Scheduler) admitReadyJobs(ctx context.Context, run *model.Run, p *plan.Plan, jobs []*model.Job, now time.Time) error {
 	if blocked, err := s.runGroupBlocked(ctx, run, p); err != nil {

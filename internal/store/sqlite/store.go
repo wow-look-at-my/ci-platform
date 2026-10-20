@@ -31,7 +31,7 @@ type Store struct {
 // not migrate; call Migrate.
 //
 // path is a filename, or ":memory:" for a throwaway database. The pragmas are
-// applied through the DSN so every connection gets them: a pragma set on one
+// applied through the DSN so every connection gets them. A pragma set on one
 // pooled connection would otherwise not apply to the next.
 func Open(ctx context.Context, path string) (*Store, error) {
 	if strings.TrimSpace(path) == "" {
@@ -78,7 +78,7 @@ func (s *Store) Close() error { return s.db.Close() }
 // tx runs fn inside a transaction, rolling back on error.
 //
 // Every write goes through here with BEGIN IMMEDIATE semantics: SQLite takes the write
-// lock immediately, so a read-then-write sequence cannot see the database change from
+// lock immediately. A read-then-write sequence cannot see the database change from
 // under it and fail at commit rather than at the read.
 func (s *Store) tx(ctx context.Context, fn func(*sql.Tx) error) error {
 	t, err := s.db.BeginTx(ctx, nil)
@@ -152,7 +152,7 @@ func nullTime(ns sql.NullString) (*time.Time, error) {
 func mustTime(s string) (time.Time, error) { return parseTS(s) }
 
 // jsonText marshals a value for a JSON column, keeping an array an array and an
-// object an object: a nil Go map or slice would encode as JSON null, which the
+// object an object. A nil Go map or slice would encode as JSON null, which the
 // schema's json_type CHECK rejects.
 func jsonText(v any) (string, error) {
 	switch t := v.(type) {
@@ -208,7 +208,6 @@ func emptyMapToNil[K comparable, V any](m map[K]V) map[K]V {
 	return m
 }
 
-// boolInt renders a bool for an INTEGER 0/1 column.
 func boolInt(b bool) int {
 	if b {
 		return 1
@@ -216,8 +215,7 @@ func boolInt(b bool) int {
 	return 0
 }
 
-// cancelColumns flattens a CancelReason into its three columns. The schema
-// enforces that an actor without a sentence cannot be stored.
+// The schema enforces that an actor without a sentence cannot be stored.
 func cancelColumns(c *model.CancelReason) (actor, sentence, triggeredBy string) {
 	if c == nil {
 		return "", "", ""

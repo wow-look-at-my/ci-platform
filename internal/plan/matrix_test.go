@@ -59,8 +59,6 @@ func TestExcludeIsAPartialMatch(t *testing.T) {
 	assertStrings(t, legSuffixes(legs), []string{"(ubuntu, 1.22)", "(ubuntu, 1.23)", "(macos, 1.23)"})
 }
 
-// GitHub errors on an exclude key that names no dimension rather than
-// excluding nothing (MatrixExclude in the runner source).
 func TestExcludeUnknownKeyIsAnError(t *testing.T) {
 	m := &model.Matrix{
 		Dimensions: map[string][]any{"os": {"ubuntu"}},
@@ -72,11 +70,11 @@ func TestExcludeUnknownKeyIsAnError(t *testing.T) {
 
 }
 
-// The include semantics GitHub documents, using GitHub's own example, which is
-// the single most commonly-hit corner of matrix expansion.
+// The include semantics GitHub documents, using GitHub's own example, which
+// is the most commonly-hit corner of matrix expansion.
 //
 // The values an include merges into a cross product combination land in the
-// matrix context but NOT in the display name: the runner builds the name from
+// matrix context but NOT in the display name. The runner builds the name from
 // the cross product vector before merging the extra values in.
 func TestIncludeMergesOrAppendsLikeGitHub(t *testing.T) {
 	m := &model.Matrix{
@@ -132,7 +130,7 @@ func TestIncludeNeverOverwritesAnOriginalDimension(t *testing.T) {
 }
 
 // An include-only matrix, which is where the operator's example comes from.
-// Matrix.Order carries the source key order for include-only keys; without it
+// Matrix.Order carries the source key order for include-only keys. Without it
 // the suffix would be alphabetical and the check run name would not match.
 func TestIncludeOnlyMatrix(t *testing.T) {
 	m := &model.Matrix{
@@ -190,8 +188,9 @@ func TestAppendedLegIsNotACandidateForLaterIncludes(t *testing.T) {
 	assertStrings(t, legSuffixes(legs), []string{"(apple)", "(banana)", "(banana, cat)"})
 }
 
-// GitHub traverses a matrix value and emits every scalar leaf as its own name
-// segment, so an object or list value does not render as JSON in the name.
+// GitHub traverses a matrix value. GitHub emits every scalar leaf as its own
+// name segment, so an object or list value does not render as JSON in the
+// name.
 func TestMatrixValueRendering(t *testing.T) {
 	m := &model.Matrix{
 		Dimensions: map[string][]any{

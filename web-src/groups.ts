@@ -42,8 +42,8 @@ export function isGroupEnd(text: string): boolean {
 
 /**
  * Folds a flat line list into a tree. A group left unclosed at the end of the
- * log is still returned, marked `closed: false`, because a job that died
- * mid-group is exactly when the operator needs to see inside it.
+ * log is still returned, marked `closed: false`. This is because a job that
+ * died mid-group is exactly when the operator needs to see inside it.
  */
 export function foldGroups(lines: LogLine[]): Block[] {
 	const root: Block[] = [];
@@ -64,8 +64,7 @@ export function foldGroups(lines: LogLine[]): Block[] {
 				g.endSeq = line.seq;
 				g.closed = true;
 			}
-			// An ::endgroup:: with no open group is dropped: rendering it as a
-			// bare line is noise, and there is nothing to close.
+			// An ::endgroup:: with no open group is dropped: rendering it as a bare line is noise.
 			continue;
 		}
 		top().push({ kind: "line", line });
@@ -75,7 +74,7 @@ export function foldGroups(lines: LogLine[]): Block[] {
 }
 
 /**
- * The startSeqs of every group enclosing `seq`, outermost first. The job page
+ * The job page
  * expands exactly these when it jumps to a line inside collapsed groups.
  */
 export function groupsContaining(blocks: Block[], seq: number): number[] {
@@ -89,8 +88,7 @@ export function groupsContaining(blocks: Block[], seq: number): number[] {
 			if (seq >= b.startSeq && seq <= b.endSeq) {
 				path.push(b.startSeq);
 				if (walk(b.children)) return true;
-				// The seq is inside this group's range but not on a line of its
-				// own; keeping the group open is still the right answer.
+				// The seq is inside this group's range but not on a line of its own.
 				return true;
 			}
 		}

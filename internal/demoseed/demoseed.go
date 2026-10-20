@@ -1,12 +1,12 @@
 // Package demoseed fills a store with the runs the demo site shows.
 //
 // The data is chosen to answer the question the platform exists to answer:
-// what happened, and whose fault was it. Every one of the five incidents in
-// docs/incidents.md is visible somewhere in this seed -- an infra failure that
-// retried and is not coloured like a build failure, a job whose runner vanished
-// and was requeued rather than failed, a cancellation that names its actor and
-// says why, a job whose setup time is measured rather than inferred, and a
-// green run whose green means work actually ran.
+// what happened, and whose fault was it. Every one of the incidents in
+// docs/incidents.md is visible somewhere in this seed. An infra failure that
+// retried and is not coloured like a build failure, a job whose runner
+// vanished and was requeued rather than failed. A cancellation that names its
+// actor. It says why, a job whose setup time is measured rather than
+// inferred, and a green run whose green means work ran.
 //
 // see docs/demo.md
 package demoseed
@@ -155,7 +155,6 @@ func steps(ctx context.Context, st store.Store, jobID int64, specs []stepSpec, s
 	return nil
 }
 
-// attemptOf is 2 for the one retried job, 1 otherwise; a lookup table would be more machinery than the fact deserves.
 func attemptOf(jobID int64) int {
 	if jobID == retriedJobID {
 		return 2
@@ -163,7 +162,7 @@ func attemptOf(jobID int64) int {
 	return 1
 }
 
-// retriedJobID is the publish job in the Release run: the fourth job created, the only one on attempt 2.
+// retriedJobID is the publish job in the Release run: the fourth job created, the only one on a later attempt.
 const retriedJobID int64 = 4
 
 func appendLog(ctx context.Context, logs Logs, jobID int64, attempt int, text []logLine) error {

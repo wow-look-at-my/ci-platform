@@ -26,7 +26,7 @@ func TestValidate_DefaultsTheNameToTheHostname(t *testing.T) {
 	assert.Equal(t, host, c.name)
 }
 
-// The name prefixes every container and volume this host owns, so a value that
+// The name prefixes every container and volume this host owns. So a value that
 // is not a legal name has to be refused where it is typed.
 func TestValidate_RejectsANameThatCannotNameAContainer(t *testing.T) {
 	for _, name := range []string{"my host", "a/b", "host:1"} {

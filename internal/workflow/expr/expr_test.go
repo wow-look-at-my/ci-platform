@@ -142,7 +142,7 @@ func TestLooseEquality(t *testing.T) {
 }
 
 func TestContainerEquality(t *testing.T) {
-	// Two distinct containers are never equal, even with identical contents.
+	// Distinct containers are never equal, even with identical contents.
 	v := evalOK(t, "fromJSON('[1,2]') == fromJSON('[1,2]')")
 	require.Equal(t, false, v)
 	// A container compared against a scalar is never equal.
@@ -220,7 +220,7 @@ func TestWildcard(t *testing.T) {
 	require.Equal(t, true, evalOK(t, "contains(github.event.commits.*.message, 'second')"))
 	require.Equal(t, "first,second", evalOK(t, "join(github.event.commits.*.message)"))
 
-	// Indexing a filtered array applies the index to each ELEMENT; a string has no element 0.
+	// Indexing a filtered array applies the index to each ELEMENT; a string has no the first element.
 	require.Equal(t, filtered{}, evalOK(t, "github.event.commits.*.message[0]"))
 	// A wildcard on a non-collection is an empty array, never null.
 	require.Equal(t, filtered{}, evalOK(t, "github.ref_name.*"))

@@ -1,4 +1,4 @@
-// Package model holds the vocabulary every other package speaks: run/job/step
+// Package model holds the vocabulary every other package speaks. Run/job/step
 // identity, status, conclusion, and the failure classification that the whole
 // platform exists to get right.
 package model
@@ -138,10 +138,7 @@ func (a CancelActor) Valid() bool {
 	return false
 }
 
-// CancelReason is the recorded, surfaced explanation for a cancellation. Both
-// fields are required: constructing one without a sentence is a programming
-// error that Validate rejects, because "cancelled with no reason anywhere" is
-// the exact incident this platform was built to never repeat.
+// CancelReason is the recorded, surfaced explanation for a cancellation.
 type CancelReason struct {
 	Actor CancelActor `json:"actor"`
 	// Sentence is a complete human sentence shown verbatim in the UI and check run output.

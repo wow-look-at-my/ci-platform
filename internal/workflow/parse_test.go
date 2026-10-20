@@ -87,8 +87,7 @@ func TestMatrix(t *testing.T) {
 
 	m := s.Matrix
 	// Dimensions in file order, then include-only keys in first-appearance
-	// order: both contribute name segments, and the order is what the display
-	// name (and so the branch protection rule keyed on it) depends on.
+	// order: both contribute name segments.
 	require.Equal(t, []string{"os", "go", "arch", "coverage", "experimental"}, m.Order,
 		"key order must follow the file, include-only keys last")
 	require.Equal(t, []any{"ubuntu-latest", "macos-latest", "windows-latest"}, m.Dimensions["os"])
@@ -212,8 +211,7 @@ func TestRetryPolicy(t *testing.T) {
 	want.Attempts = 2
 	require.Equal(t, want, *partial)
 
-	// A step with no `retry:` at all leaves it nil, so the caller applies
-	// model.DefaultRetryPolicy() rather than the parser inventing one.
+	// A step with no `retry:` at all leaves it nil.
 	require.Nil(t, load(t, "valid/matrix.yml").Jobs["build"].Steps[0].Retry)
 }
 

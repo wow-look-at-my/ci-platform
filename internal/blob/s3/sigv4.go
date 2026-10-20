@@ -13,8 +13,8 @@ import (
 	"time"
 )
 
-// SigV4 is hand-rolled rather than taken from the AWS SDK: the SDK pulls in
-// ~30 modules to sign four verbs, and this platform's dependency budget is
+// SigV4 is hand-rolled rather than taken from the AWS SDK. The SDK pulls in
+// multiple modules to sign verbs, and this platform's dependency budget is
 // spent elsewhere.
 
 const (

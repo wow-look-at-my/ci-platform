@@ -1,9 +1,9 @@
 // Package config loads the control plane's configuration from the environment.
 //
-// Every required value is required: there is no placeholder mode, no "not
-// configured yet" path, and no fallback that lets the process start in a state
-// where it would report success without doing the work. A missing value fails
-// at startup, naming the variable and what it is for.
+// Every required value is required. There is no placeholder mode, no "not
+// configured yet" path, and no fallback that lets the process. Start in a
+// state where it would report success without doing the work. A missing value
+// fails at startup, naming the variable and what it is for.
 package config
 
 import (
@@ -177,7 +177,7 @@ func (c *Config) Validate() error {
 	}
 	// The operator token is typed into a browser and pasted into scripts. The
 	// signing key mints every job's credentials, so one value serving as both
-	// means anything holding either one holds both.
+	// means anything holding either holds both.
 	if c.OperatorToken != "" {
 		if c.OperatorToken == string(c.JobTokenSecret) {
 			return errors.New("config: CIPLATFORM_OPERATOR_TOKEN must differ from CIPLATFORM_JOB_TOKEN_SECRET; " +

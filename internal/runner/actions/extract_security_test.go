@@ -34,9 +34,9 @@ func tarball(t *testing.T, entries []*tar.Header, bodies []string) []byte {
 }
 
 // A symlink to an absolute path followed by a file written through it is an
-// arbitrary write on the runner HOST, outside the job sandbox, reachable by any
-// workflow that names the action. The entry names alone pass a lexical check,
-// which is why the link target has to be checked too.
+// arbitrary write on the runner HOST. That symlink is outside the job sandbox,
+// reachable by any workflow that names the action. The entry names alone pass a
+// lexical check, which is why the link target has to be checked too.
 func TestExtractRefusesASymlinkEscapingTheDestination(t *testing.T) {
 	outside := t.TempDir()
 	victim := filepath.Join(outside, "pwned")
@@ -112,9 +112,10 @@ func TestExtractRefusesUnsupportedEntryTypes(t *testing.T) {
 }
 
 // The link checks above are lexical: they read the tarball's own entries. This
-// covers the link they cannot see -- one already on disk when extraction
-// reaches that name, planted by another process or left by an earlier run. The
-// open refuses to follow it, so the file outside keeps its contents.
+// covers the link they cannot see -- one already on disk. This happens when
+// extraction reaches that name, planted by another process or left by an
+// earlier run. The open refuses to follow it, so the file outside keeps its
+// contents.
 func TestExtractRefusesToWriteThroughAPlantedSymlink(t *testing.T) {
 	dest := t.TempDir()
 	outside := filepath.Join(t.TempDir(), "hostfile")

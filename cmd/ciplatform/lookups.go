@@ -54,10 +54,7 @@ func (a *app) jobTokenLookup(runID, jobID int64, attempt int) (jobtoken.Job, err
 }
 
 // jobTokenTTL bounds a job token by the job's own timeout rather than by the
-// run's. A five-minute job holding a six-hour credential is six hours of
-// artifact and cache writes available to anything that captured the token,
-// long after the container that held it is gone. The signer adds its own
-// clock-skew grace on top of this.
+// run's.
 func (a *app) jobTokenTTL(job *model.Job) time.Duration {
 	ttl := time.Duration(job.TimeoutMinutes) * time.Minute
 	if ttl <= 0 {
@@ -89,11 +86,8 @@ func (a *app) oidcLookup(ctx context.Context, runID, jobID int64, attempt int) (
 	}
 	workflowRef := fmt.Sprintf("%s/%s@%s", repo.FullName(), run.WorkflowPath, ref)
 
-	// RepositoryOwnerID and ActorID are deliberately absent rather than
-	// guessed. A relying party keying on repository_owner_id would otherwise
-	// match every repository whose repo id happened to equal some org id, and
-	// an actor_id of 0 would match every job on the platform. An omitted claim
-	// fails a policy; a wrong one satisfies the wrong policy.
+	// RepositoryOwnerID and ActorID are deliberately absent rather than guessed.
+	// An omitted claim fails a policy; a wrong one satisfies the wrong policy.
 	return &oidc.Subject{
 		Repository:           repo.FullName(),
 		RepositoryOwner:      repo.Owner,
@@ -105,8 +99,7 @@ func (a *app) oidcLookup(ctx context.Context, runID, jobID int64, attempt int) (
 		Actor:                run.Actor,
 		Workflow:             run.WorkflowName,
 		WorkflowRef:          workflowRef,
-		// Reusable workflows are not executed yet, so a job is always defined
-		// in the workflow that started the run.
+		// Reusable workflows are not executed yet, so a job is always defined in the workflow that started the run.
 		JobWorkflowRef: workflowRef,
 		RunID:          run.ID,
 		RunNumber:      run.RunNumber,
@@ -139,10 +132,6 @@ func (a *app) resolve(ctx context.Context, runID, jobID int64) (*model.Run, *mod
 }
 
 // refOf reconstructs the full ref a run was triggered on.
-//
-// A branch name is always prefixed, never passed through: "refs/heads/main" is
-// a legal branch NAME, and honouring it as an already-qualified ref would let a
-// branch called refs/heads/main claim the default branch's cache scope.
 func refOf(run *model.Run) string {
 	if run.HeadBranch == "" {
 		return "refs/heads/"

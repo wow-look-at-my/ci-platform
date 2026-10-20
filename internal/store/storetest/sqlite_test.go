@@ -15,7 +15,7 @@ import (
 
 // newSQLiteStore gives each test its own database file. There is nothing to
 // skip on and nothing to provision: the production store now runs anywhere the
-// tests do, so "nobody ran these" can no longer read as a green build.
+// tests do. "nobody ran these" can no longer read as a green build.
 func newSQLiteStore(t *testing.T) store.Store {
 	t.Helper()
 	ctx := context.Background()

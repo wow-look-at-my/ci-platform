@@ -25,7 +25,7 @@ type sink struct {
 	log   *slog.Logger
 }
 
-// newWebhookHandler puts the account gate in front of the sink, so a delivery
+// newWebhookHandler puts the account gate in front of the sink. A delivery
 // from an account this instance does not serve never reaches ingest or the
 // scheduler.
 func newWebhookHandler(secret string, ing *ingest.Ingester, sched *scheduler.Scheduler, st store.Store, owners *ghaccounts.Set, log *slog.Logger) (http.Handler, error) {
@@ -92,15 +92,14 @@ func (s *sink) RequestedAction(ctx context.Context, e *webhook.CheckRunEvent) er
 		return s.sched.RerunFailed(ctx, runID, actorOf(e))
 	default:
 		// An unknown identifier is a bug in whoever posted the button, not
-		// something to swallow: the user pressed something and nothing
-		// happened, which is exactly the class of silence this platform avoids.
+		// something to swallow.
 		return fmt.Errorf("check run %d requested unknown action %q",
 			e.CheckRun.ID, e.RequestedAction.Identifier)
 	}
 }
 
-// externalID is "<run_id>/<job_id>/<attempt>", set when the check run was
-// created, so a button press maps back to a job without a lookup table.
+// ExternalID is "<run_id>/<job_id>/<attempt>", set when the check run was
+// created.
 func jobIDFrom(e *webhook.CheckRunEvent) (int64, error) {
 	_, jobID, _, err := parseExternalID(e.CheckRun.ExternalID)
 	return jobID, err

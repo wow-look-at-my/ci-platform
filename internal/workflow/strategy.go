@@ -104,11 +104,7 @@ func (p *parser) matrix(n *yaml.Node, where string) (*model.Matrix, error) {
 	if len(m.Dimensions) == 0 && len(m.Include) == 0 {
 		return nil, p.errf(n, "%s has no dimensions and no `include:`", where)
 	}
-	// An include-only key still contributes a segment to a leg's display name,
-	// and the segment order is the YAML key order. Include is a []map in the
-	// IR, which loses that order, so record it here while the nodes are still
-	// available. Without this the name falls back to alphabetical and stops
-	// matching the branch protection rule keyed on it.
+	// An include-only key still contributes a segment to a leg's display name.
 	appendIncludeKeyOrder(m, includeNodes)
 	if err := p.checkExcludes(m, excludeNodes, where); err != nil {
 		return nil, err

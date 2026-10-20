@@ -1,5 +1,5 @@
 // Command ci-runner is the runner agent: it claims jobs from the control
-// plane and executes each one in a fresh Docker-in-Docker sandbox.
+// plane and executes each in a fresh Docker-in-Docker sandbox.
 package main
 
 import (
@@ -28,8 +28,7 @@ func main() {
 		os.Exit(2)
 	}
 
-	// SIGTERM is the graceful shutdown: cancelling the context makes the agent
-	// release whatever it is running back to the queue rather than losing it.
+	// SIGTERM is the graceful shutdown.
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 

@@ -51,8 +51,6 @@ func TestShellCommandUnsupported(t *testing.T) {
 }
 
 func TestShellCommandCustomWithoutPlaceholder(t *testing.T) {
-	// The Actions runner rejects this too: without {0} there is nowhere to put
-	// the script path.
 	_, _, err := shellCommand("perl -w", "/t/s")
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "{0}")

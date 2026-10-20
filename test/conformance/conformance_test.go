@@ -1,15 +1,15 @@
 // Package conformance checks this platform's reading of a workflow against
 // GitHub Actions.
 //
-// What it can do here: parse a corpus of real workflow files and assert that
-// every one is either fully supported or explicitly refused, and that the
+// What it can do here. It parse a corpus of real workflow files. It assert
+// that every one is either fully supported or explicitly refused, and that the
 // resulting job names match GHA byte-for-byte. What it cannot do here is run
-// the same workflow on GitHub and diff the outcomes, because that needs a
-// GitHub repository and a billable runner. That half is a fixture format: a
-// recorded GHA outcome goes in testdata/gha/, and the suite diffs against it.
-// Files with no recording are reported as UNVERIFIED rather than counted as
-// passing, because a conformance suite that scores unrun cases as green is the
-// deceptive-green failure this platform exists to avoid.
+// the same workflow on GitHub and diff the outcomes. This is because that
+// needs a GitHub repository and a billable runner. That half is a fixture
+// format: a recorded GHA outcome goes in testdata/gha/, and the suite diffs
+// against it. Files with no recording are reported as UNVERIFIED rather than
+// counted as passing. This is because a conformance suite that scores unrun
+// cases as green is the deceptive-green failure this platform exists to avoid.
 package conformance
 
 import (
@@ -35,8 +35,7 @@ type Outcome struct {
 	// Supported is false when the run would be refused with "unsupported: X".
 	Supported   bool     `json:"supported"`
 	Unsupported []string `json:"unsupported,omitempty"`
-	// JobNames are the check-run names, which existing branch protection
-	// matches on. A change here breaks somebody's merge queue.
+	// JobNames are the check-run names, which existing branch protection matches on.
 	JobNames []string `json:"job_names,omitempty"`
 	// ParseError is set when the file could not be read at all.
 	ParseError string `json:"parse_error,omitempty"`
@@ -157,7 +156,8 @@ func TestEveryCorpusWorkflowIsSupportedOrExplicitlyRefused(t *testing.T) {
 // It stopped needing service containers when the store moved to SQLite: the
 // tests now bring their own database, so no job declares a `services:` block.
 // Adding any key this platform does not implement to our own workflow fails
-// here, which is the difference between eating our own cooking and claiming to.
+// here. This platform also does not implement to which is the difference
+// between eating our own cooking and claiming to.
 func TestThisRepositoryOwnWorkflowIsFullySupported(t *testing.T) {
 	src, err := os.ReadFile("../../.github/workflows/ci.yml")
 	require.NoError(t, err)
@@ -170,8 +170,8 @@ func TestThisRepositoryOwnWorkflowIsFullySupported(t *testing.T) {
 	assert.Contains(t, got.JobNames, "e2e")
 }
 
-// The parts of our own CI that do not use Phase 2 features plan correctly, so
-// the gap is service containers specifically and not something broader.
+// The parts of our own CI that do not use the features of a later phase plan
+// correctly. The gap is service containers specifically and not something broader.
 func TestOurOwnTestJobPlansCorrectly(t *testing.T) {
 	got := analyse("ci.yml", []byte(`name: CI
 on:
@@ -227,8 +227,7 @@ jobs:
 			want: []string{"test (linux, 1.24)", "test (macos, 1.24)"},
 		},
 		{
-			// The shape the operator called out: an include-only key
-			// contributes a segment, in file order.
+			// The shape the operator called out: an include-only key contributes a segment, in file order.
 			name: "include-only keys contribute a segment",
 			src: `on: push
 jobs:

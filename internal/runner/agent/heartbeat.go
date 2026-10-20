@@ -11,8 +11,7 @@ import (
 )
 
 // heartbeat extends the lease while a job runs and carries control-plane
-// instructions back into it. It is the only path by which a cancellation
-// reaches a running job.
+// instructions back into it.
 type heartbeat struct {
 	mu     sync.Mutex
 	cancel *model.CancelReason
@@ -41,7 +40,7 @@ func (h *heartbeat) leaseLost() bool {
 }
 
 // startHeartbeat begins the ticker. On a cancel instruction it records the
-// reason, writes it into the job log, and stops the job; on a lost lease it
+// reason, writes it into the job log, and stops the job. On a lost lease it
 // stops the job immediately and marks that no result may be reported.
 func (a *Agent) startHeartbeat(ctx context.Context, asg *protocol.Assignment, sink *LogSink, cancelJob context.CancelFunc, log *slog.Logger) *heartbeat {
 	h := &heartbeat{stopCh: make(chan struct{})}
@@ -65,8 +64,7 @@ func (a *Agent) startHeartbeat(ctx context.Context, asg *protocol.Assignment, si
 				RunnerID: a.cfg.RunnerID, JobID: asg.JobID, Attempt: asg.Attempt, Phase: "execute",
 			})
 			if err != nil {
-				// A failed heartbeat is infra and is logged; the control plane
-				// reaps the lease if they keep failing.
+				// A failed heartbeat is infra and is logged; the control plane reaps the lease if they keep failing.
 				log.Error("heartbeat failed", "err", err, "class", classOf(err))
 				continue
 			}
@@ -81,9 +79,7 @@ func (a *Agent) startHeartbeat(ctx context.Context, asg *protocol.Assignment, si
 			if resp.Cancel != nil {
 				reason := *resp.Cancel
 				if err := reason.Validate(); err != nil {
-					// A cancellation with no explanation is the incident this
-					// platform exists to prevent; it is recorded as a defect
-					// rather than passed through silently.
+					// A cancellation with no explanation is the incident this platform exists to prevent.
 					reason.Sentence = "the control plane cancelled this job without recording a reason, which is a control-plane defect"
 					if !reason.Actor.Valid() {
 						reason.Actor = model.CancelActorUser

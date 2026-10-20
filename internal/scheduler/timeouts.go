@@ -36,9 +36,9 @@ func (s *Scheduler) enforceRunTimeout(ctx context.Context, run *model.Run, jobs 
 	return s.finalizeIfComplete(ctx, run, jobs, now)
 }
 
-// enforceJobTimeouts applies the three job-scoped budgets, most specific first:
-// a setup phase that never finished, a step that overran its own budget, and
-// the job as a whole.
+// enforceJobTimeouts applies those job-scoped budgets, most specific first: a
+// setup phase that never finished. This also covers a step that overran its
+// own budget, and the job as a whole.
 func (s *Scheduler) enforceJobTimeouts(ctx context.Context, run *model.Run, jobs []*model.Job, now time.Time) error {
 	for _, j := range jobs {
 		if j.Status != model.StatusInProgress || j.StartedAt == nil {
@@ -90,7 +90,7 @@ func (s *Scheduler) enforceJobTimeouts(ctx context.Context, run *model.Run, jobs
 
 // enforceStepTimeout is the control plane's backstop for a step budget the
 // runner also enforces. It uses the budgets from the assignment this process
-// issued; a job dispatched by a previous process is left to its runner, which
+// issued. A job dispatched by a previous process is left to its runner, which
 // carries the same numbers in its own assignment.
 func (s *Scheduler) enforceStepTimeout(ctx context.Context, run *model.Run, j *model.Job, now time.Time) (bool, error) {
 	budgets := s.stepTimeoutsFor(j.ID)

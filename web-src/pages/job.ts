@@ -1,8 +1,4 @@
 // Job page: steps, classification, timing, and the live log viewer.
-//
-// Failure-first is the headline behaviour here: a failed job opens on its
-// failing step, scrolled to the first error line, never at the top of a
-// 40,000-line log.
 
 import { api, type JobDetail, type LogLineWire, type Step } from "../api.js";
 import { parseAnsi } from "../ansi.js";
@@ -171,9 +167,7 @@ class JobView {
 			this.statusLine.textContent = "log unavailable";
 			return;
 		}
-		// Recompute now that the lines are here: with no lines the chooser can
-		// only offer the step's first line, and the stale sentence would name
-		// a line the page never scrolled to.
+		// Recompute now that the lines are here.
 		this.focus = chooseFocus(this.job, this.job.steps, this.lines);
 		this.focusReason.textContent = this.focus.reason;
 		const anchor = parseLineAnchor(this.params.get("line") ?? "");
@@ -181,8 +175,7 @@ class JobView {
 		this.render();
 
 		const target = anchor?.from ?? this.focus.seq;
-		// Highlight what we jumped to, unless an explicit anchor already
-		// selected a range.
+		// Highlight what we jumped to, unless an explicit anchor already selected a range.
 		if (target !== null) this.jumpToSeq(target, this.selection === null);
 
 		if (this.job.status !== "completed") this.startStream();
@@ -206,8 +199,7 @@ class JobView {
 			source.close();
 		});
 		source.addEventListener("error", () => {
-			// EventSource reconnects on its own with Last-Event-ID; say so
-			// rather than leaving a page that has quietly stopped updating.
+			// EventSource reconnects on its own with Last-Event-ID.
 			this.statusLine.textContent = "reconnecting…";
 		});
 	}
@@ -231,15 +223,10 @@ class JobView {
 		if (select) this.selection = { from: seq, to: seq };
 		this.followTail = false;
 		this.render();
-		// Scroll inside the log pane, not the page: scrollIntoView would push
-		// the classification banner and the step list off screen, which is the
-		// context the operator needs alongside the error line.
+		// Scroll inside the log pane, not the page: scrollIntoView would push the classification banner and the step list off screen.
 		const node = this.logBody.querySelector(`[data-seq="${seq}"]`);
 		if (node) {
-			// Two scrolls, deliberately: the pane scrolls internally so the line
-			// sits mid-pane, and the page scrolls to the log section so the line
-			// is actually on screen. scrollIntoView on the line alone would do
-			// both at once and push the classification banner off the top.
+			// Scrolls, deliberately: the pane scrolls internally so the line sits mid-pane, and the page scrolls to the log section.
 			const line = node.getBoundingClientRect();
 			const pane = this.logBody.getBoundingClientRect();
 			this.logBody.scrollTop += line.top - pane.top - pane.height / 2;

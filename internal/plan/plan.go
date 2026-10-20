@@ -1,7 +1,7 @@
 // Package plan turns a parsed workflow into the concrete set of jobs one run
-// will execute: matrix legs expanded with GitHub Actions' include/exclude
-// semantics, display names fixed byte-for-byte because branch protection
-// matches on them, and the needs DAG validated and ordered.
+// will execute. Matrix legs expanded with GitHub Actions' include/exclude
+// semantics, display names fixed byte-for-byte. This is because branch
+// protection matches on them. The needs DAG validated and ordered.
 package plan
 
 import (
@@ -49,9 +49,9 @@ type PlannedJob struct {
 	ConcurrencyGroup string
 	CancelInProgress bool
 	FailFast         bool
-	// MaxParallel caps concurrent legs of this job; 0 means no cap.
+	// MaxParallel caps concurrent legs of this job; a value of zero means no cap.
 	MaxParallel int
-	// MatrixSiblings holds every leg's ID, including this one, so fail-fast can find them; nil for an unmatrixed job.
+	// MatrixSiblings holds every leg's ID, including this, so fail-fast can find them; nil for an unmatrixed job.
 	MatrixSiblings []string
 
 	ContinueOnError bool
@@ -153,9 +153,9 @@ func Build(w *model.Workflow, in Input) (*Plan, error) {
 	return p, nil
 }
 
-// recordIncludeOrderDeviation surfaces the one place a name can differ from
-// GitHub's: an include key the parser did not record in Matrix.Order has no
-// source order left in the IR, so its name segment is placed alphabetically.
+// recordIncludeOrderDeviation surfaces the place a name can differ from
+// GitHub's. An include key the parser did not record in Matrix.Order has no
+// source order left in the IR. Its name segment is placed alphabetically.
 func recordIncludeOrderDeviation(w *model.Workflow, key string) {
 	ir := w.Jobs[key]
 	if ir.Strategy == nil || ir.Strategy.Matrix == nil {

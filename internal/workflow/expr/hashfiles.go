@@ -11,7 +11,7 @@ import (
 	"strings"
 )
 
-// hashFiles hashes every file matching the patterns, relative to the workspace
+// hashFiles hashes every file matching the patterns. Relative to the workspace
 // root: sha256 of the concatenated sha256 digests of the matched files, in
 // sorted path order. A pattern starting with '!' excludes.
 //

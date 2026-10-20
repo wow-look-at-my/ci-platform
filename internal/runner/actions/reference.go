@@ -7,7 +7,7 @@ import (
 	"strings"
 )
 
-// Kind distinguishes the three reference forms.
+// Kind distinguishes those reference forms.
 type Kind string
 
 const (
@@ -82,10 +82,8 @@ func ParseReference(s string) (Reference, error) {
 	if len(parts) < 2 || parts[0] == "" || parts[1] == "" {
 		return Reference{}, fmt.Errorf("uses: %q is not owner/repo[/path]@ref", raw)
 	}
-	// Every element is checked, not just the sub-path: Owner and Repo become
-	// directory names in the action cache, and Path is joined onto the
-	// extracted directory before it is copied into the sandbox. A "." or ".."
-	// in any of them walks out of the cache and into the runner host.
+	// Every element is checked, not the sub-path: Owner and Repo become
+	// directory names in the action cache.
 	for _, part := range parts {
 		if part == "." || part == ".." {
 			return Reference{}, fmt.Errorf("uses: %q contains a path traversal", raw)

@@ -20,7 +20,7 @@ import (
 //
 // It is deliberately reachable without a credential, because it is the step
 // before a host has one. What stops it being a way in is that it grants
-// nothing: the row it writes is pending, and a pending host is refused
+// nothing: the row it writes is pending. A pending host is refused
 // everywhere else.
 func (s *Server) enrol(w http.ResponseWriter, r *http.Request) {
 	var req protocol.EnrolRequest
@@ -51,9 +51,8 @@ func (s *Server) enrol(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Enrolment answers without a credential, so anything that reaches this route can mint
-	// fingerprints; the cap is on PENDING hosts only, never blocking an already-approved fleet.
+	// fingerprints. The cap is on PENDING hosts only, never blocking an already-approved fleet.
 	if err := s.checkPendingCapacity(r.Context(), fingerprint); err != nil {
-		// A full queue and a broken store are different problems; only the first is a 429.
 		status := http.StatusInternalServerError
 		if errors.Is(err, errPendingFull) {
 			status = http.StatusTooManyRequests
@@ -125,7 +124,7 @@ func enrolMessage(h *model.RunnerHost) string {
 }
 
 // session exchanges a signature for a short-lived bearer token. This is where
-// approval is enforced, and it is re-read from the store on every renewal, so
+// approval is enforced. It is re-read from the store on every renewal, so
 // revoking a host stops it within one token lifetime.
 func (s *Server) session(w http.ResponseWriter, r *http.Request) {
 	var req protocol.SessionRequest
@@ -197,7 +196,7 @@ func CallerFrom(ctx context.Context) (*model.RunnerHost, enrol.Session, bool) {
 }
 
 // allowedLabels intersects what a runner asked for with what its host is
-// approved to serve, and reports what was dropped so the drop is never silent.
+// approved to serve, and reports what.
 func allowedLabels(ctx context.Context, asked []string) (kept, dropped []string) {
 	host, _, ok := CallerFrom(ctx)
 	if !ok || host == nil {

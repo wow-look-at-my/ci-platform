@@ -20,9 +20,7 @@ func orgKey(owner string) string            { return owner }
 func repoKey(owner, repo string) string     { return owner + "/" + repo }
 func envKey(owner, repo, env string) string { return owner + "/" + repo + "/" + env }
 
-// now is truncated to microseconds because Postgres timestamptz stores
-// microseconds; a nanosecond-precision fixture would fail to round-trip through
-// the durable store and pass in memory.
+// now is truncated to microseconds because Postgres timestamptz stores microseconds.
 func nowUTC() time.Time { return time.Now().UTC().Truncate(time.Microsecond) }
 
 type fixture struct {

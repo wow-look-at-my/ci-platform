@@ -39,8 +39,7 @@ func usage() {
 	fmt.Fprintf(os.Stderr, "\nrun `ci-runner <command> -h` for a command's flags.\n")
 }
 
-// envOr reads an environment variable, falling back to a default. It exists so
-// every setting has both a flag and an env var without repeating the pattern.
+// envOr reads an environment variable, falling back to a default.
 func envOr(key, def string) string {
 	if v, ok := os.LookupEnv(key); ok && v != "" {
 		return v

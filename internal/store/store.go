@@ -1,9 +1,9 @@
 // Package store defines the persistence contract for run metadata, the durable
-// job queue, and the lease protocol that makes a lost runner a requeue rather
+// job queue, and the lease protocol that makes a lost runner. A requeue rather
 // than a failure.
 //
-// Two implementations exist: store/sqlite (the production store) and
-// store/mem (in-process, for tests and for a dev instance that says so loudly).
+// Implementations exist: store/sqlite (the production store) and store/mem
+// (in-process, for tests and for a dev instance that says so loudly).
 package store
 
 import (
@@ -23,9 +23,7 @@ var ErrLeaseLost = errors.New("store: lease lost")
 // ErrConflict is returned when an optimistic update loses a race.
 var ErrConflict = errors.New("store: conflict")
 
-// Store is the whole persistence surface. It is one interface rather than
-// several because every implementation implements all of it, and splitting it
-// would only spread the transaction boundary across packages.
+// Store is the whole persistence surface.
 type Store interface {
 	Repos
 	Runs
@@ -128,7 +126,7 @@ type QueueStats struct {
 
 // Queue is the durable job queue and the lease protocol.
 //
-// Dispatch is idempotent on (run_id, job_id, attempt): a job is never executed
+// Dispatch is idempotent on (run_id, job_id, attempt). A job is never executed
 // twice with side effects, even if the control plane restarts between handing
 // out a lease and recording that it did.
 type Queue interface {

@@ -34,7 +34,7 @@ var (
 	inputTypes      = []string{"string", "boolean", "number", "choice", "environment"}
 )
 
-// triggers parses `on:` in all three shapes: a bare event name, a list of
+// triggers parses `on:` in all shapes: a bare event name, a list of
 // names, or the full per-event mapping.
 func (p *parser) triggers(n *yaml.Node) (model.Triggers, error) {
 	var t model.Triggers
@@ -180,7 +180,7 @@ func (p *parser) branchFilterKey(f *model.BranchFilter, key string, vn *yaml.Nod
 	return nil
 }
 
-// cronParser is GitHub's dialect: five fields, no seconds, no @descriptors.
+// cronParser is GitHub's dialect: fields, no seconds, no @descriptors.
 var cronParser = cron.NewParser(cron.Minute | cron.Hour | cron.Dom | cron.Month | cron.Dow)
 
 func (p *parser) schedule(t *model.Triggers, n *yaml.Node, where string) error {

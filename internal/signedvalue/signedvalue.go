@@ -1,8 +1,8 @@
 // Package signedvalue is the envelope for a value this instance hands out and
 // later takes back: a dashboard session cookie, a runner's session token.
 //
-// It exists so there is one implementation of "verify before you read". Two
-// copies of an HMAC envelope drift, and the copy that does not get the fix is
+// It exists so there is one implementation of "verify before you read".
+// Copies of an HMAC envelope drift, and the copy that does not get the fix is
 // the one an attacker uses.
 package signedvalue
 
@@ -30,7 +30,7 @@ func (k Key) Sign(payload []byte) string {
 // Open verifies and returns the payload.
 //
 // Nothing inside the payload is parsed here, and callers must not parse it
-// before Open returns: a field read out of an unverified envelope is a field
+// before Open returns. A field read out of an unverified envelope is a field
 // an attacker chose.
 func (k Key) Open(value string) ([]byte, error) {
 	encoded, sig, ok := strings.Cut(value, ".")

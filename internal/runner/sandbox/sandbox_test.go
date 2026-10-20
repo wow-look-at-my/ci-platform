@@ -389,7 +389,7 @@ func TestImageCacheVolumeIsCreatedWhenAbsent(t *testing.T) {
 }
 
 func TestConcurrentJobsSerializeOnTheSharedImageCache(t *testing.T) {
-	// Two dockerds sharing one /var/lib/docker corrupt it, so the second sandbox must wait, not share.
+	// Dockerds sharing one /var/lib/docker corrupt it, so the second sandbox must wait, not share.
 	lockDir := t.TempDir()
 	d := &fakeDocker{}
 	opts := newTestOptions(t, d)

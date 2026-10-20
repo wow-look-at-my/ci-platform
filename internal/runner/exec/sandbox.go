@@ -16,8 +16,8 @@ type RunRequest struct {
 	Stderr     io.Writer
 }
 
-// RunResult is the outcome of a command that actually ran. A non-zero exit is
-// not an error: err is reserved for the sandbox itself failing.
+// RunResult is the outcome of a command that ran. A non-zero exit is not an
+// error: err is reserved for the sandbox itself failing.
 type RunResult struct {
 	ExitCode int
 }

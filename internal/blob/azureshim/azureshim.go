@@ -1,11 +1,11 @@
 // Package azureshim serves the subset of the Azure Block Blob REST API that
-// the Azure Storage SDK uses when it uploads, backed by a blob.Store.
+// the Azure Storage. SDK uses when it uploads, backed by a blob.Store.
 //
-// It exists because @actions/artifact hands CreateArtifact's signed_upload_url
-// to BlockBlobClient.uploadStream, which always stages blocks and then commits
-// a block list. Serving artifact uploads therefore means speaking Put Block and
-// Put Block List, whatever the bytes actually land on. Nothing here talks to
-// Azure; only the wire shape is shared.
+// It exists because @actions/artifact hands CreateArtifact's
+// signed_upload_url to BlockBlobClient.uploadStream, which always stages
+// blocks and then commits a block list. Serving artifact uploads therefore
+// means speaking Put Block and Put Block List, whatever the bytes land on.
+// Nothing here talks to Azure; only the wire shape is shared.
 //
 // Implemented: PUT ?comp=block&blockid=, PUT ?comp=blocklist, and the
 // single-shot PUT with x-ms-blob-type: BlockBlob.
@@ -155,8 +155,8 @@ func (h *Handler) putBlock(w http.ResponseWriter, r *http.Request, t Target) {
 }
 
 // ordered returns the block ids in the order they appear in the document.
-// Azure orders the committed blob by document order across all three element
-// types, and the SDK writes Latest entries.
+// Azure orders the committed blob by document order across all of them
+// element types, and the SDK writes Latest entries.
 func orderedBlockIDs(body []byte) ([]string, error) {
 	dec := xml.NewDecoder(strings.NewReader(string(body)))
 	var ids []string

@@ -96,7 +96,7 @@ WHERE id = ?`
 
 // ReapExpiredLeases requeues every job whose lease expired, in one transaction,
 // and returns them. This is what turns "the runner disappeared" into a requeue
-// rather than a lost or failed job: the status goes back to queued, never to
+// rather than a lost or failed job. The status goes back to queued, never to
 // failed, and the requeue is explained in the event log.
 func (s *Store) ReapExpiredLeases(ctx context.Context, now time.Time) ([]*model.Job, error) {
 	now = now.UTC()
@@ -179,8 +179,3 @@ RETURNING ` + jobCols
 	}
 	return jobs, nil
 }
-
-// QueueStats is the queue page's data and the starvation alarm.
-//
-// "Online" is idle or busy. A drained runner is deliberately not counted: it
-// finishes what it has and takes nothing new, so counting it would hide a

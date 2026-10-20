@@ -8,8 +8,7 @@ test("a viewer who has chosen nothing gets dark, whatever their machine reports"
 });
 
 test("a stored value from an older build is not a choice", () => {
-	// "" was what this key held when the toggle wrote the empty string for
-	// "system"; it must not read as one now.
+	// "" was what this key held when the toggle wrote the empty string for "system"; it must not read as one now.
 	assertEqual(preferenceOf(""), "dark");
 	assertEqual(preferenceOf("nonsense"), "dark");
 });

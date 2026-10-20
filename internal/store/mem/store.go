@@ -94,7 +94,7 @@ type runNumberKey struct {
 }
 
 // New builds an empty store and says loudly what it is. A control plane that
-// starts on this store will forget every queued job when it restarts, so the
+// starts on this store will forget every queued job when it restarts. The
 // warning is unconditional and cannot be turned off.
 func New() *Store {
 	slog.Warn("using the IN-MEMORY store: all runs, jobs, and queued work are lost on restart. " +
@@ -117,14 +117,10 @@ func New() *Store {
 	}
 }
 
-// Open exists so callers can swap mem for pg behind one constructor shape. It
-// takes no DSN because there is nothing to connect to, and it warns for the
-// same reason New does.
+// Open exists so callers can swap mem for pg behind one constructor shape.
 func Open(context.Context) (*Store, error) { return New(), nil }
 
-// Durable reports false: a restart loses everything. Callers surface this in
-// /healthz, which is the only reason this store is allowed to exist outside
-// tests.
+// Durable reports false: a restart loses everything.
 func (s *Store) Durable() bool { return false }
 
 // Migrate is a no-op: the schema is Go types.

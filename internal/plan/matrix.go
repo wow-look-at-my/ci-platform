@@ -162,8 +162,9 @@ func ExpandMatrix(m *model.Matrix, ev Evaluator) ([]Leg, error) {
 
 // legOrder lists a leg's keys: declared dimensions in declaration order, then
 // any other key in the order the matrix declared it, then the rest sorted.
-// Sorting is the fallback because an include entry is a map in the IR, so its
-// source key order survives only if the parser recorded it in Matrix.Order.
+// Sorting is the fallback. This is because an include entry is a map in the
+// IR. So its source key order survives only if the parser recorded it in
+// Matrix.Order.
 func legOrder(values map[string]any, dims, declared []string) []string {
 	order := presentKeys(values, dims)
 	seen := set.New[string]()

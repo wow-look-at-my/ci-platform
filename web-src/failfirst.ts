@@ -1,8 +1,5 @@
 // Failure-first navigation: which step to open and which line to scroll to.
 // No DOM.
-//
-// Opening a failed run at the top of a 40,000-line log is the behaviour this
-// platform exists to replace, so this chooser is a first-class, tested unit.
 
 export interface StepLike {
 	number: number;
@@ -105,8 +102,7 @@ export function chooseFocus(job: JobLike, steps: StepLike[], lines: LineLike[] =
 	const step = chooseFailingStep(steps);
 	if (!step) {
 		// A job can fail before any step ran: an infra failure during setup, a
-		// config error while loading the workflow. Say that instead of silently
-		// opening at the top.
+		// config error while loading the workflow.
 		return {
 			stepNumber: null,
 			seq: null,

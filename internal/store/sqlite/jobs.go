@@ -89,7 +89,7 @@ func checkJob(j *model.Job) error {
 	return validCancel(j.Cancel)
 }
 
-// jobArgs is the column order shared by CreateJob and UpdateJob, so the two
+// jobArgs is the column order shared by CreateJob and UpdateJob, so both
 // cannot drift into writing different things.
 func jobArgs(j *model.Job) ([]any, error) {
 	actor, sentence, by := cancelColumns(j.Cancel)

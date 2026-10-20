@@ -10,11 +10,10 @@ import (
 	"strings"
 )
 
-// filtered is the result of an array filter (`x.*` or `x[*]`). It behaves as an
-// array everywhere except property access, where it maps over its elements.
+// filtered is the result of an array filter (`x.*` or `x[*]`).
 type filtered []any
 
-// normalize maps arbitrary Go values from the caller's Context onto the five
+// normalize maps arbitrary Go values from the caller's Context onto the
 // kinds the language has: null, bool, number, string, and array/object.
 func normalize(v any) any {
 	switch x := v.(type) {
@@ -86,7 +85,6 @@ func asArray(v any) ([]any, bool) {
 	return nil, false
 }
 
-// truthy follows the GHA loose rules: only null, false, 0, NaN and "" are false.
 func truthy(v any) bool {
 	switch x := normalize(v).(type) {
 	case nil:
@@ -121,7 +119,7 @@ func toNumber(v any) float64 {
 }
 
 // parseNumber follows the reference's string-to-number rules: trim, then
-// decimal, then 0x hex, then 0o octal, then the two infinity spellings.
+// decimal, then 0x hex, then 0o octal, then both infinity spellings.
 func parseNumber(s string) float64 {
 	s = strings.TrimSpace(s)
 	if s == "" {
@@ -191,7 +189,7 @@ func isContainer(v any) bool {
 	return false
 }
 
-// sameContainer reports reference identity, matching GHA where two distinct
+// sameContainer reports reference identity, matching GHA where distinct
 // objects with the same contents are not equal.
 func sameContainer(a, b any) bool {
 	av, bv := reflect.ValueOf(a), reflect.ValueOf(b)
@@ -207,16 +205,11 @@ func sameContainer(a, b any) bool {
 	return false
 }
 
-// compareValues returns -1, 0 or 1, and false when the values are not
-// comparable (NaN), which makes <, <=, > and >= all false.
 func compareValues(a, b any) (int, bool) {
 	a, b = normalize(a), normalize(b)
 	as, aIsStr := a.(string)
 	bs, bIsStr := b.(string)
 	if aIsStr && bIsStr {
-		// Upper-casing, not lower-casing: the reference compares
-		// OrdinalIgnoreCase, and the two disagree on the punctuation that sits
-		// between 'Z' and 'a'.
 		return strings.Compare(strings.ToUpper(as), strings.ToUpper(bs)), true
 	}
 	an, bn := toNumber(a), toNumber(b)

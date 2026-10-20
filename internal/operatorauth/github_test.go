@@ -16,7 +16,7 @@ type fakeGitHub struct {
 	srv *httptest.Server
 	// login is who the code resolves to.
 	login string
-	// tokenStatus and tokenBody override the exchange response.
+	// tokenBody and tokenBody override the exchange response.
 	tokenBody   string
 	gotRedirect string
 }
@@ -82,8 +82,7 @@ func TestGitHubLogin_SendsTheBrowserToGitHubWithState(t *testing.T) {
 	state, to := start(t, a)
 	assert.Equal(t, stateCookie, state.Name)
 	assert.True(t, state.HttpOnly)
-	// Strict would not come back on the navigation from github.com, so every
-	// sign-in would fail on a state mismatch.
+	// Strict would not come back on the navigation from github.com, so every sign-in would fail on a state mismatch.
 	assert.Equal(t, http.SameSiteLaxMode, state.SameSite)
 	assert.NotEmpty(t, state.Value)
 

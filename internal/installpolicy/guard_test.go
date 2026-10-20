@@ -13,8 +13,7 @@ import (
 	"github.com/wow-look-at-my/ci-platform/internal/github/webhook"
 )
 
-// countingSink records that a delivery got past the guard. Anything reaching it
-// from a stranger is a run this instance would have executed.
+// countingSink records that a delivery got past the guard.
 type countingSink struct{ calls []string }
 
 func (s *countingSink) Push(context.Context, *webhook.PushEvent) error {
@@ -142,7 +141,7 @@ func TestGuard_AnyoneServesEverybody(t *testing.T) {
 	assert.Equal(t, []string{"push"}, next.calls)
 }
 
-// An installation event carries no repository in Meta, so the account has to
+// An installation event carries no repository in Meta. The account has to
 // come off the installation itself or every install would be judged as "".
 func TestGuard_InstallationIsJudgedByItsAccount(t *testing.T) {
 	g, next := guardFor(t, "PazerOP")

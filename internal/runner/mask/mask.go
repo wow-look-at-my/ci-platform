@@ -1,7 +1,7 @@
-// Package mask redacts secret values from log text before it leaves the runner
-// process. Every rendering a build is likely to produce is registered, not just
-// the literal value: a secret echoed through base64 or a URL query string is
-// still the secret.
+// Package mask redacts secret values from log text before it leaves the
+// runner process. Every rendering a build is likely to produce is registered,
+// not the literal value. A secret echoed through base64 or a URL query string
+// is still the secret.
 package mask
 
 import (
@@ -31,8 +31,8 @@ func New() *Masker {
 }
 
 // Add registers a secret value and every rendering of it that could appear in
-// output. A multi-line secret is also registered line by line, because a build
-// that prints it through a tool may emit only one of its lines.
+// output. A multi-line secret is also registered line by line. This is because
+// a build that prints it through a tool may emit only one of its lines.
 func (m *Masker) Add(secret string) {
 	if len(secret) < MinLength {
 		return
@@ -108,8 +108,8 @@ func (m *Masker) build() *strings.Replacer {
 	return m.replacer
 }
 
-// renderings returns the forms of a secret that can appear in output: the raw
-// value, its individual lines, base64 in all four alphabets, and the two URL
+// renderings returns the forms of a secret that can appear in output. The raw
+// value, its individual lines, base64 in all alphabets, and both URL
 // escapings.
 func renderings(secret string) []string {
 	seeds := []string{secret}

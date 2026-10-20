@@ -175,8 +175,8 @@ const approvalPoll = 15 * time.Second
 // credentials loads or creates this host's key, enrols it, and waits until an
 // operator has approved the fingerprint.
 //
-// Waiting is the right behaviour rather than exiting: a host that has just been
-// set up is supposed to be unapproved, and a runner that crash-loops through
+// Waiting is the right behaviour rather than exiting. A host that has been
+// set up is supposed to be unapproved. A runner that crash-loops through
 // that state buries the fingerprint the operator needs to read.
 func (c *config) credentials(ctx context.Context, runnerID string, log *slog.Logger) (*agent.Credentials, error) {
 	key, created, err := enrol.LoadOrCreateKey(c.keyPath)

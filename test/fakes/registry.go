@@ -1,4 +1,4 @@
-// Package fakes provides test doubles for the chaos and end-to-end suites: a
+// Package fakes provides test doubles for the chaos and end-to-end suites. A
 // container registry that can be told to fail the way real ones fail, and a
 // GitHub API server that records what the platform reported.
 package fakes
@@ -17,13 +17,10 @@ type RegistryFault string
 
 const (
 	// FaultNone serves normally.
-	FaultNone RegistryFault = ""
-	// FaultCloudflare524 reproduces the incident that started this project: a Cloudflare 524 timeout.
-	FaultCloudflare524 RegistryFault = "cloudflare-524"
-	// FaultServiceUnavailable returns a bare 503.
+	FaultNone               RegistryFault = ""
+	FaultCloudflare524      RegistryFault = "cloudflare-524"
 	FaultServiceUnavailable RegistryFault = "503"
-	// FaultRateLimit returns 429 with a Retry-After.
-	FaultRateLimit RegistryFault = "429"
+	FaultRateLimit          RegistryFault = "429"
 	// FaultHangUp closes the connection mid-response.
 	FaultHangUp RegistryFault = "hangup"
 )
@@ -55,7 +52,7 @@ func (r *Registry) Host() string { return strings.TrimPrefix(r.srv.URL, "http://
 // Close shuts the server down.
 func (r *Registry) Close() { r.srv.Close() }
 
-// SetFault makes every subsequent blob request fail; failFirstN 0 fails forever, N recovers after N failures.
+// SetFault makes every subsequent blob request fail; failFirstN no fails forever, N recovers after N failures.
 func (r *Registry) SetFault(f RegistryFault, failFirstN int) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -105,7 +102,7 @@ func (r *Registry) serve(w http.ResponseWriter, req *http.Request) {
 	n := r.blobRequests.Add(1)
 	switch r.nextFault(n) {
 	case FaultCloudflare524:
-		// Cloudflare's own 524 body: an HTML error page from the edge, saying nothing about the build.
+		// Cloudflare's a later own body: an HTML error page from the edge, saying nothing about the build.
 		w.Header().Set("Content-Type", "text/html")
 		w.Header().Set("Server", "cloudflare")
 		w.WriteHeader(524)

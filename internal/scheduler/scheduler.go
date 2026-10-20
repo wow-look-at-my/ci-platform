@@ -1,6 +1,6 @@
-// Package scheduler is the run loop and the reliability layer: it decides what
+// Package scheduler is the run loop and the reliability layer. It decides what
 // is ready, hands work out under a lease, retries what was the platform's
-// fault, cancels with a recorded reason every time, and reduces the result
+// fault, cancels with a recorded reason every time. And reduces the result
 // through model.Aggregate rather than a second set of rules.
 package scheduler
 
@@ -68,10 +68,6 @@ func (o *Options) applyDefaults() {
 }
 
 // Scheduler drives every run it has been given a plan for.
-//
-// Plans live in memory: a control plane restart loses them, and every entry
-// point that needs one reports that loudly rather than guessing at a policy or
-// a step list it no longer has.
 type Scheduler struct {
 	st   store.Store
 	opts Options

@@ -1,6 +1,6 @@
 // Package api serves the REST + SSE surface the web UI and any gh-alike client
-// read. Field names mirror the GitHub Actions API where an equivalent exists;
-// everything this platform knows and GitHub does not (failure class, cancel
+// read. Field names mirror the GitHub Actions API where an equivalent exists.
+// Everything this platform knows and GitHub does not (failure class, cancel
 // reason, phase timing) is added alongside under its own name.
 package api
 
@@ -34,7 +34,7 @@ type LogSource interface {
 	Subscribe(ctx context.Context, jobID int64, attempt int, fromSeq int64) (<-chan model.LogLine, error)
 }
 
-// BlobStore hands back artifact bytes. Optional: without one the download endpoint answers 503.
+// BlobStore hands back artifact bytes.
 type BlobStore interface {
 	Open(ctx context.Context, a *model.Artifact) (io.ReadCloser, error)
 }
@@ -156,7 +156,6 @@ func (s *Server) routes() {
 func writeJSON(w http.ResponseWriter, status int, v any) {
 	buf, err := json.Marshal(v)
 	if err != nil {
-		// Marshalling our own DTO cannot fail on valid data; if it does, say so with a 500 rather than lie.
 		http.Error(w, `{"error":"failed to encode response"}`, http.StatusInternalServerError)
 		return
 	}

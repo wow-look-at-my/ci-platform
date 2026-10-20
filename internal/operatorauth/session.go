@@ -38,12 +38,8 @@ func (i Identity) Actor() string {
 	return "operator"
 }
 
-// signer mints and verifies session cookies: a signed statement, not a lookup key, since a table
-// buys nothing a short TTL and rotated key don't give.
-//
-// A GitHub session can't be revoked before expiry except by rotating the key, ending every
-// session. Removing an admin from the list still blocks them at once, since the middleware
-// re-checks that list on every request.
+// signer mints and verifies session cookies: a signed statement, not a lookup
+// key.
 type signer struct {
 	key signedvalue.Key
 	// tokenKey is derived from the operator credential, so rotating the credential stops its sessions verifying.
@@ -79,7 +75,7 @@ func (s *signer) mint(login string, method Method) (string, Identity) {
 // parse verifies the signature before it reads anything out of the payload, so
 // no field of a forged cookie is ever acted on.
 //
-// Which key signed it is not known until the payload is read, and the payload
+// Which key signed it is not known until the payload is read. The payload
 // must not be read until a signature verifies, so both are tried. Neither
 // answers differently on a wrong guess, so nothing is learned from the order.
 func (s *signer) parse(raw string) (Identity, error) {

@@ -179,8 +179,7 @@ func runWhere(f store.RunFilter) (string, []any) {
 		add("(workflow_path = ? OR workflow_name = ?)", f.Workflow, f.Workflow)
 	}
 	if f.Search != "" {
-		// SQLite's LIKE is already case-insensitive for ASCII, which is what
-		// Postgres needed ILIKE for.
+		// SQLite's LIKE is already case-insensitive for ASCII, which is what Postgres needed ILIKE for.
 		like := "%" + f.Search + "%"
 		add("(workflow_name LIKE ? OR head_branch LIKE ? OR head_sha LIKE ? OR actor LIKE ?)",
 			like, like, like, like)
@@ -250,7 +249,7 @@ func (s *Store) ListRunsForSHA(ctx context.Context, repoID int64, sha string) ([
 }
 
 // NextRunNumber allocates the next per-(repo, workflow) number. The upsert
-// serializes concurrent allocations on the row, so no two runs share a number.
+// serializes concurrent allocations on the row, so no runs share a number.
 func (s *Store) NextRunNumber(ctx context.Context, repoID int64, workflowPath string) (int64, error) {
 	const q = `
 INSERT INTO run_numbers (repo_id, workflow_path, current) VALUES (?, ?, 1)

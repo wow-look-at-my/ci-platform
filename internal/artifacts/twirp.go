@@ -28,8 +28,6 @@ const (
 )
 
 // twirpStatus maps a Twirp code to the HTTP status the spec pairs it with.
-// The client retries 429/500/502/503/504 and fails fast on everything else, so
-// the mapping decides whether a client waits or gives up.
 func twirpStatus(code string) int {
 	switch code {
 	case CodeInvalidArgument:
@@ -67,12 +65,6 @@ func writeTwirpJSON(w http.ResponseWriter, v any) {
 	w.WriteHeader(http.StatusOK)
 	_ = json.NewEncoder(w).Encode(v)
 }
-
-// Request and response bodies. protobuf-ts serialises with
-// useProtoFieldName:true, so the client sends snake_case; its reader accepts
-// both spellings, so responses use snake_case too. int64 fields are JSON
-// strings, per the protobuf JSON mapping, and google.protobuf.StringValue
-// wrappers serialise as a bare string rather than {"value":...}.
 
 // CreateArtifactRequest opens an artifact and asks for somewhere to put it.
 type CreateArtifactRequest struct {
@@ -151,14 +143,12 @@ type DeleteArtifactRequest struct {
 	Name                    string `json:"name"`
 }
 
-// DeleteArtifactResponse reports what was removed.
+// DeleteArtifactResponse reports what.
 type DeleteArtifactResponse struct {
 	OK         bool   `json:"ok"`
 	ArtifactID string `json:"artifact_id"`
 }
 
-// decodeTwirp reads a JSON request body, tolerating the camelCase spelling as
-// well: protobuf-ts accepts either on the way in, and so must this.
 func decodeTwirp(r *http.Request, v any) error {
 	dec := json.NewDecoder(r.Body)
 	raw := map[string]json.RawMessage{}
@@ -198,7 +188,6 @@ func toSnake(s string) string {
 // Int64String is a protobuf int64 on the wire: a JSON string, or a bare number as some clients send.
 type Int64String string
 
-// UnmarshalJSON accepts "123" and 123.
 func (v *Int64String) UnmarshalJSON(b []byte) error {
 	s := strings.Trim(strings.TrimSpace(string(b)), `"`)
 	if s == "null" {

@@ -1,4 +1,4 @@
-// Package agent is the runner agent: it registers with the control plane,
+// Package agent is the runner agent. It registers with the control plane,
 // claims one job at a time, builds a sandbox for it, executes its steps, and
 // reports the result.
 package agent
@@ -163,9 +163,8 @@ func (c *Client) Release(ctx context.Context, req protocol.ReleaseRequest) error
 	return c.post(ctx, protocol.PathRelease, req, nil)
 }
 
-// post sends one request, retrying network failures, 5xx, 429, and an expired
-// session with exponential backoff. Any other 4xx is not retried: the control
-// plane rejected the request and repeating it cannot help.
+// Any other 4xx is not retried: the control plane rejected the request and
+// repeating it cannot help.
 func (c *Client) post(ctx context.Context, path string, body, out any) error {
 	payload, err := json.Marshal(body)
 	if err != nil {
@@ -188,9 +187,7 @@ func (c *Client) post(ctx context.Context, path string, body, out any) error {
 		case err == nil:
 			lastStatus = status
 			lastErr = fmt.Errorf("HTTP %d: %s", status, strings.TrimSpace(string(respBody)))
-			// A 401 is retried because once() has just dropped the token that
-			// earned it, so the next attempt carries a freshly signed one. Any
-			// other 4xx is the control plane rejecting the request itself.
+			// Any other 4xx is the control plane rejecting the request itself.
 			if status/100 != 5 && status != http.StatusTooManyRequests && status != http.StatusUnauthorized {
 				return &Error{Path: path, Status: status, Attempts: attempt, Err: lastErr,
 					Decision: c.classifyErr(path, status, lastErr)}

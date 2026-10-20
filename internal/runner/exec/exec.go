@@ -219,7 +219,7 @@ func (e *Executor) Run(ctx context.Context) Result {
 
 // checkServerURL warns when the server URL will make artifact actions fail.
 // @actions/artifact treats anything not ending in .ghe.com or .localhost as
-// GitHub Enterprise Server and refuses to run, so a silent mismatch surfaces
+// GitHub Enterprise Server and refuses to run. A silent mismatch surfaces
 // later as an unexplained action error.
 func (e *Executor) checkServerURL() {
 	u := e.cfg.Assignment.ServerURL

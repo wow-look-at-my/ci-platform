@@ -54,8 +54,7 @@ func (p *parser) job(key string, n *yaml.Node) (*model.JobIR, error) {
 		return nil, p.errf(n, "%s must be a mapping, found %s", where, kindName(n))
 	}
 
-	// Catching the mixture here gives a better message than "steps is not a
-	// known key" would.
+	// Catching the mixture here gives a better message than "steps is not a known key" would.
 	allowed := stepsJobKeys
 	if hasKey(n, "uses") {
 		if hasKey(n, "steps") {
@@ -297,8 +296,7 @@ func (p *parser) container(n *yaml.Node, where string, service bool) (*model.Con
 	}
 	allowed := []string{"image", "options", "env", "ports", "volumes", "credentials"}
 	if service {
-		// `entrypoint` and `command` exist only on service containers, and the
-		// IR has nowhere to put them.
+		// `entrypoint` and `command` exist only on service containers, and the IR has nowhere to put them.
 		allowed = append(allowed, "entrypoint", "command")
 	}
 	c := &model.ContainerSpec{}

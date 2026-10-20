@@ -179,8 +179,7 @@ func (f *fakeStore) EvictCaches(_ context.Context, repoID, quotaBytes int64, _ t
 		}
 	}
 	// LRU, with creation standing in for an entry never read since it was
-	// stored. Without the fallback a just-committed entry sorts oldest and
-	// evicts itself on the commit that created it.
+	// stored.
 	lastUse := func(e *model.CacheEntry) time.Time {
 		if e.LastAccessed.IsZero() {
 			return e.CreatedAt

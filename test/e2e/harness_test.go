@@ -1,14 +1,14 @@
-// Package e2e starts the real control-plane binary against a real SQLite file and
-// a fake GitHub, and drives events through it.
+// Package e2e starts the real control-plane binary against a real SQLite file
+// and a fake GitHub, and drives events through it.
 //
-// It runs the shipped binary rather than wiring the packages up in-process, so
-// what it proves is that the thing we deploy works, not that the pieces compose
-// in a test harness.
+// It runs the shipped binary rather than wiring the packages up in-process.
+// What it proves is that the thing we deploy works, not that the pieces
+// compose in a test harness.
 //
-// Every test runs in parallel and every test starts its own control plane, on
+// Every test runs in parallel. Every test starts its own control plane, on
 // its own port, with its own database and its own fake GitHub. That is what
-// keeps a package of process-spawning tests inside one 30-second budget: the
-// alternative is having fewer of them, and each one here is a property worth
+// keeps a package of process-spawning tests inside one 30-second budget. The
+// alternative is having fewer of them, and each here is a property worth
 // keeping.
 package e2e
 
@@ -188,7 +188,8 @@ func (c *controlPlane) runs(t *testing.T) []map[string]any {
 	return c.runsAt(t, "/api/v1/runs?repo=acme/"+c.repoName)
 }
 
-// allRuns asks without a repository filter, proving nothing was created anywhere, not just for one repository.
+// allRuns asks without a repository filter, proving nothing was created
+// anywhere, not for one repository.
 func (c *controlPlane) allRuns(t *testing.T) []map[string]any {
 	t.Helper()
 	return c.runsAt(t, "/api/v1/runs")

@@ -1,10 +1,11 @@
 // Package statuses writes legacy commit statuses alongside check runs, so
-// branch protection rules written against the old API keep matching.
+// branch protection rules written against the API keep matching.
 //
 // One context per job, named exactly like the check run. The context named
-// all-builds belongs to an org-level app that aggregates builds itself; a
-// context posted under that name shadows the real status in the UI and makes a
-// red gate look green, so posting it is refused here rather than reviewed for.
+// all-builds belongs to an org-level app that aggregates builds itself. A
+// context posted under that name shadows the real status in the UI. That
+// name makes a red gate look green, so posting it is refused here rather
+// than reviewed for.
 package statuses
 
 import (
@@ -42,10 +43,10 @@ const AllBuildsContext = "all-builds"
 // ErrForbiddenContext is returned when a caller tries to post a reserved context.
 var ErrForbiddenContext = errors.New("statuses: forbidden context")
 
-// StateFor maps a platform status and conclusion onto the legacy states.
+// StateFor maps a platform status and conclusion onto the states.
 //
-// infra_failure and config_error map to "error", not "failure": failure is the
-// legacy API's "your build is broken", and neither of these is that.
+// infra_failure and config_error map to "error", not "failure": failure is
+// the API's "your build is broken", and neither of these is that.
 func StateFor(s model.Status, c model.Conclusion) State {
 	if s != model.StatusCompleted {
 		return StatePending

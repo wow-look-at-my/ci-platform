@@ -1,9 +1,9 @@
 // Package checks writes GitHub check runs, which is the only status surface a
 // third-party App can drive well enough for branch protection to work.
 //
-// Two properties are load-bearing. Updates are coalesced, so a chatty step
-// executor cannot burn the API budget; and the completion update is never
-// coalesced away, because a check run stuck in_progress blocks a merge forever.
+// Properties are load-bearing. Updates are coalesced, so a chatty step executor
+// cannot burn the API budget. And the completion update is never coalesced
+// away, because a check run stuck in_progress blocks a merge forever.
 package checks
 
 import (
@@ -19,14 +19,14 @@ import (
 	"github.com/wow-look-at-my/ci-platform/internal/model"
 )
 
-// DefaultMinInterval is the floor between two API calls for one check run.
+// DefaultMinInterval is the floor between API calls for one check run.
 const DefaultMinInterval = 2 * time.Second
 
 // ReporterOptions configures a Reporter.
 type ReporterOptions struct {
 	// MinInterval bounds how often one check run is written. Default 2s.
 	MinInterval time.Duration
-	// FinalAttempts is how many times a completion update retries before it is reported lost. Default 3.
+	// FinalAttempts is how many times a completion update retries before it is reported lost.
 	FinalAttempts int
 	// FinalBackoff is the first retry delay for a completion update.
 	FinalBackoff time.Duration
@@ -137,7 +137,7 @@ func (r *Reporter) loop() {
 
 // Report queues a check-run update. It is safe to call on every step
 // transition: non-terminal updates coalesce to at most one API call per
-// MinInterval, and a terminal update is written synchronously with retries.
+// MinInterval. A terminal update is written synchronously with retries.
 func (r *Reporter) Report(ctx context.Context, u Update) error {
 	if r.cli == nil {
 		return errors.New("checks: reporter has no GitHub client; the App installation token source was never wired")
@@ -429,7 +429,6 @@ func checkRunPath(repo gh.Repo, id int64) string {
 	return fmt.Sprintf("%s/%d", checkRunsPath(repo), id)
 }
 
-// CheckRunID returns the check run id known for a job, 0 if none was created.
 func (r *Reporter) CheckRunID(jobID int64) int64 {
 	r.mu.Lock()
 	defer r.mu.Unlock()

@@ -91,9 +91,8 @@ func unescapeProperty(s string) string {
 	return strings.ReplaceAll(s, "%25", "%")
 }
 
-// Handler receives the side effects of the commands a step emits. A nil field
-// means the runner does not care about that command; it is still never
-// silently swallowed, because the emitted log line reports it.
+// Handler receives the side effects of the commands a step emits. A nil field means the runner does not care about that command; it is still never silently swallowed,
+// because the emitted log line reports it.
 type Handler struct {
 	Annotation func(model.Annotation)
 	Mask       func(value string)
@@ -115,7 +114,7 @@ type Processor struct {
 // NewProcessor returns a processor bound to h.
 func NewProcessor(h Handler) *Processor { return &Processor{h: h} }
 
-// Group is the ::group:: title currently in effect, "" at top level.
+// Group is the ::group:: title in effect, "" at top level.
 func (p *Processor) Group() string {
 	if len(p.groups) == 0 {
 		return ""

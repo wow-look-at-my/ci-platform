@@ -5,8 +5,8 @@ import (
 	"time"
 )
 
-// The IR is the parser's output and the scheduler's and executor's input, not a GitHub Actions AST (docs/format-trajectory.md).
-// Expressions survive into the IR unevaluated, as Expr, since most cannot evaluate until earlier jobs produce outputs.
+// The IR is the parser's output and the scheduler's and executor's input, not
+// a GitHub Actions AST (docs/format-trajectory.md).
 
 // Expr is a string that may contain ${{ }} interpolation. An Expr whose Raw
 // contains no "${{" is a literal and evaluates to itself.
@@ -42,8 +42,8 @@ func (e Expr) Sole() (body string, ok bool) {
 	return body, true
 }
 
-// SplitExprBody finds the "}}" that closes an expression body, ignoring braces
-// inside single-quoted strings so that format('}}') survives. s starts just
+// SplitExprBody finds the "}}" that closes an expression body, ignoring
+// braces inside single-quoted strings so that format('}}') survives. s starts
 // after the opening "${{".
 func SplitExprBody(s string) (body, rest string, ok bool) {
 	inStr := false

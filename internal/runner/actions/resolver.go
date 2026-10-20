@@ -149,8 +149,8 @@ func (r *Resolver) download(ctx context.Context, ref Reference, sha, dir string)
 	return os.Rename(tmp, dir)
 }
 
-// extractTarGz unpacks an archive, stripping the single wrapper directory that
-// code hosts put around repository tarballs.
+// extractTarGz unpacks an archive, stripping the wrapper directory that code
+// hosts put around repository tarballs.
 func extractTarGz(r io.Reader, dest string) error {
 	gz, err := gzip.NewReader(r)
 	if err != nil {

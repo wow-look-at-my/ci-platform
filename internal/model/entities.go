@@ -29,7 +29,7 @@ type Run struct {
 	WorkflowPath string `json:"workflow_path"`
 	// RunNumber increments per workflow per repo, like GHA's.
 	RunNumber int64 `json:"run_number"`
-	// Attempt starts at 1 and increments on re-run.
+	// Attempt starts at a set value and increments on re-run.
 	Attempt int `json:"attempt"`
 
 	Event      string `json:"event"`
@@ -294,10 +294,9 @@ func (h RunnerHost) AllowsLabel(label string) bool {
 // including across retries: every attempt keeps its own log.
 type LogLine struct {
 	// Seq is monotonic per (job, attempt) and is the deep-link anchor.
-	Seq       int64     `json:"seq"`
-	Timestamp time.Time `json:"ts"`
-	// StepNumber attributes the line to a step, 0 for platform-emitted lines.
-	StepNumber int `json:"step"`
+	Seq        int64     `json:"seq"`
+	Timestamp  time.Time `json:"ts"`
+	StepNumber int       `json:"step"`
 	// Stream is "stdout", "stderr", or "platform".
 	Stream string `json:"stream"`
 	Text   string `json:"text"`
@@ -334,9 +333,9 @@ type CacheEntry struct {
 	Finalized    bool      `json:"finalized"`
 }
 
-// CacheEvent records a hit, miss, or eviction. Eviction is recorded explicitly
-// because a cache that silently drops entries is indistinguishable from one
-// that is simply slow.
+// CacheEvent records a hit, miss, or eviction. Eviction is recorded
+// explicitly because a cache that silently drops entries is indistinguishable
+// from one that is slow.
 type CacheEvent struct {
 	ID        int64     `json:"id"`
 	RepoID    int64     `json:"repo_id"`

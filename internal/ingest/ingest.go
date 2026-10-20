@@ -1,8 +1,8 @@
-// Package ingest turns a webhook event into runs: it discovers the repository's
+// Package ingest turns a webhook event into runs. It discovers the repository's
 // workflow files at the event's SHA, parses each to IR, decides which ones the
-// event triggers, and starts the ones that do.
+// event triggers, and starts the ones. Those ones do.
 //
-// The rule that shapes this package: a workflow that cannot be parsed, or that
+// The rule that shapes this package. A workflow that cannot be parsed, or that
 // uses a feature this platform does not implement, produces a FAILED run with
 // the reason on it. It is never skipped quietly. A workflow silently absent
 // from a commit's checks is indistinguishable from one that passed.
@@ -366,9 +366,9 @@ func (i *Ingester) contexts(repo *model.Repo, run *model.Run, t Trigger) map[str
 	}
 }
 
-// changedPaths collects every file touched anywhere in the push. Using only
-// the head commit would miss files changed by earlier commits in the same push,
-// so a paths: filter would silently skip a workflow that should have run.
+// changedPaths collects every file touched anywhere in the push. Using only the
+// head commit would miss files changed by earlier commits in the same push, so
+// a paths. Filter would silently skip a workflow that should have run.
 func changedPaths(e *webhook.PushEvent) []string {
 	seen := set.New[string]()
 	var out []string

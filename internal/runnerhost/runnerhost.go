@@ -1,15 +1,15 @@
 // Package runnerhost supervises a pool of runner containers on one machine.
 //
 // It exists to answer the questions every self-hosted CI fleet asks and most
-// answer badly: how do N runners stay up to date, how does each get storage
-// that is genuinely fresh per job and genuinely cleaned up afterwards, and how
+// answer badly. It how do N runners stay up to date, how does each get storage
+// that is genuinely fresh per job and genuinely cleaned up afterwards. How
 // does an update avoid killing a build that is halfway through.
 //
 // The answers here: one deterministic container per slot, so a supervisor
-// restart adopts what is already running instead of doubling it; the container's
+// restart adopts what is already running instead of doubling it. The container's
 // own writable layer as the runner's state, so removing the container is the
-// cleanup; and `docker stop` with a long timeout to restart, because the agent
-// finishes the job it is holding when it is asked to stop.
+// cleanup. This also covers `docker stop` with a long timeout to restart,
+// because the agent finishes the job it is holding when it is asked to stop.
 //
 // see docs/runners.md
 package runnerhost
@@ -38,7 +38,7 @@ type Options struct {
 	Name string
 	// HostKeyPath is the shared runner identity, copied in rather than passed as an env var.
 	HostKeyPath string
-	// RunnerImage is the agent image. RunnerImageUpdates checks for a newer one.
+	// RunnerImage is the agent image.
 	RunnerImage string
 	// SandboxImage is the Docker-in-Docker image each job runs in.
 	SandboxImage string
@@ -115,7 +115,7 @@ func (h *Host) imageCacheVolume(slot int) string {
 // Run supervises the pool until ctx is cancelled.
 //
 // Cancelling does NOT stop the runners. A supervisor being restarted, by an
-// image update or by an operator, must not take running jobs down with it; the
+// image update or by an operator, must not take running jobs down with it. The
 // next supervisor adopts the same containers by name.
 func (h *Host) Run(ctx context.Context) error {
 	if err := h.reconcile(ctx); err != nil {
@@ -211,7 +211,7 @@ func (h *Host) removeExtraSlots(ctx context.Context) error {
 	return nil
 }
 
-// update pulls the runner image and, if it changed, rebuilds the pool one slot
+// update pulls the runner image. If it changed, it rebuilds the pool one slot
 // at a time so the host never goes to zero capacity mid-update.
 func (h *Host) update(ctx context.Context) error {
 	if _, err := sandbox.Capture(ctx, h.opts.Docker, "pull", h.opts.RunnerImage); err != nil {
@@ -245,8 +245,8 @@ func (h *Host) update(ctx context.Context) error {
 }
 
 // drain asks a runner to stop and waits for it. The agent stops taking work and
-// finishes the job it holds, so the wait is bounded by the job, not by a signal
-// handler; the timeout is the backstop for a runner that is genuinely wedged.
+// finishes the job it holds. The wait is bounded by the job, not by a signal
+// handler. The timeout is the backstop for a runner that is genuinely wedged.
 func (h *Host) drain(ctx context.Context, name string) error {
 	seconds := int(h.opts.DrainTimeout / time.Second)
 	h.log.Info("draining runner", "container", name, "timeout", h.opts.DrainTimeout)
@@ -266,8 +266,8 @@ func (h *Host) remove(ctx context.Context, name string) error {
 }
 
 // create builds one runner: a container with no state of its own beyond its
-// writable layer, the host key copied in, and the image cache it shares with
-// nobody.
+// writable layer. This also covers the host key copied in, and the image
+// cache it shares with nobody.
 func (h *Host) create(ctx context.Context, slot int) error {
 	name := h.container(slot)
 	cache := h.imageCacheVolume(slot)

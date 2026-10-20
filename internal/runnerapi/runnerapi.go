@@ -2,11 +2,11 @@
 // endpoints runner agents register, acquire work, heartbeat, stream logs, and
 // report results on.
 //
-// Two invariants live here rather than in the scheduler, because this is where
-// the wire meets them. A heartbeat is the only channel by which a cancellation
+// Invariants live here rather than in the scheduler, because this is where the
+// wire meets them. A heartbeat is the only channel by which a cancellation
 // reaches a running job, so it always carries the reason. And a runner that has
 // lost its lease is told so explicitly rather than being allowed to finish and
-// report a result for a job somebody else is already running.
+// report a result. For a job somebody else is already running.
 package runnerapi
 
 import (
@@ -61,7 +61,7 @@ type Options struct {
 	SessionKey []byte
 	// SessionTTL bounds a runner's token; also the longest a revoked host keeps working.
 	SessionTTL time.Duration
-	// MaxPendingHosts caps unapproved hosts waiting at once; enrolment answers with no credential. Default 32.
+	// MaxPendingHosts caps unapproved hosts waiting at once; enrolment answers with no credential.
 	MaxPendingHosts int
 
 	LeaseTTL          time.Duration
@@ -166,7 +166,6 @@ func (s *Server) routes() {
 	post := func(path string, h func(http.ResponseWriter, *http.Request)) {
 		s.mux.HandleFunc("POST "+path, s.authenticated(h))
 	}
-	// These two are how a host gets a token, so they verify an Ed25519 signature instead of one.
 	s.mux.HandleFunc("POST "+protocol.PathEnrol, s.enrol)
 	s.mux.HandleFunc("POST "+protocol.PathSession, s.session)
 	post(protocol.PathRegister, s.register)
@@ -185,8 +184,8 @@ func (s *Server) routes() {
 // re-reads that host's state on every request.
 //
 // Re-reading is the point: without it, revoking a host would leave every token
-// already issued to it working until it expired, and "revoked" would mean
-// "revoked in a few minutes".
+// already issued to it working until it expired. "revoked" would mean "revoked
+// in a few minutes".
 func (s *Server) authenticated(h func(http.ResponseWriter, *http.Request)) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		token := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")

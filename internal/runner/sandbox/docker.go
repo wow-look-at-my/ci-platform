@@ -11,10 +11,6 @@ import (
 )
 
 // Docker runs the docker CLI.
-//
-// We shell out to the `docker` binary rather than importing the docker SDK:
-// the SDK is not among this module's permitted dependencies, and the CLI is
-// the same interface an operator debugging a stuck job would type by hand.
 type Docker interface {
 	Run(ctx context.Context, in Invocation) (int, error)
 }
@@ -38,7 +34,7 @@ type CLI struct {
 }
 
 // Run executes the docker CLI and returns its exit code. err is non-nil only
-// when the process could not be run or was interrupted; a non-zero exit code
+// when the process could not be run or was interrupted. A non-zero exit code
 // is returned as a value so callers can report the command's own failure.
 func (c *CLI) Run(ctx context.Context, in Invocation) (int, error) {
 	bin := c.Binary
@@ -65,7 +61,7 @@ func (c *CLI) Run(ctx context.Context, in Invocation) (int, error) {
 }
 
 // Capture runs a docker command collecting its output, and turns a non-zero
-// exit into an error carrying that output: a docker command that failed with a
+// exit into an error carrying that output. A docker command that failed with a
 // message nobody reads is how a sandbox failure becomes a mystery.
 func Capture(ctx context.Context, d Docker, args ...string) (string, error) {
 	var out, errBuf bytes.Buffer

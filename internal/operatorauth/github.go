@@ -25,9 +25,7 @@ const stateCookie = "ci_oauth_state"
 
 const stateTTL = 10 * time.Minute
 
-// OAuthOptions is the GitHub App's own OAuth client. A GitHub App is an OAuth
-// provider in its own right, so signing operators in needs no second App: the
-// client ID and secret are on the App's settings page.
+// OAuthOptions is the GitHub App's own OAuth client.
 type OAuthOptions struct {
 	ClientID     string
 	ClientSecret string
@@ -74,9 +72,9 @@ func (a *Auth) githubLogin(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, a.oauth.AuthorizeURL+"?"+q.Encode(), http.StatusFound)
 }
 
-// githubCallback finishes the flow: verify the state, exchange the code for a
-// user token, ask GitHub who it belongs to, and mint a session if that account
-// is on the admin list.
+// githubCallback finishes the flow. It verify the state, exchange the code for
+// a user token, ask GitHub. Who it belongs to, and mint a session if that
+// account is on the admin list.
 func (a *Auth) githubCallback(w http.ResponseWriter, r *http.Request) {
 	// The state cookie is single-use whatever happens next, so a failed attempt
 	// cannot be retried with the same value.
@@ -172,8 +170,6 @@ func (a *Auth) exchangeCode(ctx context.Context, code string) (string, error) {
 	if err := json.Unmarshal(body, &tr); err != nil {
 		return "", fmt.Errorf("token endpoint answered unparseable JSON: %w", err)
 	}
-	// GitHub reports a refused exchange as 200 with an error field, so the
-	// status code alone is not the answer.
 	if tr.Error != "" {
 		return "", fmt.Errorf("%s: %s", tr.Error, tr.ErrorDescription)
 	}

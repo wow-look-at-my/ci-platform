@@ -7,7 +7,7 @@ import (
 	"github.com/wow-look-at-my/ci-platform/internal/model"
 )
 
-// Event is what actually happened, as far as trigger matching is concerned.
+// Event is what happened, as far as trigger matching is concerned.
 type Event struct {
 	// Name is the webhook event: "push", "pull_request", "workflow_dispatch", "schedule", etc.
 	Name string
@@ -29,7 +29,7 @@ type Decision struct {
 // Matches reports whether a workflow triggers for an event, and why.
 //
 // A filter that cannot be compiled is an error rather than a pattern that
-// quietly matches nothing: a typo in `branches:` must not silently stop a
+// quietly matches nothing. A typo in `branches:` must not silently stop a
 // workflow from ever running again.
 func Matches(w *model.Workflow, e Event) (Decision, error) {
 	if w == nil {
@@ -82,8 +82,8 @@ func matchBranchFilter(f *model.BranchFilter, e Event, event string) (Decision, 
 	isTag := strings.HasPrefix(e.Ref, "refs/tags/")
 	short := shortRef(e.Ref)
 
-	// A ref filter that names only the other kind of ref excludes this one
-	// outright: a workflow filtered to tags does not run on a branch push.
+	// A ref filter that names only the other kind of ref excludes this outright.
+	// A workflow filtered to tags does not run on a branch push.
 	if isTag {
 		if len(f.Branches) > 0 || len(f.BranchesIgnore) > 0 {
 			if len(f.Tags) == 0 && len(f.TagsIgnore) == 0 {
@@ -125,7 +125,7 @@ func applyRefFilter(include, ignore []string, short, kind, ref string) (Decision
 		if err != nil {
 			return Decision{}, fmt.Errorf("on.%s-ignore: %w", kind, err)
 		}
-		// Every pattern here is an exclusion, whether or not it carries a `!`.
+		// Every pattern here is an exclusion, whether it carries a `!`.
 		for _, g := range set {
 			if g.Match(short) != g.Negated() {
 				return Decision{Reason: fmt.Sprintf("%s is excluded by the %s-ignore filter", ref, kind)}, nil

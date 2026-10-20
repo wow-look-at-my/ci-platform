@@ -48,10 +48,10 @@ func validRunnerHostState(s model.RunnerHostState) bool {
 // EnrolRunnerHost records a host the first time it is seen and is a no-op
 // afterwards.
 //
-// The no-op is the point. If re-enrolling could write, a host that had been
-// revoked could clear its own state by restarting, and an approved fingerprint
-// could have a different public key written behind it. Both are silent
-// escalations, so an existing row is returned untouched.
+// The no-op is the point. Suppose re-enrolling could write. Then a host that
+// had been revoked could clear its own state by restarting. An approved
+// fingerprint could have a different public key written behind it. Both are
+// silent escalations, so an existing row is returned untouched.
 func (s *Store) EnrolRunnerHost(ctx context.Context, h *model.RunnerHost) (*model.RunnerHost, error) {
 	if h == nil || h.Fingerprint == "" {
 		return nil, fmt.Errorf("sqlite: EnrolRunnerHost: host has no fingerprint")
@@ -113,14 +113,12 @@ func (s *Store) SetRunnerHostState(ctx context.Context, fingerprint string, stat
 	if !validRunnerHostState(state) {
 		return nil, fmt.Errorf("sqlite: SetRunnerHostState: invalid state %q", state)
 	}
-	// Approval is what hands out access, so it is the one transition that
-	// cannot be anonymous.
+	// Approval is what hands out access, so it is the transition that cannot be
+	// anonymous.
 	if state == model.RunnerHostApproved && by == "" {
 		return nil, fmt.Errorf("sqlite: SetRunnerHostState: approving a host must name who approved it")
 	}
-	// Approved_by names who granted access, so it is cleared the moment access
-	// is not granted. A field that keeps saying "approved by X" about a revoked
-	// host is a field that lies to whoever reads the list next.
+	// Approved_by names who granted access, so it is cleared the moment access is not granted.
 	approvedBy, approvedAt := "", ""
 	if state == model.RunnerHostApproved {
 		approvedBy, approvedAt = by, ts(at)

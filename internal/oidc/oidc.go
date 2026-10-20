@@ -1,26 +1,5 @@
 // Package oidc issues GitHub-Actions-compatible ID tokens and publishes the
 // JWKS that verifies them.
-//
-// # Issuer URL
-//
-// The issuer is the control plane's public base URL as configured in
-// Options.Issuer, e.g. https://ci.example.ghe.com. Relying parties are
-// configured to trust exactly that string: buildhost's BUILDHOST_OIDC_ISSUERS
-// and secret-server's issuer allow-list both match the "iss" claim literally,
-// and both discover the keys through:
-//
-//	{Issuer}/.well-known/openid-configuration
-//	{Issuer}/.well-known/jwks.json
-//
-// The issuer must be reachable from those services and must not change once
-// tokens have been issued against it.
-//
-// # Client contract
-//
-// @actions/core's getIDToken builds its request as
-// `${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=<encoded>`, appending with "&" and
-// never "?", so the URL the runner injects must already carry a query string.
-// RequestURL builds one that does. The response body is {"value": "<jwt>"}.
 package oidc
 
 import (
@@ -213,7 +192,7 @@ func New(opts Options) (*Service, error) {
 	return s, nil
 }
 
-// Handler routes the three endpoints.
+// Handler routes the endpoints.
 func (s *Service) Handler() http.Handler {
 	mux := http.NewServeMux()
 	mux.Handle("GET "+PathIDToken, s.verifier.Middleware(http.HandlerFunc(s.handleToken)))

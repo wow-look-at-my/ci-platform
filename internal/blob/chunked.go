@@ -11,9 +11,8 @@ import (
 	"sync"
 )
 
-// ChunkedUpload assembles the ranged PUT/PATCH chunks actions/upload-artifact and actions/cache send into one blob.
-// It writes through PutAt when the driver supports it, else stages each chunk as its own blob (see Staged).
-// Commit refuses to produce an object unless the ranges cover [0, size) exactly once; a gap or overlap is a corrupt upload.
+// ChunkedUpload assembles the ranged PUT/PATCH chunks actions/upload-artifact
+// and actions/cache send into one blob.
 type ChunkedUpload struct {
 	store Store
 	key   string
@@ -40,8 +39,8 @@ func NewChunkedUpload(s Store, key string) (*ChunkedUpload, error) {
 	return &ChunkedUpload{store: s, key: key}, nil
 }
 
-// LimitBytes caps the bytes this upload will accept, counted as they land; zero (default) is no cap.
-// A cap checked only against a client-declared size is advisory: the body's actual bytes are what fill the disk.
+// LimitBytes caps the bytes this upload will accept, counted as they land;
+// zero (default) is no cap.
 func (u *ChunkedUpload) LimitBytes(max int64) {
 	u.mu.Lock()
 	defer u.mu.Unlock()
@@ -56,8 +55,8 @@ func (u *ChunkedUpload) Staged() bool {
 	return u.staged
 }
 
-// partKey names a staged chunk, in its own namespace keyed by a hash of the destination key.
-// Staging under the destination key itself would make the final object's path a directory.
+// partKey names a staged chunk, in its own namespace keyed by a hash of the
+// destination key.
 func (u *ChunkedUpload) partKey(off int64) string {
 	sum := sha256.Sum256([]byte(u.key))
 	return fmt.Sprintf("_parts/%s/%020d", hex.EncodeToString(sum[:]), off)
@@ -73,8 +72,8 @@ func (u *ChunkedUpload) WriteRange(ctx context.Context, off int64, r io.Reader) 
 	if u.done {
 		return fmt.Errorf("blob: upload %s already committed", u.key)
 	}
-	// One byte past the budget is enough to prove the limit was exceeded, and
-	// stops a driver from storing the rest of an unbounded body first.
+	// One byte past the budget is enough to prove the limit was exceeded.
+	// Stops a driver from storing the rest of an unbounded body first.
 	if u.max > 0 {
 		r = io.LimitReader(r, max(u.max-u.written, 0)+1)
 	}
@@ -138,7 +137,6 @@ func (u *ChunkedUpload) coverage() (int64, error) {
 }
 
 // Commit finishes the upload and returns the assembled size and hex sha256.
-// An expected size of -1 skips the size check.
 func (u *ChunkedUpload) Commit(ctx context.Context, expectedSize int64) (int64, string, error) {
 	u.mu.Lock()
 	defer u.mu.Unlock()

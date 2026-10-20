@@ -13,9 +13,6 @@ var stepKeys = []string{
 }
 
 // supportedShells are the interpreters the runner knows how to invoke.
-// unsupportedShells are real GHA shells this platform does not implement; they
-// are named separately so the error says "not implemented" rather than
-// "unknown", which is a different thing for the person reading it.
 var (
 	supportedShells   = []string{"bash", "sh", "python", "node"}
 	unsupportedShells = []string{"cmd", "pwsh", "powershell"}

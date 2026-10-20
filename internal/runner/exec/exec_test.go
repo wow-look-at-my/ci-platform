@@ -397,8 +397,7 @@ func TestStepTimeout(t *testing.T) {
 		// Simulate the sandbox observing its context deadline.
 		return RunResult{ExitCode: 124}, nil
 	}
-	// A one-minute timeout is not waited out; the executor's own deadline
-	// bookkeeping is what is under test, via a context already past due.
+	// A one-minute timeout is not waited out.
 	ctx, cancel := context.WithTimeout(context.Background(), time.Nanosecond)
 	defer cancel()
 	time.Sleep(time.Millisecond)

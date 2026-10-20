@@ -14,7 +14,6 @@ import (
 // defaultLogPage is how many lines a paged read returns without a limit.
 const defaultLogPage = 2000
 
-// maxLogPage bounds one read so a job with a million lines cannot be pulled in one request.
 const maxLogPage = 20000
 
 // LogPageDTO is one page of log lines. NextSeq is where the next page starts;
@@ -28,7 +27,6 @@ type LogPageDTO struct {
 	Lines   []LogLineDTO `json:"lines"`
 }
 
-// logSource returns the wired log source, or writes a 503 naming the gap.
 func (s *Server) logSource(w http.ResponseWriter) (LogSource, bool) {
 	if s.cfg.Logs == nil {
 		writeErr(w, http.StatusServiceUnavailable, "no_log_source",

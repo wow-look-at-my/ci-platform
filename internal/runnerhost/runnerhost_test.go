@@ -16,8 +16,7 @@ import (
 )
 
 // fakeDocker records every CLI call and answers the queries the supervisor
-// makes. Shelling out to the real docker is not what these tests are about;
-// what the supervisor decides to run is.
+// makes.
 type fakeDocker struct {
 	calls []string
 	// state answers `inspect -f {{.State.Status}}` per container name; an absent name answers as no such container.
@@ -202,7 +201,6 @@ func TestUpdate_DrainsEachRunnerBeforeReplacingIt(t *testing.T) {
 	d.calls = nil
 	require.NoError(t, h.update(context.Background()))
 
-	// stop -t 7200 is the drain: docker waits two hours for the job to finish before it would kill anything.
 	assert.True(t, d.ran("stop -t 7200 ci-runner-basement-0"))
 	assert.True(t, d.ran("stop -t 7200 ci-runner-basement-1"))
 	assert.Equal(t, 2, d.count("create --name"))

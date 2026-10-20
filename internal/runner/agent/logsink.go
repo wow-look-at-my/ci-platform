@@ -13,9 +13,6 @@ import (
 // LogSink batches log lines to the control plane. A POST per line would swamp
 // it on a chatty build, so lines accumulate until the buffer is full or the
 // flush interval passes.
-//
-// Every line is masked here, on the way in: nothing unmasked is ever held in
-// the buffer, so a crash mid-flush cannot leak a secret either.
 type LogSink struct {
 	client   ControlPlane
 	runnerID string

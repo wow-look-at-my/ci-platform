@@ -18,8 +18,7 @@ import (
 )
 
 // rig is a control plane's scheduler over a real store, driven by a real
-// workflow. It is the smallest thing that can exercise the reliability layer
-// without a runner process.
+// workflow.
 type rig struct {
 	t *testing.T
 	// base is wall-clock, not a fixed epoch: the store stamps leases from time.Now().
@@ -112,8 +111,7 @@ jobs:
       - run: make build
 `
 
-// Incident 2: a job whose runner disappears is requeued, not lost and not
-// failed. The lease is the mechanism; a missed heartbeat is the trigger.
+// The lease is the mechanism; a missed heartbeat is the trigger.
 func TestIncident2_LostRunnerRequeuesRatherThanFailing(t *testing.T) {
 	ctx := context.Background()
 	r := newRig(t, oneJob)
@@ -156,7 +154,6 @@ func TestIncident2_LostRunnerRequeuesRatherThanFailing(t *testing.T) {
 	assert.Equal(t, after.ID, again.ID)
 }
 
-// Incident 3: nothing is cancelled without a recorded, surfaced reason.
 func TestIncident3_CancellationRecordsItsReasonEverywhere(t *testing.T) {
 	ctx := context.Background()
 	r := newRig(t, oneJob)
@@ -212,7 +209,7 @@ func TestCancellationWithoutAReasonIsRefused(t *testing.T) {
 func TestInfraFailureRetriesAndUserFailureDoesNot(t *testing.T) {
 	ctx := context.Background()
 	// A short, explicit backoff so the test can prove the delay is honoured
-	// without waiting out the default five seconds.
+	// without waiting out the default a few seconds.
 	r := newRig(t, `name: CI
 on: push
 jobs:
@@ -238,7 +235,6 @@ jobs:
 		Conclusion:  model.ConclusionInfraFailure,
 		Class:       model.ClassInfra,
 		ClassReason: `classified infra via rule "cloudflare-524": the remote returned HTTP 524`,
-		// Completed at the rig's wall-clock base so the backoff is measured from now.
 	}, r.base))
 
 	retried := r.job("build")
@@ -275,8 +271,7 @@ jobs:
 	assert.Equal(t, 2, done.Attempt, "a user failure never buys another attempt")
 }
 
-// Incident 5: a default-branch run that did not succeed fires the alarm. This
-// is the merged, green PR that never published.
+// This is the merged, green PR that never published.
 func TestIncident5_DefaultBranchFailureFiresTheAlarm(t *testing.T) {
 	ctx := context.Background()
 	r := newRig(t, oneJob)

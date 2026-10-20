@@ -140,9 +140,7 @@ func TestAppendAfterFinalizeIsRefused(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, l.Finalize(ctx, 1, 1))
 
-	// The attempt is evicted from memory on seal, so this append is the
-	// post-restart case too: the refusal has to come from the sealed object
-	// existing, not from in-process state.
+	// The attempt is evicted from memory on seal.
 	_, err = l.Append(ctx, 1, 1, lines("sneaky"))
 	assert.ErrorIs(t, err, logstore.ErrSealed)
 

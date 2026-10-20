@@ -345,9 +345,9 @@ func (b *byteReaderAt) ReadAt(p []byte, off int64) (int, error) {
 	return n, nil
 }
 
-// ExpireArtifacts deletes every artifact past its TTL and records why each one
-// went. An artifact that vanished without a recorded reason is the failure this
-// method exists to prevent.
+// ExpireArtifacts deletes every artifact past its TTL and records why each
+// went. An artifact that vanished without a recorded reason is the failure
+// this method exists to prevent.
 func (s *Service) ExpireArtifacts(ctx context.Context) (int, error) {
 	now := s.now()
 	expired, err := s.store.DeleteExpiredArtifacts(ctx, now)
@@ -371,8 +371,8 @@ func (s *Service) ExpireArtifacts(ctx context.Context) (int, error) {
 }
 
 // record writes an audit event. A failure to record is itself reported through
-// the returned error of nothing, so it is folded into the event trail's own
-// kind rather than dropped: the caller has already succeeded at the real work.
+// the returned error of nothing. It is folded into the event trail's own kind
+// rather than dropped: the caller has already succeeded at the real work.
 func (s *Service) record(ctx context.Context, a *model.Artifact, kind, message string, detail map[string]any) {
 	if detail == nil {
 		detail = map[string]any{}

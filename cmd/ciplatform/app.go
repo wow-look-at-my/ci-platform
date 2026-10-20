@@ -132,7 +132,7 @@ func (a *app) mount(ctx context.Context, cfg *config.Config, st store.Store, sig
 	if err != nil {
 		return fmt.Errorf("oidc key store: %w", err)
 	}
-	// The keyring serves a retired key as long as a token it signed can still be valid; the two TTLs must agree.
+	// The keyring serves a retired key as long as a token it signed can still be valid; both TTLs must agree.
 	const idTokenTTL = 15 * time.Minute
 	ring, err := oidc.NewKeyring(ctx, keys, oidc.KeyringOptions{TokenTTL: idTokenTTL})
 	if err != nil {
@@ -194,7 +194,7 @@ func (a *app) mount(ctx context.Context, cfg *config.Config, st store.Store, sig
 		return fmt.Errorf("web ui: %w", err)
 	}
 
-	// Everything below is on the listener job containers reach, so the operator surface is gated, not just unpublished.
+	// Everything below is on the listener job containers reach, so the operator surface is gated, not unpublished.
 	sessionKey, err := sessionKey(cfg, a.log)
 	if err != nil {
 		return err
@@ -317,7 +317,7 @@ func (a *app) recordQueueSample(ctx context.Context) {
 		a.log.Error("record queue sample failed", "err", err)
 	}
 	// A label with queued work and no runner to take it is why a job sits for
-	// five minutes with nothing to explain it, so say so rather than leaving
+	// a few minutes with nothing to explain it. Say so rather than leaving
 	// the operator to infer it from timestamps.
 	if len(stats.StarvedLabels) > 0 {
 		a.log.Warn("queued work has no runner to take it",
@@ -445,7 +445,7 @@ func (a *app) serviceEnv(runID, jobID int64, attempt int, token string) map[stri
 	base := a.cfg.PublicURL.String()
 	env := map[string]string{}
 
-	// Two URLs here: artifact endpoints are this platform, GITHUB_SERVER_URL is where repos are; base must not win both.
+	// URLs here: artifact endpoints are this platform, GITHUB_SERVER_URL is where repos are; base must not win both.
 	retentionDays := int(a.cfg.ArtifactRetention / (24 * time.Hour))
 	for k, v := range artifacts.RunnerEnv(base, a.cfg.GitHubServerURL.String(), runID, token, retentionDays) {
 		env[k] = v

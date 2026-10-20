@@ -2,8 +2,7 @@ package expr
 
 import "fmt"
 
-// node is one AST node: litNode, nameNode, propNode, indexNode, callNode,
-// unaryNode or binNode.
+// node is one AST node: litNode, nameNode, propNode, indexNode, callNode, unaryNode or binNode.
 type node any
 
 type litNode struct{ v any }
@@ -74,7 +73,7 @@ func (p *parser) expectOp(s string) error {
 	return nil
 }
 
-// precedence, loosest first. Unary ! and the postfix operators bind tighter
+// precedence, loosest first. Unary! and the postfix operators bind tighter
 // than anything here and are handled structurally.
 func precOf(t token) int {
 	if t.kind != tokOp {

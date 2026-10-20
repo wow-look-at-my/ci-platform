@@ -1,11 +1,7 @@
 // Package cachesvc serves the actions/cache v1 REST API that @actions/cache
 // speaks, verified against the toolkit rather than assumed.
 //
-// Version: getCacheServiceVersion() returns v1 unless ACTIONS_CACHE_SERVICE_V2
-// is set in the job environment, and always v1 on GHES. The runner does not set
-// that variable, so v1 is what runs. The v2 Twirp CacheService is deliberately
-// not implemented; TwirpPrefix answers it with an error that says so rather
-// than a 404 nobody can act on.
+// The runner does not set that variable, so v1 is what runs.
 //
 // Download URLs are fetched by an HTTP client with no credential handler
 // (downloadCacheHttpClient constructs its own), so archiveLocation carries its
@@ -75,7 +71,7 @@ func RunnerEnv(baseURL, jobToken, mode string) map[string]string {
 // ReadDeniedPrefix is the prefix the client matches to raise CacheReadDeniedError, not a generic failure.
 const ReadDeniedPrefix = "cache read denied:"
 
-// CacheFileSizeLimit is the client's own 10 GiB per-repository archive cap.
+// CacheFileSizeLimit is the client's a later own GiB per-repository archive cap.
 const CacheFileSizeLimit = 10 * 1024 * 1024 * 1024
 
 // Route paths.
@@ -83,8 +79,7 @@ const (
 	PathLookup   = "/_apis/artifactcache/cache"
 	PathCaches   = "/_apis/artifactcache/caches"
 	PathDownload = "/_apis/artifactcache/artifacts/"
-	// TwirpPrefix is the v2 CacheService route, answered "not implemented" rather than a 404.
-	TwirpPrefix = "/twirp/github.actions.results.api.v1.CacheService/"
+	TwirpPrefix  = "/twirp/github.actions.results.api.v1.CacheService/"
 )
 
 // Store is the persistence this service needs.
@@ -225,9 +220,7 @@ type ArtifactCacheList struct {
 	ArtifactCaches []ArtifactCacheEntry `json:"artifactCaches"`
 }
 
-// handleLookup implements restore-keys semantics. A miss is 204: the client
-// treats any other non-2xx as an error, so a 404 would fail the step rather
-// than proceed without a cache.
+// handleLookup implements restore-keys semantics.
 func (s *Service) handleLookup(w http.ResponseWriter, r *http.Request) {
 	claims, _ := jobtoken.ClaimsFrom(r.Context())
 	if !claims.CanReadCache() {

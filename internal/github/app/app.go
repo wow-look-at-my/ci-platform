@@ -27,7 +27,7 @@ import (
 	gh "github.com/wow-look-at-my/ci-platform/internal/github"
 )
 
-// jwtTTL is the App JWT lifetime. GitHub rejects anything over 10 minutes.
+// jwtTTL is the App JWT lifetime. GitHub rejects anything over several minutes.
 const jwtTTL = 9 * time.Minute
 
 // clockSkew backdates iat so a control-plane clock a minute fast still mints tokens GitHub accepts.
@@ -193,7 +193,7 @@ type accessTokenResponse struct {
 }
 
 // InstallationToken returns a cached, unscoped installation token, refreshing
-// it once under five minutes of life remain.
+// it once a bounded number of minutes of life remain.
 func (a *App) InstallationToken(ctx context.Context, installationID int64) (string, time.Time, error) {
 	return a.ScopedInstallationToken(ctx, installationID, TokenScope{})
 }

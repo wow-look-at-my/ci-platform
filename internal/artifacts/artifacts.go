@@ -1,8 +1,8 @@
 // Package artifacts serves the GitHub Actions Results API that
 // actions/upload-artifact@v4 and actions/download-artifact@v4 speak.
 //
-// The protocol has three parts, all verified against @actions/artifact rather
-// than assumed:
+// The protocol has parts, all verified against @actions/artifact rather than
+// assumed:
 //
 //  1. Twirp with JSON encoding at {ACTIONS_RESULTS_URL}/twirp/... (see twirp.go).
 //  2. An Azure Block Blob upload endpoint, because CreateArtifact returns a URL
@@ -12,14 +12,6 @@
 //
 // ACTIONS_RUNTIME_TOKEN must be a JWT carrying an "scp" claim of
 // "Actions.Results:<runBackendId>:<jobBackendId>"; internal/jobtoken mints one.
-//
-// # The GHES trap
-//
-// @actions/artifact refuses to run at all when GITHUB_SERVER_URL's hostname is
-// not github.com and does not end in .ghe.com or .localhost: every operation
-// throws GHESNotSupportedError before a request is made. ValidateServerURL
-// enforces that at startup so the failure is a named config error rather than
-// every artifact step failing at runtime with a message about GHES.
 package artifacts
 
 import (
@@ -59,7 +51,7 @@ var EnvNames = []string{
 var RequiredServerURLSuffixes = []string{".ghe.com", ".localhost"}
 
 // ValidateServerURL reports whether a URL will survive the client's isGhes()
-// check. It is a startup gate: a URL that fails it makes every artifact step
+// check. It is a startup gate. A URL that fails it makes every artifact step
 // in every job throw GHESNotSupportedError, and nothing about that failure
 // names the real cause.
 func ValidateServerURL(raw string) error {
@@ -202,7 +194,7 @@ func New(opts Options) (*Service, error) {
 
 // Route paths outside the Twirp surface.
 const (
-	// PathUpload has four path segments: the Azure SDK parses container and blob names from the URL.
+	// PathUpload has path segments: the Azure SDK parses container and blob names from the URL.
 	PathUpload   = "/_apis/results/artifacts/upload/"
 	PathDownload = "/_apis/results/artifacts/download/"
 )
@@ -266,7 +258,8 @@ func checkBackendIDs(claims *jobtoken.Claims, runBackendID, jobBackendID string)
 // token does not carry the scope a call needs.
 //
 // Every artifact call goes through this: a scope the minter refuses to issue
-// but no handler checks is a permission that exists only in the documentation.
+// but no handler checks is a permission. That permission exists only in the
+// documentation.
 func denyWithoutScope(w http.ResponseWriter, claims *jobtoken.Claims, scope jobtoken.Scope) bool {
 	if claims.Has(scope) {
 		return false
@@ -277,7 +270,7 @@ func denyWithoutScope(w http.ResponseWriter, claims *jobtoken.Claims, scope jobt
 }
 
 // storageKey is where an artifact's bytes live. The artifact id is in the path
-// so two runs uploading the same name never collide.
+// so runs uploading the same name never collide.
 func storageKey(artifactID int64) string {
 	return fmt.Sprintf("artifacts/%d/content.zip", artifactID)
 }

@@ -1,6 +1,6 @@
 // Package protocol is the wire contract between the control plane and runner
 // agents. It is HTTP+JSON with long-polling rather than gRPC: the traffic is a
-// handful of calls per job, and a JSON surface is testable with curl during an
+// handful of calls per job. A JSON surface is testable with curl during an
 // incident, which is worth more here than protobuf's efficiency.
 //
 // See docs/deviations.md for the record of this choice.

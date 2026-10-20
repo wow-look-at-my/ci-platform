@@ -2,9 +2,9 @@
 // live-streamed to watchers and sealed into the blob store when the attempt
 // ends.
 //
-// A re-run never overwrites the previous attempt's log, because "the log I was
-// reading was replaced by the retry" is exactly the failure this platform
-// exists to avoid. ANSI escapes are stored verbatim; the UI renders them.
+// A re-run never overwrites the attempt's log, because "the log I was reading
+// was replaced by the retry" is exactly the failure this platform exists to
+// avoid. ANSI escapes are stored verbatim; the UI renders them.
 package logstore
 
 import (
@@ -261,7 +261,7 @@ func (l *Log) snapshot(ctx context.Context, jobID int64, att int) ([]model.LogLi
 // closes when the attempt is finalized, when ctx ends, or when this subscriber
 // falls too far behind, in which case FellBehindText arrives first.
 //
-// An attempt that has not logged yet gets a live stream, not an error: the job
+// An attempt that has not logged yet gets a live stream, not an error. The job
 // page opens when the job starts, which is before its first line.
 func (l *Log) Subscribe(ctx context.Context, jobID int64, att int, fromSeq int64) (<-chan model.LogLine, error) {
 	if err := validate(jobID, att); err != nil {
@@ -361,8 +361,8 @@ func (l *Log) Raw(ctx context.Context, jobID int64, att int) (io.ReadCloser, err
 
 // Finalize seals the attempt and flushes it to the blob store. The attempt is
 // only marked sealed once the bytes are durable: a failed flush leaves the log
-// live and returns the reason, because a log that silently vanished on restart
-// is worse than an upload that failed loudly.
+// live. The failed flush returns the reason, because a log that silently
+// vanished on restart is worse than an upload that failed loudly.
 func (l *Log) Finalize(ctx context.Context, jobID int64, att int) error {
 	if err := validate(jobID, att); err != nil {
 		return err

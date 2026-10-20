@@ -36,8 +36,8 @@ func (s StaticToken) Token(context.Context) (string, error) { return string(s), 
 func (s StaticToken) Invalidate() {}
 
 // PlaintextWarning returns a sentence to log when a runner is about to talk to the control
-// plane in the clear, and "" when it is not (a warning, not a refusal: LAN deployments are
-// legitimate). Loopback is exempt: there is no network to sniff.
+// plane in the clear, and "". When it is not (a warning, not a refusal: LAN deployments
+// are legitimate). Loopback is exempt: there is no network to sniff.
 func PlaintextWarning(baseURL string) string {
 	u, err := url.Parse(baseURL)
 	if err != nil || u.Scheme != "http" {
@@ -121,8 +121,9 @@ func (c *Credentials) Labels() []string {
 }
 
 // Enrol offers this host's public key. It is safe to call on every start: the
-// control plane records the first sighting and returns the existing state
-// afterwards, so restarting neither resets an approval nor creates a duplicate.
+// control plane records the first sighting. The control plane returns the
+// existing state afterwards, so restarting neither resets an approval nor
+// creates a duplicate.
 func (c *Credentials) Enrol(ctx context.Context, name, os, arch, version string, labels []string) (protocol.EnrolResponse, error) {
 	pub, _ := c.key.Public().(ed25519.PublicKey)
 	at := c.now()
@@ -186,7 +187,7 @@ func (c *Credentials) Invalidate() {
 }
 
 // call posts a signed request. It does not retry: the caller decides how to
-// wait, and a signed request has a timestamp that would go stale in a retry
+// wait. A signed request has a timestamp that would go stale in a retry
 // loop anyway.
 func (c *Credentials) call(ctx context.Context, path string, in, out any) error {
 	body, err := json.Marshal(in)
@@ -219,7 +220,7 @@ func (c *Credentials) call(ctx context.Context, path string, in, out any) error 
 }
 
 // message pulls the human sentence out of an error body, falling back to the
-// raw body so a failure is never reported as an empty string.
+// raw body. So a failure is never reported as an empty string.
 func message(payload []byte) string {
 	var body struct {
 		Message string `json:"message"`

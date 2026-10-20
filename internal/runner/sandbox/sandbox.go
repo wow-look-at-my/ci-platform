@@ -29,7 +29,7 @@ type Options struct {
 	DockerHost string
 	// ImageCacheVolume is the volume mounted at the inner daemon's /var/lib/docker, shared across jobs.
 	ImageCacheVolume string
-	// LockDir holds the cache volume's lock file; two dockerds sharing one graph directory corrupt it.
+	// LockDir holds the cache volume's lock file; dockerds sharing one graph directory corrupt it.
 	LockDir string
 
 	// WorkspaceDir and TempDir are paths inside the container.
@@ -96,7 +96,7 @@ func (s stopwatch) mark(name string) {
 	s.report.Breakdown[name] = time.Since(s.start)
 }
 
-// Error is a setup or teardown failure with the stage that produced it, so the
+// Error is a setup or teardown failure with the stage that produced it. The
 // classifier is given a phase and the log names what broke.
 type Error struct {
 	Stage    string
@@ -119,7 +119,7 @@ type Container struct {
 	lock       *fileLock
 	removed    bool
 	hostTmpDir string
-	// Only what was actually created is removed, so teardown never reports removing a nonexistent resource.
+	// Only what was created is removed, so teardown never reports removing a nonexistent resource.
 	madeWorkspace bool
 	madeNetwork   bool
 	madeContainer bool
@@ -137,7 +137,7 @@ func (c *Container) WorkspaceDir() string { return c.opts.WorkspaceDir }
 func (c *Container) TempDir() string { return c.opts.TempDir }
 
 // Create builds the sandbox and blocks until the inner dockerd answers. Every
-// failure is an *Error naming the stage; a partially built sandbox is torn down
+// failure is an *Error naming the stage. A partially built sandbox is torn down
 // before returning so a failed setup never leaks a container or a volume.
 func Create(ctx context.Context, opts Options) (_ *Container, report *SetupReport, err error) {
 	opts.applyDefaults()
@@ -188,8 +188,8 @@ func Create(ctx context.Context, opts Options) (_ *Container, report *SetupRepor
 
 	sw = report.begin()
 	// Pull only when the image is absent. An unconditional pull makes every job
-	// depend on the registry being reachable, so a rate-limited registry fails
-	// a job whose image is already on the host.
+	// depend on the registry being reachable. A rate-limited registry fails a
+	// job whose image is already on the host.
 	if _, ierr := Capture(ctx, opts.Docker, "image", "inspect", opts.Image); ierr != nil {
 		if _, perr := Capture(ctx, opts.Docker, "pull", opts.Image); perr != nil {
 			return nil, report, setupErr(ctx, "image_pull", perr)
@@ -201,8 +201,6 @@ func Create(ctx context.Context, opts Options) (_ *Container, report *SetupRepor
 	sw.mark("image_pull")
 
 	sw = report.begin()
-	// A network of its own: DinD's unauthenticated daemon API on 2375 would be root access to
-	// this job from every other job on a shared bridge.
 	if _, nerr := Capture(ctx, opts.Docker, "network", "create", c.network); nerr != nil {
 		return nil, report, setupErr(ctx, "network_create", nerr)
 	}

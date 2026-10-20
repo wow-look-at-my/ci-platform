@@ -18,8 +18,8 @@ services:
     environment:
       # The URL browsers, GitHub, and job containers reach this instance on. Any
       # hostname is fine. It is also what a job's artifact, cache, and OIDC
-      # clients are pointed at, so it has to resolve from every machine that
-      # runs jobs -- on a LAN without hairpin NAT, map it there in DNS.
+      # clients are pointed at. It has to resolve from every machine that runs
+      # jobs -- on a LAN without hairpin NAT, map it there in DNS.
       CIPLATFORM_PUBLIC_URL: ${CIPLATFORM_PUBLIC_URL:-https://ci.pazer.build}
       # The database is one file on the data volume; back it up by copying it.
       CIPLATFORM_DATABASE_URL: /var/lib/ciplatform/ciplatform.db
@@ -52,8 +52,8 @@ services:
       - ciplatform-data:/var/lib/ciplatform
       - ./app-private-key.pem:/run/secrets/app-private-key.pem:ro
     healthcheck:
-      # Status-code only, body ignored, and 2xx while a subsystem is degraded:
-      # answering non-2xx here is what makes an orchestrator roll back a
+      # Status-code only, body ignored, and 2xx while a subsystem is degraded.
+      # Answering non-2xx here is what makes an orchestrator roll back a
       # running release.
       test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:8080/.well-known/docker-updater/health"]
       interval: 10s
@@ -62,7 +62,7 @@ services:
 
   runner-host:
     # Supervises the runner pool: keeps N runners running, replaces them when a
-    # newer runner image is published, and drains each one first so an update
+    # newer runner image is published. And drains each one first so an update
     # never kills a build. Point an image updater at THIS image; it never has to
     # be told about the runners themselves.
     image: oci.pazer.build/ci-platform/runner-host:latest

@@ -19,8 +19,7 @@ const NAV = [
 	{ href: "#/queue", label: "Queue" },
 ];
 
-// Every page registers its timers and streams here so a route change tears them
-// down; otherwise auto-refresh timers accumulate for the life of the tab.
+// Every page registers its timers and streams here so a route change tears them down.
 let cleanups: (() => void)[] = [];
 
 function resetPage(): HTMLElement {
@@ -92,10 +91,9 @@ function routes(): void {
 	});
 }
 
-// The API is closed to an uncredentialed caller, so the session is checked
+// The API is closed to an uncredentialed caller. The session is checked
 // before anything is painted: without it every panel would render the same
-// unauthorized error, which reads as a broken control plane rather than as a
-// session that ended.
+// unauthorized error.
 function signIn(): void {
 	const view = document.getElementById("view")!;
 	for (const fn of cleanups) fn();

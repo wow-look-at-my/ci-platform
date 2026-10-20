@@ -26,8 +26,7 @@ func (e *ParseError) Error() string {
 type parser struct {
 	path string
 	w    *model.Workflow
-	// jobNodes and needsNodes let the cross-job validation pass report a line
-	// for a cycle or a dangling `needs:`, long after the job itself was parsed.
+	// jobNodes and needsNodes let the cross-job validation pass report.
 	jobNodes   map[string]*yaml.Node
 	needsNodes map[string]*yaml.Node
 }
@@ -167,9 +166,9 @@ func (p *parser) nonEmpty(n *yaml.Node, where string) (string, error) {
 	return s, nil
 }
 
-// expr keeps the text unevaluated but checks the SYNTAX of every ${{ }} body,
-// so a malformed expression is a config error now rather than a failure
-// halfway through a run.
+// expr keeps the text unevaluated but checks the SYNTAX of every ${{ }} body.
+// A malformed expression is a config error now rather than a failure halfway
+// through a run.
 func (p *parser) expr(n *yaml.Node, where string) (model.Expr, error) {
 	s, err := p.scalar(n, where)
 	if err != nil {

@@ -78,8 +78,6 @@ func TestTriggerErrors(t *testing.T) {
 	}
 }
 
-// TestOnKeyParsedAsBoolean covers the YAML footgun: a loader following YAML 1.1
-// resolves a bare `on` key to the boolean true.
 func TestOnKeyParsedAsBoolean(t *testing.T) {
 	w, err := Parse("ci.yml", []byte("true: push\njobs:\n  a:\n    runs-on: x\n    steps:\n      - run: y\n"))
 	require.NoError(t, err)

@@ -1,5 +1,5 @@
 // Package github is the platform's GitHub REST surface: a small client, the App
-// authentication path, webhook ingest, and the two status reporters.
+// authentication path, webhook ingest, and both status reporters.
 //
 // Check runs can only be written with a GitHub App installation token, so the
 // App path is load-bearing rather than optional. Nothing here has a
@@ -32,7 +32,6 @@ const DefaultBaseURL = "https://api.github.com"
 const DefaultUserAgent = "ci-platform/1.0"
 
 var (
-	// ErrNotFound is returned for a 404.
 	ErrNotFound = errors.New("github: not found")
 	// ErrRateLimited is returned once retries are exhausted against a rate limit; never swallowed.
 	ErrRateLimited = errors.New("github: rate limit exhausted")
@@ -185,11 +184,10 @@ func hostOf(raw string) string {
 // fields, and a missing Tokens is a startup error rather than an anonymous
 // client that 403s later.
 type Options struct {
-	BaseURL    string
-	Tokens     TokenSource
-	HTTPClient *http.Client
-	UserAgent  string
-	// MaxRetries is retries after the first attempt; zero means the default of 3, negative disables retrying.
+	BaseURL     string
+	Tokens      TokenSource
+	HTTPClient  *http.Client
+	UserAgent   string
 	MaxRetries  int
 	BaseBackoff time.Duration
 	MaxBackoff  time.Duration
@@ -219,9 +217,7 @@ type Client struct {
 	rate RateLimit
 }
 
-// NewClient builds a client. A nil or empty token source is rejected here so
-// the failure names the missing configuration instead of surfacing as a 401 on
-// the first check-run write.
+// NewClient builds a client.
 func NewClient(opts Options) (*Client, error) {
 	if opts.Tokens == nil {
 		return nil, fmt.Errorf("%w: Options.Tokens is nil (set the GitHub App installation token source)", ErrNoToken)
@@ -379,7 +375,6 @@ type Response struct {
 	NextPage string
 }
 
-// Do performs one request with retry on 5xx, 429, and secondary rate limits.
 // out, when non-nil, receives the decoded JSON body.
 func (c *Client) Do(ctx context.Context, method, path string, body, out any) (*Response, error) {
 	var payload []byte

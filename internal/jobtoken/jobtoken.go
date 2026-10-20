@@ -1,18 +1,14 @@
 // Package jobtoken mints and verifies the per-job bearer token the runner
-// injects as ACTIONS_RUNTIME_TOKEN.
-//
-// The token is a real JWT because the toolkit reads it as one: @actions/artifact
-// base64-decodes ACTIONS_RUNTIME_TOKEN and requires an "scp" claim containing
+// injects as ACTIONS_RUNTIME_TOKEN. The token is a real JWT because the toolkit
+// reads it as one: @actions/artifact base64-decodes ACTIONS_RUNTIME_TOKEN. It
+// requires an "scp" claim containing
 // "Actions.Results:<workflowRunBackendId>:<workflowJobRunBackendId>", splitting
-// on ":" into exactly three parts, before it makes a single request. A token
-// without that claim fails the action client-side with a message that names
-// nothing useful.
-//
-// The two backend IDs are UUIDv5 values derived from the run and job IDs, so
-// the service can map them back without a lookup table and can prove that a
-// request's IDs belong to the token that carried them.
-//
-// The token grants exactly the scopes it names, never repository write access.
+// on ":" into parts, before it makes a single request. A token without that
+// claim fails the action client-side with a message that names nothing useful.
+// Both backend IDs are UUIDv5 values derived from the run and job IDs. The
+// service can map them back without a lookup table and can prove that a
+// request's IDs belong to the token that carried them. The token grants exactly
+// the scopes it names, never repository write access.
 package jobtoken
 
 import (
@@ -74,8 +70,8 @@ func BackendRunID(runID int64) string {
 	return uuid.NewSHA1(backendIDNamespace, []byte("run:"+strconv.FormatInt(runID, 10))).String()
 }
 
-// BackendJobID is the workflowJobRunBackendId for one job attempt. The attempt
-// is part of it: a re-run must not be able to write the previous attempt's
+// BackendJobID is the workflowJobRunBackendId for one job attempt. The
+// attempt is part of it: a re-run must not be able to write the attempt's
 // artifacts.
 func BackendJobID(jobID int64, attempt int) string {
 	return uuid.NewSHA1(backendIDNamespace,
@@ -136,7 +132,7 @@ type Lookup func(runID, jobID int64, attempt int) (Job, error)
 
 // Options configures a Signer.
 type Options struct {
-	// Key is the HMAC key; at least 32 bytes.
+	// Key is the HMAC key; many bytes.
 	Key []byte
 	// Issuer is this control plane's URL, recorded as the "iss" claim.
 	Issuer string
@@ -228,8 +224,8 @@ func (s *Signer) MintJob(j Job) (string, error) {
 }
 
 // Mint matches scheduler.Options.MintJobToken. It resolves the job through the
-// configured Lookup; without one there is nothing to put in the token, and
-// that is a wiring error rather than a token with invented contents.
+// configured Lookup. Without one there is nothing to put in the token. That is
+// a wiring error rather than a token with invented contents.
 func (s *Signer) Mint(runID, jobID int64, attempt int) (string, error) {
 	if s.lookup == nil {
 		return "", errors.New("jobtoken: no Lookup configured, so Mint cannot resolve the job's repository and scopes")
@@ -399,7 +395,7 @@ const (
 // SignURL appends an expiry and signature to a URL, for handing to a client
 // that cannot send an Authorization header. actions/cache downloads its
 // archive with an unauthenticated HTTP client, and @actions/artifact fetches
-// its signed download URL the same way, so those URLs must carry their own
+// its signed download URL the same way. Those URLs must carry their own
 // proof.
 func (s *Signer) SignURL(raw string, ttl time.Duration) (string, error) {
 	if ttl <= 0 {

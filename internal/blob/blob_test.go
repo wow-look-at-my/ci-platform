@@ -162,8 +162,7 @@ func TestChunkedUploadEnforcesItsLimitOnBytesNotClaims(t *testing.T) {
 
 			require.NoError(t, u.WriteRange(ctx, 0, strings.NewReader("12345")))
 
-			// The second chunk crosses the limit. It is refused as it lands,
-			// not at commit, and not on the strength of a declared size.
+			// The second chunk crosses the limit.
 			err = u.WriteRange(ctx, 5, strings.NewReader("6789abcdef"))
 			require.ErrorIs(t, err, blob.ErrTooLarge)
 			assert.Contains(t, err.Error(), "limit of 8")
@@ -262,8 +261,7 @@ func TestChunkedUploadRejectsBadInput(t *testing.T) {
 	assert.Error(t, u.WriteRange(context.Background(), -1, strings.NewReader("x")))
 }
 
-// failingStore reports a storage outage on every write, proving an upload
-// fails with a named cause rather than silently producing an empty object.
+// failingStore reports a storage outage on every write.
 type failingStore struct{ blob.Store }
 
 func (failingStore) Put(context.Context, string, io.Reader) (int64, string, error) {
@@ -288,7 +286,7 @@ func TestDiskSignedURLIsUnsupported(t *testing.T) {
 }
 
 // partKeyFor mirrors the staging namespace ChunkedUpload uses, so the cleanup
-// assertions above check the key that is actually written.
+// assertions above check the key that is written.
 func partKeyFor(key string, off int64) string {
 	sum := sha256.Sum256([]byte(key))
 	return fmt.Sprintf("_parts/%s/%020d", hex.EncodeToString(sum[:]), off)

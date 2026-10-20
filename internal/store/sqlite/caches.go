@@ -131,12 +131,12 @@ func likePrefix(p string) string {
 }
 
 // LookupCache implements restore-keys semantics: the exact key first, then each
-// restore key as a prefix in declaration order, newest created_at winning
-// within a key. matchedOn names the key that hit.
+// restore key as a prefix in declaration order, newest created_at. That
+// created_at is winning within a key. matchedOn names the key that hit.
 //
-// ref is recorded on the entry and returned, not filtered on: which refs may
-// restore from which is the caller's policy, and silently narrowing here would
-// turn a hit into an unexplained miss.
+// ref is recorded on the entry. It returned, not filtered on. This also covers
+// which refs may restore from which is the caller's policy, and silently
+// narrowing here would turn a hit into an unexplained miss.
 func (s *Store) LookupCache(ctx context.Context, repoID int64, key string, restoreKeys []string, version, ref string) (*model.CacheEntry, string, error) {
 	const exact = `
 SELECT ` + cacheCols + ` FROM cache_entries

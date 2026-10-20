@@ -13,10 +13,10 @@ import (
 	"github.com/wow-look-at-my/ci-platform/internal/protocol"
 )
 
-// A runner that lost its lease -- a partition, a reap, or simply another host
-// holding the shared runner token -- must not be able to write anything for a
-// job it no longer holds. The agent honouring LeaseLost is cooperation; this is
-// enforcement.
+// A runner that lost its lease -- a partition, a reap, or another host
+// holding the shared runner token. It must not be able to write anything for
+// a job it no longer holds. The agent honouring LeaseLost is cooperation;
+// this is enforcement.
 func TestJobScopedWritesRequireHoldingTheLease(t *testing.T) {
 	h := newHarness(t)
 	ctx := context.Background()

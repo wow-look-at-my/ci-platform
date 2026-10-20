@@ -170,7 +170,7 @@ func TestSessionToken_RejectsAnythingItDidNotSign(t *testing.T) {
 	}
 }
 
-// A nonce with no expiry needs an unbounded record of every nonce ever seen; a
+// A nonce with no expiry needs an unbounded record of every nonce ever seen. A
 // timestamp with no nonce lets a captured request be replayed for the whole
 // window. Both halves are checked here because both are load-bearing.
 func TestCheckFreshness(t *testing.T) {

@@ -4,7 +4,7 @@
 // The point is that the demo cannot drift from the product. It seeds a real
 // store through the real model, serves it with the real internal/api handlers,
 // and records the exact JSON those handlers return. A hand-written fixture file
-// would be a second, unchecked description of the API -- and a demo showing a
+// would be a second, unchecked description of the API. And a demo showing a
 // shape the server does not produce is precisely the kind of quiet lie this
 // platform exists to refuse.
 //

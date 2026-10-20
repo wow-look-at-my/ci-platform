@@ -1,18 +1,14 @@
 // Package enrol is how a runner host proves which machine it is, without
-// anybody having to invent a password.
-//
-// A host generates an Ed25519 keypair the first time it starts, keeps the
-// private half on disk, and sends the public half once. The control plane
-// records it as pending and does nothing else with it. An operator approves the
-// fingerprint by eye, the same way they would an SSH host key, and only then
-// can that host exchange a signature for a session token and start taking jobs.
-//
-// The properties this buys over a shared token: nothing secret is ever
-// transmitted or typed, a compromised host is revoked on its own without
-// re-keying the fleet, every request is attributable to one machine, and a host
-// that has not been approved is inert rather than trusted-by-default.
-//
-// see docs/runners.md
+// anybody having to invent a password. A host generates an Ed25519 keypair the
+// first time it starts, keeps the private half on disk, and sends the public
+// half once. The control plane records it as pending and does nothing else with
+// it. An operator approves the fingerprint by eye, the same way they would an
+// SSH host key, and only then can that host exchange. A signature for a session
+// token and start taking jobs. The properties this buys over a shared token:
+// nothing secret is ever transmitted or typed. A compromised host is revoked on
+// its own without re-keying the fleet. Every request is attributable to one
+// machine, and a host that has not been approved is inert rather than
+// trusted-by-default. see docs/runners.md
 package enrol
 
 import (
@@ -32,7 +28,6 @@ import (
 // pemType is the label in the on-disk key file.
 const pemType = "CI PLATFORM RUNNER HOST KEY"
 
-// SignaturePurpose prefixes every signed message, so one purpose's signature never verifies for another.
 const (
 	PurposeEnrol   = "ci-platform-runner-enrol"
 	PurposeSession = "ci-platform-runner-session"
@@ -65,11 +60,8 @@ func EncodePublicKey(pub ed25519.PublicKey) string {
 }
 
 // LoadOrCreateKey returns the host's key, generating and saving one the first
-// time. The second result reports whether it was just created, so the caller
-// can print the fingerprint an operator now has to approve.
-//
-// The file is written 0600 through a temp file and a rename, so a crash cannot
-// leave a half-written key that reads as a different host.
+// time. The second result reports whether it was created, so the caller can
+// print the fingerprint an operator now has to approve.
 func LoadOrCreateKey(path string) (ed25519.PrivateKey, bool, error) {
 	switch buf, err := os.ReadFile(path); {
 	case err == nil:
