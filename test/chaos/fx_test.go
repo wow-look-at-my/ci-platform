@@ -1,7 +1,4 @@
 package chaos
-chaos
-chaos
-chaos
 
 import "embed"
 

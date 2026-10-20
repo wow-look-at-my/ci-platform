@@ -1,6 +1,4 @@
 package webhook
-webhook
-webhook
 
 import "embed"
 

@@ -1,7 +1,4 @@
 package commands
-commands
-commands
-commands
 
 import "embed"
 

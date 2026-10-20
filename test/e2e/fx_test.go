@@ -1,6 +1,4 @@
 package e2e
-e2e
-e2e
 
 import "embed"
 

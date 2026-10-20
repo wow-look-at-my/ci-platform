@@ -1,14 +1,4 @@
 package exec
-exec
-exec
-exec
-exec
-exec
-exec
-exec
-exec
-exec
-exec
 
 import "embed"
 
