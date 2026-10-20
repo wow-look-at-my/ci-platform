@@ -2,11 +2,11 @@
 // endpoints runner agents register, acquire work, heartbeat, stream logs, and
 // report results on.
 //
-// Two invariants live here rather than in the scheduler, because this is where
-// the wire meets them. A heartbeat is the only channel by which a cancellation
+// Invariants live here rather than in the scheduler, because this is where the
+// wire meets them. A heartbeat is the only channel by which a cancellation
 // reaches a running job, so it always carries the reason. And a runner that has
 // lost its lease is told so explicitly rather than being allowed to finish and
-// report a result for a job somebody else is already running.
+// report a result. For a job somebody else is already running.
 package runnerapi
 
 import (
@@ -57,16 +57,11 @@ type Options struct {
 	Scheduler Scheduler
 	Logs      Logs
 
-	// SessionKey signs the short-lived tokens runners carry. Required: an
-	// unauthenticated runner endpoint would let anything on the network claim a
-	// job and read its secrets.
+	// SessionKey signs the short-lived tokens runners carry.
 	SessionKey []byte
-	// SessionTTL bounds a runner's token. It is also the longest a revoked host
-	// keeps working, so it is minutes rather than days.
+	// SessionTTL bounds a runner's token.
 	SessionTTL time.Duration
 	// MaxPendingHosts caps how many unapproved hosts may be waiting at once.
-	// Enrolment answers without a credential by necessity, so this is what
-	// stops anything that can reach it from filling the table. Default 32.
 	MaxPendingHosts int
 
 	LeaseTTL          time.Duration
@@ -88,8 +83,7 @@ type Server struct {
 	log      *slog.Logger
 	sessions *enrol.Sessions
 
-	// cancels holds pending cancellations keyed by job id, delivered on the
-	// job's next heartbeat.
+	// cancels holds pending cancellations keyed by job id, delivered on the job's next heartbeat.
 	mu      sync.Mutex
 	cancels map[int64]model.CancelReason
 }
@@ -172,8 +166,6 @@ func (s *Server) routes() {
 	post := func(path string, h func(http.ResponseWriter, *http.Request)) {
 		s.mux.HandleFunc("POST "+path, s.authenticated(h))
 	}
-	// These two are how a host gets a token, so they cannot require one. Both
-	// verify an Ed25519 signature instead, and enrolment grants nothing.
 	s.mux.HandleFunc("POST "+protocol.PathEnrol, s.enrol)
 	s.mux.HandleFunc("POST "+protocol.PathSession, s.session)
 	post(protocol.PathRegister, s.register)
@@ -192,8 +184,8 @@ func (s *Server) routes() {
 // re-reads that host's state on every request.
 //
 // Re-reading is the point: without it, revoking a host would leave every token
-// already issued to it working until it expired, and "revoked" would mean
-// "revoked in a few minutes".
+// already issued to it working until it expired. "revoked" would mean "revoked
+// in a few minutes".
 func (s *Server) authenticated(h func(http.ResponseWriter, *http.Request)) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		token := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
@@ -232,10 +224,7 @@ func (s *Server) register(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusBadRequest, "runner_id is required")
 		return
 	}
-	// A runner's labels decide which jobs it is offered, so they are bounded by
-	// what the operator allowed the host rather than taken as declared. A host
-	// that is later compromised cannot widen its own reach by claiming a label
-	// it was never approved for.
+	// A runner's labels decide which jobs it is offered.
 	labels, dropped := allowedLabels(r.Context(), req.Labels)
 	if len(dropped) > 0 {
 		s.log.Warn("runner asked for labels its host is not approved for",
@@ -323,8 +312,7 @@ func (s *Server) heartbeat(w http.ResponseWriter, r *http.Request) {
 		err := s.opts.Store.Heartbeat(ctx, req.RunnerID, req.JobID, s.opts.LeaseTTL)
 		switch {
 		case errors.Is(err, store.ErrLeaseLost), errors.Is(err, store.ErrNotFound):
-			// The job was requeued elsewhere. Tell the agent to stop without
-			// reporting a result, so two runners cannot both complete it.
+			// The job was requeued elsewhere.
 			resp.LeaseLost = true
 			s.log.Warn("runner holds a lost lease", "runner", req.RunnerID, "job", req.JobID)
 		case err != nil:

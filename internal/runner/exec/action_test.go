@@ -42,7 +42,7 @@ func TestDockerActionIsUnsupportedNotSkipped(t *testing.T) {
 }
 
 func TestDockerRunsUsingIsUnsupported(t *testing.T) {
-	dir := writeAction(t, "name: d\nruns:\n  using: docker\n  image: Dockerfile\n", nil)
+	dir := writeAction(t, fx("action_45.yml"), nil)
 	h := newHarness(t, []protocol.StepSpec{{Number: 1, Uses: "o/p@v1"}},
 		withResolver(&fakeResolver{dirs: map[string]string{"o/p@v1": dir}}))
 	res := h.ex.Run(context.Background())
@@ -52,7 +52,7 @@ func TestDockerRunsUsingIsUnsupported(t *testing.T) {
 }
 
 func TestUnknownRunsUsingIsUnsupported(t *testing.T) {
-	dir := writeAction(t, "name: d\nruns:\n  using: node12\n  main: i.js\n", nil)
+	dir := writeAction(t, fx("action_55.yml"), nil)
 	h := newHarness(t, []protocol.StepSpec{{Number: 1, Uses: "o/p@v1"}},
 		withResolver(&fakeResolver{dirs: map[string]string{"o/p@v1": dir}}))
 	res := h.ex.Run(context.Background())
@@ -76,22 +76,7 @@ func TestNoResolverConfigured(t *testing.T) {
 	assert.True(t, h.log.contains("no action resolver configured"))
 }
 
-const nodeActionYAML = `
-name: Greet
-description: greets
-inputs:
-  who-to-greet:
-    description: whom
-    default: World
-  token:
-    description: t
-    required: true
-runs:
-  using: node20
-  main: dist/index.js
-  pre: dist/pre.js
-  post: dist/post.js
-`
+var nodeActionYAML = fx("action_79.yml")
 
 func TestJavaScriptActionRunsMainPreAndPost(t *testing.T) {
 	dir := writeAction(t, nodeActionYAML, map[string]string{
@@ -151,7 +136,7 @@ func TestJavaScriptPostRunsEvenWhenTheJobFails(t *testing.T) {
 }
 
 func TestJavaScriptActionWithoutNodeIsInfra(t *testing.T) {
-	dir := writeAction(t, "name: n\nruns:\n  using: node24\n  main: i.js\n", map[string]string{"i.js": "//x"})
+	dir := writeAction(t, fx("action_154.yml"), map[string]string{"i.js": "//x"})
 	h := newHarness(t, []protocol.StepSpec{{Number: 1, Uses: "o/p@v1"}},
 		withResolver(&fakeResolver{dirs: map[string]string{"o/p@v1": dir}}))
 	// No node in the sandbox image.
@@ -162,7 +147,7 @@ func TestJavaScriptActionWithoutNodeIsInfra(t *testing.T) {
 }
 
 func TestJavaScriptActionMissingMain(t *testing.T) {
-	dir := writeAction(t, "name: n\nruns:\n  using: node20\n  post: p.js\n", nil)
+	dir := writeAction(t, fx("action_165.yml"), nil)
 	h := newHarness(t, []protocol.StepSpec{{Number: 1, Uses: "o/p@v1"}},
 		withResolver(&fakeResolver{dirs: map[string]string{"o/p@v1": dir}}))
 	h.sb.binaries["node"] = "/usr/bin/node"
@@ -181,25 +166,7 @@ func TestRequiredInputWithoutValueIsConfigError(t *testing.T) {
 	assert.True(t, h.log.contains(`required input "token"`))
 }
 
-const compositeYAML = `
-name: Composite
-description: c
-inputs:
-  greeting:
-    default: hello
-outputs:
-  said:
-    description: what was said
-    value: ${{ steps.say.outputs.text }}
-runs:
-  using: composite
-  steps:
-    - id: say
-      shell: bash
-      run: echo ${{ inputs.greeting }}
-    - shell: sh
-      run: echo second
-`
+var compositeYAML = fx("action_184.yml")
 
 func TestCompositeActionRunsStepsWithInputScope(t *testing.T) {
 	dir := writeAction(t, compositeYAML, nil)
@@ -237,7 +204,7 @@ func TestCompositeActionRunsStepsWithInputScope(t *testing.T) {
 }
 
 func TestCompositeStepWithoutShellIsConfigError(t *testing.T) {
-	dir := writeAction(t, "name: c\nruns:\n  using: composite\n  steps:\n    - run: echo hi\n", nil)
+	dir := writeAction(t, fx("action_240.yml"), nil)
 	h := newHarness(t, []protocol.StepSpec{{Number: 1, Uses: "o/c@v1"}},
 		withResolver(&fakeResolver{dirs: map[string]string{"o/c@v1": dir}}))
 	res := h.ex.Run(context.Background())
@@ -246,7 +213,7 @@ func TestCompositeStepWithoutShellIsConfigError(t *testing.T) {
 }
 
 func TestCompositeStepWithNeitherRunNorUses(t *testing.T) {
-	dir := writeAction(t, "name: c\nruns:\n  using: composite\n  steps:\n    - name: nothing\n", nil)
+	dir := writeAction(t, fx("action_249.yml"), nil)
 	h := newHarness(t, []protocol.StepSpec{{Number: 1, Uses: "o/c@v1"}},
 		withResolver(&fakeResolver{dirs: map[string]string{"o/c@v1": dir}}))
 	res := h.ex.Run(context.Background())
@@ -269,7 +236,7 @@ func TestCompositeFailingStepFailsTheAction(t *testing.T) {
 
 func TestNestedCompositeRecursionIsBounded(t *testing.T) {
 	// An action that uses itself: without a depth bound this never terminates.
-	dir := writeAction(t, "name: loop\nruns:\n  using: composite\n  steps:\n    - uses: o/loop@v1\n", nil)
+	dir := writeAction(t, fx("action_272.yml"), nil)
 	h := newHarness(t, []protocol.StepSpec{{Number: 1, Uses: "o/loop@v1"}},
 		func(c *Config) {
 			c.Actions = &fakeResolver{dirs: map[string]string{"o/loop@v1": dir}}
@@ -281,8 +248,8 @@ func TestNestedCompositeRecursionIsBounded(t *testing.T) {
 }
 
 func TestNestedCompositeUsesWorks(t *testing.T) {
-	inner := writeAction(t, "name: inner\nruns:\n  using: composite\n  steps:\n    - shell: bash\n      run: echo inner\n", nil)
-	outer := writeAction(t, "name: outer\nruns:\n  using: composite\n  steps:\n    - uses: o/inner@v1\n", nil)
+	inner := writeAction(t, fx("action_284.yml"), nil)
+	outer := writeAction(t, fx("action_285.yml"), nil)
 	h := newHarness(t, []protocol.StepSpec{{Number: 1, Uses: "o/outer@v1"}},
 		withResolver(&fakeResolver{dirs: map[string]string{
 			"o/outer@v1": outer, "o/inner@v1": inner,
@@ -297,7 +264,7 @@ func TestLocalActionIsReadFromTheSandbox(t *testing.T) {
 	h := newHarness(t, []protocol.StepSpec{{Number: 1, Uses: "./.github/actions/build"}},
 		withResolver(&fakeResolver{}))
 	h.sb.write("/workspace/.github/actions/build/action.yml",
-		"name: local\nruns:\n  using: composite\n  steps:\n    - shell: bash\n      run: echo local\n")
+		fx("action_300.yml"))
 
 	res := h.ex.Run(context.Background())
 	require.Equal(t, model.ConclusionSuccess, res.Conclusion)
@@ -313,29 +280,8 @@ func TestLocalActionMissingMetadata(t *testing.T) {
 }
 
 func TestActionWithExpressionInWithFromComposite(t *testing.T) {
-	inner := writeAction(t, `
-name: inner
-inputs:
-  value:
-    required: true
-runs:
-  using: composite
-  steps:
-    - shell: bash
-      run: echo ${{ inputs.value }}
-`, nil)
-	outer := writeAction(t, `
-name: outer
-inputs:
-  passed:
-    default: from-outer
-runs:
-  using: composite
-  steps:
-    - uses: o/inner@v1
-      with:
-        value: ${{ inputs.passed }}
-`, nil)
+	inner := writeAction(t, fx("action_316.yml"), nil)
+	outer := writeAction(t, fx("action_327.yml"), nil)
 	h := newHarness(t, []protocol.StepSpec{{Number: 1, Uses: "o/outer@v1"}},
 		withResolver(&fakeResolver{dirs: map[string]string{"o/outer@v1": outer, "o/inner@v1": inner}}))
 
@@ -350,7 +296,7 @@ runs:
 }
 
 func TestCachedActionIsReported(t *testing.T) {
-	dir := writeAction(t, "name: c\nruns:\n  using: composite\n  steps: []\n", nil)
+	dir := writeAction(t, fx("action_353.yml"), nil)
 	h := newHarness(t, []protocol.StepSpec{{Number: 1, Uses: "o/c@v1"}}, func(c *Config) {
 		c.Actions = &cachedResolver{inner: &fakeResolver{dirs: map[string]string{"o/c@v1": dir}}}
 	})

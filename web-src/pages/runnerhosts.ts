@@ -1,9 +1,5 @@
 // Runner hosts: the machines allowed to run runners, and the approval an
 // operator gives their key.
-//
-// The pending list is the reason this page exists. A host that has enrolled and
-// not been approved is a runner somebody set up that will never take a job, and
-// nothing else in the UI would say so.
 
 import { api, type RunnerHost } from "../api.js";
 import { el } from "../dom.js";
@@ -44,9 +40,7 @@ function table(hosts: RunnerHost[], onChange: () => void): HTMLElement {
 				el("td", {}, el("span", { class: `dot host-state-${h.state}` }), h.state),
 				el("td", {},
 					el("strong", {}, h.name || "(unnamed)"),
-					// The fingerprint is what the operator compares against what
-					// the host printed, so it is shown in full rather than
-					// truncated to fit.
+					// The fingerprint is what the operator compares against what the host printed.
 					el("div", { class: "muted mono fingerprint" }, h.fingerprint),
 					h.enrolled_from ? el("div", { class: "muted" }, `from ${h.enrolled_from}`) : el("span"),
 				),

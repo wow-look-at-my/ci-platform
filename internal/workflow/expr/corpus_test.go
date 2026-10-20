@@ -7,11 +7,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// The cases here are ported from two independent implementations: nektos/act's
-// pkg/exprparser/interpreter_test.go and rhysd/actionlint's expr_parser_test.go
-// / expr_lexer_test.go. Where the two disagree with GitHub's own runner, the
-// runner wins and the expectation carries a comment naming the file that
-// settles it (actions-runner/src/Sdk/DTExpressions2/...).
+// The cases here are.
 
 type corpusCase struct {
 	src  string
@@ -110,11 +106,8 @@ func TestCorpusOperators(t *testing.T) {
 		{"fromJSON('[0,1]')[-34553]", nil},
 		// act expects null; Index.cs floors a fractional index instead.
 		{"fromJSON('[0,1]')[1.1]", 1.0},
-		// act disabled this case; Index.cs derives the integer index from
-		// ConvertToNumber, so a numeric string indexes an array.
 		{"fromJSON('[0,1]')['1']", 1.0},
-		// act expects "someone"; Index.cs applies an index to each ELEMENT of a
-		// filtered array, and a string has no element 0.
+		// act expects "someone"; Index.cs applies an index to each ELEMENT of a filtered array.
 		{"(github.event.commits.*.author.username)[0]", filtered{}},
 		{"!true", false},
 		{"1 < 2", true},
@@ -129,11 +122,8 @@ func TestCorpusOperators(t *testing.T) {
 		{"github.event.commits[0].author.username != github.event.commits[1].author.username", true},
 		{"github.event.commits[0].author.username1 != github.event.commits[1].author.username", true},
 		{"github.event.commits[0].author.username != github.event.commits[1].author.username1", true},
-		// act expects true; both sides are null and AbstractEqual returns true
-		// for Null/Null (EvaluationResult.cs), so they are NOT unequal.
 		{"github.event.commits[0].author.username1 != github.event.commits[1].author.username2", false},
-		// act errors on map-vs-map; EvaluationResult.AbstractEqual compares
-		// containers by reference, so two different maps are simply unequal.
+		// act errors on map-vs-map.
 		{"secrets != env", true},
 		{"secrets == secrets", true},
 	})
@@ -174,7 +164,7 @@ func TestCorpusCoercion(t *testing.T) {
 }
 
 // TestCorpusBooleanEvaluation is act's operand-returning table. Each row is
-// `left OP right` and the expected result is one of the two OPERANDS.
+// `left OP right` and the expected result is one of the OPERANDS.
 func TestCorpusBooleanEvaluation(t *testing.T) {
 	runCorpus(t, corpusCtx(), []corpusCase{
 		{"true && true", true},
@@ -261,8 +251,6 @@ func TestCorpusContexts(t *testing.T) {
 		{"github.action", "push"},
 		{"github.event.commits[0].message", nil},
 		{"fromjson('{\"commits\":[]}').commits[0].message", nil},
-		// act expects null; a wildcard on a non-collection is an empty
-		// filtered array (Index.cs EvaluateCore).
 		{"github.event.pull_request.labels.*.name", filtered{}},
 		{"env.TEST", "value"},
 		{"job.status", "success"},
@@ -309,7 +297,7 @@ func TestCorpusFunctionKinds(t *testing.T) {
 	})
 }
 
-// TestCorpusParseErrors is ported from actionlint's lexer and parser tests.
+// TestCorpusParseErrors is.
 func TestCorpusParseErrors(t *testing.T) {
 	cases := []struct {
 		src  string

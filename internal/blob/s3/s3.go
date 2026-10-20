@@ -1,9 +1,9 @@
 // Package s3 is the S3-compatible blob driver, written against net/http with
-// hand-rolled SigV4 signing (see sigv4.go) so the platform does not take on the
-// AWS SDK's dependency tree to sign four verbs.
+// hand-rolled SigV4 signing (see sigv4.go). So the platform does not take on
+// the AWS SDK's dependency tree to sign verbs.
 //
 // It targets the S3 REST API, so MinIO, Ceph RGW, R2, and Backblaze B2's S3
-// endpoint all work; nothing here is AWS-specific beyond the signing algorithm.
+// endpoint all work. Nothing here is AWS-specific beyond the signing algorithm.
 package s3
 
 import (
@@ -26,28 +26,24 @@ import (
 // MinPartSize is S3's floor for every part but the last.
 const MinPartSize = 5 << 20
 
-// DefaultPartSize matches the 8 MiB chunk actions/upload-artifact streams.
 const DefaultPartSize = 8 << 20
 
 // Config describes one bucket. Every field without a documented default is
-// required; New reports which one is missing rather than failing at first use.
+// required; New reports which is missing rather than failing at first use.
 type Config struct {
-	// Endpoint is the service root, e.g. https://s3.us-east-1.amazonaws.com or
-	// http://minio:9000.
+	// Endpoint is the service root, e.g. https://s3.us-east-1.amazonaws.com or http://minio:9000.
 	Endpoint        string
 	Region          string
 	Bucket          string
 	AccessKeyID     string
 	SecretAccessKey string
 	SessionToken    string
-	// UsePathStyle addresses the bucket as {endpoint}/{bucket}/{key}, which is
-	// what MinIO and most non-AWS implementations want.
+	// UsePathStyle addresses the bucket as {endpoint}/{bucket}/{key}.
 	UsePathStyle bool
 	HTTPClient   *http.Client
 	// PartSize is the multipart part size; defaults to DefaultPartSize.
 	PartSize int64
-	// MultipartThreshold is the size above which an upload goes multipart;
-	// defaults to PartSize.
+	// MultipartThreshold is the size above which an upload goes multipart; defaults to PartSize.
 	MultipartThreshold int64
 	// Now exists so tests can pin the signing time.
 	Now func() time.Time
@@ -165,8 +161,8 @@ type s3Error struct {
 	Message string   `xml:"Message"`
 }
 
-// errorFrom turns a non-2xx response into a named error, reading the XML body
-// so the operator sees S3's own reason rather than a bare status code.
+// errorFrom turns a non-2xx response. Into a named error, reading the XML
+// body so the operator sees S3's own reason rather than a bare status code.
 func errorFrom(op, key string, resp *http.Response) error {
 	defer resp.Body.Close()
 	body, _ := io.ReadAll(io.LimitReader(resp.Body, 8<<10))
@@ -185,7 +181,7 @@ func ok(resp *http.Response) bool {
 }
 
 // Put stores the whole object, switching to multipart above the configured
-// threshold. It returns the size and hex sha256 of what was actually sent.
+// threshold. It returns the size and hex sha256 of what was sent.
 func (s *Store) Put(ctx context.Context, key string, r io.Reader) (int64, string, error) {
 	head := make([]byte, s.cfg.MultipartThreshold+1)
 	n, err := io.ReadFull(r, head)
@@ -332,8 +328,6 @@ func (s *Store) completeMultipart(ctx context.Context, key string, u *url.URL, u
 	if !ok(resp) {
 		return errorFrom("complete multipart upload", key, resp)
 	}
-	// S3 can report a failure inside a 200 body on this call, so the body is
-	// inspected rather than trusted.
 	payload, rerr := io.ReadAll(io.LimitReader(resp.Body, 64<<10))
 	resp.Body.Close()
 	if rerr != nil {

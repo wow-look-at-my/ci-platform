@@ -1,9 +1,4 @@
 // Sign-in against the operator credential.
-//
-// The API is gated because every job container can reach this server, so the
-// UI has to hold a session before it can render anything. Signing in sets an
-// HttpOnly cookie server-side; nothing here ever holds the credential after the
-// request that exchanges it.
 
 import { el, replace } from "./dom.js";
 
@@ -38,7 +33,7 @@ export async function logout(): Promise<void> {
 }
 
 /**
- * Renders the sign-in form. onSignedIn runs once the cookie is set; the caller
+ * Renders the sign-in form. onSignedIn runs once the cookie is set. The caller
  * decides what to do next, which is a full reload so no page is left holding
  * state from before the session existed.
  */
@@ -87,7 +82,7 @@ export function renderSignIn(view: HTMLElement, onSignedIn: () => void): void {
 	);
 
 	// The GitHub button is a link, not a fetch: the flow is a navigation to
-	// github.com and back, and an XHR cannot leave the origin.
+	// github.com and back. An XHR cannot leave the origin.
 	const github = el("a", { class: "button primary signin-github", href: GITHUB_SIGN_IN },
 		githubMark(), "Sign in with GitHub");
 

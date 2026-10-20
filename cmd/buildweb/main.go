@@ -1,7 +1,7 @@
 // Command buildweb bundles web-src/ into web/ with esbuild. No npm, no Node:
 // the bundler is a Go library, so CI and the image need neither.
 //
-// The built output is committed so go:embed works without a build step, which
+// The built output is committed so go:embed works without a build step. This
 // makes it possible for the committed bundle to drift from the sources. -check
 // re-bundles into a temp dir and fails on any difference.
 package main

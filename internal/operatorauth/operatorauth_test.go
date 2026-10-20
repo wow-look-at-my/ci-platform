@@ -58,7 +58,7 @@ func sessionFor(t *testing.T, a *Auth, login string, method Method) *http.Cookie
 	return &http.Cookie{Name: CookieName, Value: value}
 }
 
-// A job container can always route to the control plane, so an unauthenticated
+// A job container can always route to the control plane. An unauthenticated
 // request to the operator API is the exact request this package exists to stop.
 func TestMiddleware_RejectsAnUncredentialedRequest(t *testing.T) {
 	rec := httptest.NewRecorder()
@@ -100,7 +100,7 @@ func TestMiddleware_AcceptsBearerAndSession(t *testing.T) {
 }
 
 // A session is a signed statement, so the signing key is what makes it one.
-// Another instance's key must not open this one.
+// Another instance's key must not open this.
 func TestMiddleware_RejectsASessionSignedWithAnotherKey(t *testing.T) {
 	opts := options(t)
 	opts.SessionKey = []byte("a-different-instances-key")
@@ -116,7 +116,7 @@ func TestMiddleware_RejectsASessionSignedWithAnotherKey(t *testing.T) {
 }
 
 // Rotating the operator credential is what somebody does when they think it
-// leaked, so the sessions it handed out have to stop working then, not up to a
+// leaked. The sessions it handed out have to stop working then, not up to a
 // session lifetime later. A GitHub session is unaffected: it was never a claim
 // about the credential.
 func TestMiddleware_RotatingTheCredentialEndsTheSessionsItMinted(t *testing.T) {
@@ -205,9 +205,7 @@ func TestLogin_SetsASessionCookieAndRejectsAWrongCredential(t *testing.T) {
 	c := cookies[0]
 	assert.Equal(t, CookieName, c.Name)
 	assert.True(t, c.HttpOnly, "script must not be able to read the session")
-	// Lax, not Strict: the browser returns from github.com on a sign-in, and a
-	// Strict cookie is withheld on that navigation. Lax still withholds it from
-	// every cross-site POST, which is what this API's mutations are.
+	// Lax, not Strict: the browser returns from github.com on a sign-in.
 	assert.Equal(t, http.SameSiteLaxMode, c.SameSite)
 	assert.Positive(t, c.MaxAge)
 	assert.NotContains(t, c.Value, token, "the cookie must not be the credential itself")

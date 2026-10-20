@@ -1,0 +1,11 @@
+{
+	"version": "0.0.1",
+	"configurations": [
+		{
+			"name": "control-plane",
+			"runtimeExecutable": "./dev/preview.sh",
+			"runtimeArgs": [],
+			"port": 8090
+		}
+	]
+}

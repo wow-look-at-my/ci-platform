@@ -1,9 +1,7 @@
 // Package webhook verifies and dispatches GitHub webhook deliveries.
 //
 // Verification is mandatory: an empty secret is a configuration error, never a
-// reason to skip the HMAC check. An event the platform handles that fails is
-// answered 5xx so GitHub retries it; an event it does not handle is answered
-// 202 and logged.
+// reason to skip the HMAC check.
 package webhook
 
 import (
@@ -88,9 +86,7 @@ type Sink interface {
 	Installation(ctx context.Context, e *InstallationEvent) error
 }
 
-// Deduper answers whether a delivery id has already been processed. It is
-// optional; when unset the handler exposes Meta.DeliveryID and leaves the
-// decision to the Sink.
+// Deduper answers whether a delivery id has already been processed.
 type Deduper interface {
 	// Seen records the delivery and reports whether it had been seen before.
 	Seen(ctx context.Context, deliveryID string) (bool, error)
@@ -198,8 +194,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if h.dedupe != nil && delivery != "" {
 		seen, err := h.dedupe.Seen(r.Context(), delivery)
 		if err != nil {
-			// Not knowing whether this is a duplicate is a failure, not a
-			// reason to process it twice or drop it.
+			// Not knowing whether this is a duplicate is a failure, not a reason to process it twice or drop it.
 			h.log.Error("webhook dedupe check failed", "delivery", delivery, "event", event, "err", err)
 			http.Error(w, "webhook: dedupe check failed: "+err.Error(), http.StatusInternalServerError)
 			return

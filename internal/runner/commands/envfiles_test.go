@@ -43,7 +43,7 @@ func TestParseKeyValuesValueMayContainEquals(t *testing.T) {
 func TestParseKeyValuesHeredoc(t *testing.T) {
 	kv, err := ParseKeyValues("json<<EOF\n{\n  \"a\": 1\n}\nEOF\nafter=1\n")
 	require.NoError(t, err)
-	assert.Equal(t, "{\n  \"a\": 1\n}", kv.Values["json"])
+	assert.Equal(t, fx("envfiles_46.json"), kv.Values["json"])
 	assert.Equal(t, "1", kv.Values["after"])
 	assert.Equal(t, []string{"json", "after"}, kv.Order)
 }

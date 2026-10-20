@@ -95,8 +95,7 @@ func findCycle(w *model.Workflow) []string {
 	return nil
 }
 
-// Unsupport is one feature present in the file that this platform parses but
-// does not execute.
+// Unsupport is one feature present in the file that this platform parses but does not execute.
 type Unsupport struct{ Path, Feature, Detail string }
 
 func (u Unsupport) String() string {

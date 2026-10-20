@@ -7,7 +7,7 @@ import (
 	"strings"
 )
 
-// arity holds the accepted argument counts of a built-in. max -1 is variadic.
+// arity holds the accepted argument counts of a built-in.
 type arity struct{ min, max int }
 
 var builtins = map[string]arity{
@@ -87,9 +87,7 @@ func wantArgs(a arity) string {
 }
 
 // fnContains is array membership when the haystack is an array and a
-// case-insensitive substring test when both operands are primitives. An object
-// haystack, or a non-primitive needle in a string search, is false: the
-// reference never stringifies a container to satisfy these.
+// case-insensitive substring test when both operands are primitives.
 func fnContains(search, item any) bool {
 	if arr, ok := asArray(search); ok {
 		for _, e := range arr {
@@ -109,7 +107,6 @@ func affix(left, right any, test func(string, string) bool) bool {
 	return test(strings.ToUpper(stringify(left)), strings.ToUpper(stringify(right)))
 }
 
-// fnFormat expands {0}-style placeholders; {{ and }} are literal braces.
 func fnFormat(f string, args []any) (string, error) {
 	var b strings.Builder
 	for i := 0; i < len(f); i++ {

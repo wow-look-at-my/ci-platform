@@ -2,9 +2,9 @@
 //
 // Its central rule: a key this package does not implement fails the parse with
 // an `unsupported:` error naming the exact YAML path and line. Silently
-// dropping a key the author wrote -- an `if:`, a `continue-on-error:` -- would
-// run something other than the workflow in front of us, which is worse than
-// refusing to run at all.
+// dropping a key the author wrote -- an `if:`, a `continue-on-error:`. It
+// would run something other than the workflow in front of us, which is worse
+// than refusing to run at all.
 package workflow
 
 import (
@@ -98,9 +98,6 @@ func Parse(path string, src []byte) (*model.Workflow, error) {
 	return p.w, nil
 }
 
-// normalizeOnKey undoes YAML 1.1's `on: -> true`. yaml.v3 resolves a bare `on`
-// key to the string "on", but a loader that follows YAML 1.1 does not, and a
-// file written for one must not parse differently here.
 func normalizeOnKey(root *yaml.Node) {
 	for i := 0; i+1 < len(root.Content); i += 2 {
 		kn := root.Content[i]

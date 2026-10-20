@@ -18,7 +18,7 @@ import (
 //
 // Every job-scoped write goes through it. Without it any host with the runner
 // token can complete, annotate, or write logs for a job another runner is
-// executing: the agent honouring LeaseLost is cooperation, not enforcement, and
+// executing. The agent honouring LeaseLost is cooperation, not enforcement, and
 // a partitioned runner that comes back is not cooperating.
 func (s *Server) holdsJob(w http.ResponseWriter, r *http.Request, runnerID string, jobID int64, attempt int) bool {
 	if runnerID == "" {
@@ -222,8 +222,7 @@ func (s *Server) complete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Report back whether the attempt will be retried, purely so the agent can
-	// log it; the control plane owns the decision.
+	// Report back whether the attempt will be retried, purely so the agent can log it; the control plane owns the decision.
 	resp := protocol.CompleteResponse{}
 	if job, jerr := s.opts.Store.GetJob(ctx, req.JobID); jerr == nil {
 		if job.Status != model.StatusCompleted && job.Attempt > req.Attempt {
@@ -289,7 +288,6 @@ func writeErr(w http.ResponseWriter, code int, msg string) {
 	writeJSON(w, code, map[string]string{"error": msg})
 }
 
-// subtleCompare is a constant-time string comparison returning 1 on equality.
 func subtleCompare(a, b string) int {
 	if len(a) != len(b) {
 		return 0

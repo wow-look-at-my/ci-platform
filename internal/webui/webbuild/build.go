@@ -22,10 +22,7 @@ type BuildOptions struct {
 	OutDir string
 	// Dev keeps the output readable and emits sourcemaps.
 	Dev bool
-	// Demo builds the standalone demo: the API client and the sign-in module
-	// are swapped for the ones in web-src/demo, which answer from a captured
-	// snapshot. Every other module is the shipped one, so what the demo shows
-	// is the real UI and not a second implementation of it.
+	// Demo builds the standalone demo: the API client and the sign-in module are swapped for the ones in web-src/demo.
 	Demo bool
 }
 
@@ -100,7 +97,7 @@ func Build(o BuildOptions) (Files, error) {
 // demo versions, for every importer outside web-src/demo.
 //
 // The alternative -- a runtime flag threaded through the shipped modules --
-// would put demo branches in the code the product runs, and a demo hook nobody
+// would put demo branches in the code the product runs. A demo hook nobody
 // exercises in production is exactly the kind of unreachable path this
 // codebase refuses elsewhere. Swapping at bundle time keeps the demo entirely
 // outside the shipped bundle.
@@ -113,9 +110,8 @@ func demoSwap(srcDir string) api.Plugin {
 		Setup: func(build api.PluginBuild) {
 			build.OnResolve(api.OnResolveOptions{Filter: `^\.{1,2}/(api|auth)\.js$`},
 				func(args api.OnResolveArgs) (api.OnResolveResult, error) {
-					// An import from inside the demo directory is the demo
-					// module reaching for the real one; leave it alone or the
-					// swap would resolve to itself.
+					// An import from inside the demo directory is the demo module reaching
+					// for the real one. Leave it alone or the swap would resolve to itself.
 					if strings.HasPrefix(args.Importer, demoDir+string(filepath.Separator)) {
 						return api.OnResolveResult{}, nil
 					}
@@ -138,7 +134,7 @@ func sourcemapMode(dev bool) api.SourceMap {
 
 // stampAssets appends a content hash to each asset URL in the HTML. The hashed
 // URL is what makes an immutable cache header safe: a rebuilt bundle is a
-// different URL, so a stale copy can never be served for the new build.
+// different URL. A stale copy can never be served for the new build.
 func stampAssets(html []byte, files Files) []byte {
 	out := string(html)
 	for _, name := range []string{"app.mjs", "app.css"} {

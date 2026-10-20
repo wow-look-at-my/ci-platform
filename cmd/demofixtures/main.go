@@ -4,7 +4,7 @@
 // The point is that the demo cannot drift from the product. It seeds a real
 // store through the real model, serves it with the real internal/api handlers,
 // and records the exact JSON those handlers return. A hand-written fixture file
-// would be a second, unchecked description of the API -- and a demo showing a
+// would be a second, unchecked description of the API. And a demo showing a
 // shape the server does not produce is precisely the kind of quiet lie this
 // platform exists to refuse.
 //
@@ -44,9 +44,14 @@ func run(args []string, out io.Writer) error {
 	var (
 		outPath = fs.String("out", "web-src/demo/fixtures.json", "where to write the captured responses")
 		check   = fs.Bool("check", false, "recapture and fail if the committed file differs")
+		seedDir = fs.String("seed", "", "seed DIR/ciplatform.db and DIR/blobs for a live control plane, instead of capturing")
 	)
 	if err := fs.Parse(args); err != nil {
 		return err
+	}
+
+	if *seedDir != "" {
+		return seedOnly(*seedDir, out)
 	}
 
 	captured, err := capture()
@@ -81,45 +86,86 @@ func run(args []string, out io.Writer) error {
 	return nil
 }
 
+// seeded is a demo dataset on disk, laid out the way the control plane reads
+// it.
+type seeded struct {
+	st    *sqlite.Store
+	blobs *disk.Store
+	logs  *logstore.Log
+	data  *demoseed.Seeded
+}
+
+// seedInto seeds a fresh dataset under dir. The directory must not already
+// hold a database: seeding on top of one would duplicate every run.
+func seedInto(ctx context.Context, dir string) (*seeded, error) {
+	dbPath := filepath.Join(dir, "ciplatform.db")
+	if _, err := os.Stat(dbPath); err == nil {
+		return nil, fmt.Errorf("%s already exists; seed into an empty directory", dbPath)
+	}
+	st, err := sqlite.Open(ctx, dbPath)
+	if err != nil {
+		return nil, err
+	}
+	if err := st.Migrate(ctx); err != nil {
+		_ = st.Close()
+		return nil, err
+	}
+
+	blobs, err := disk.New(filepath.Join(dir, "blobs"))
+	if err != nil {
+		_ = st.Close()
+		return nil, fmt.Errorf("blob store: %w", err)
+	}
+	logs, err := logstore.New(logstore.Options{Blob: blobs, KeyPrefix: "logs"})
+	if err != nil {
+		_ = st.Close()
+		return nil, fmt.Errorf("log store: %w", err)
+	}
+
+	data, err := demoseed.Seed(ctx, st, logs)
+	if err != nil {
+		_ = st.Close()
+		return nil, err
+	}
+	return &seeded{st: st, blobs: blobs, logs: logs, data: data}, nil
+}
+
+// seedOnly leaves the dataset on disk for a live control plane to serve.
+func seedOnly(dir string, out io.Writer) error {
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return fmt.Errorf("create %s: %w", dir, err)
+	}
+	s, err := seedInto(context.Background(), dir)
+	if err != nil {
+		return err
+	}
+	if err := s.st.Close(); err != nil {
+		return err
+	}
+	fmt.Fprintf(out, "demofixtures: seeded %s\n", dir)
+	return nil
+}
+
 // capture serves the seeded store with the real API and records every response
 // the UI asks for.
 func capture() (map[string]json.RawMessage, error) {
-	ctx := context.Background()
-
 	dir, err := os.MkdirTemp("", "ciplatform-demo")
 	if err != nil {
 		return nil, fmt.Errorf("temp dir: %w", err)
 	}
 	defer func() { _ = os.RemoveAll(dir) }()
 
-	st, err := sqlite.Open(ctx, filepath.Join(dir, "demo.db"))
+	s, err := seedInto(context.Background(), dir)
 	if err != nil {
 		return nil, err
 	}
-	defer func() { _ = st.Close() }()
-	if err := st.Migrate(ctx); err != nil {
-		return nil, err
-	}
-
-	blobs, err := disk.New(filepath.Join(dir, "blobs"))
-	if err != nil {
-		return nil, fmt.Errorf("blob store: %w", err)
-	}
-	logs, err := logstore.New(logstore.Options{Blob: blobs, KeyPrefix: "logs"})
-	if err != nil {
-		return nil, fmt.Errorf("log store: %w", err)
-	}
-
-	seeded, err := demoseed.Seed(ctx, st, logs)
-	if err != nil {
-		return nil, err
-	}
+	defer func() { _ = s.st.Close() }()
+	seeded := s.data
 
 	srv := api.New(api.Config{
-		Store: st, Logs: logs, Controller: refusingController{},
-		Blobs: blobOpener{blobs},
-		// A fixed clock keeps "3m ago" style output stable, so recapturing an
-		// unchanged seed produces an unchanged file.
+		Store: s.st, Logs: s.logs, Controller: refusingController{},
+		Blobs: blobOpener{s.blobs},
+		// A fixed clock keeps "3m ago" style output stable, so recapturing an unchanged seed produces an unchanged file.
 		Now: func() time.Time { return demoseed.Now },
 	})
 	ts := httptest.NewServer(srv.Handler())
@@ -157,10 +203,7 @@ func get(url string) (json.RawMessage, error) {
 	return json.Marshal(v)
 }
 
-// refusingController satisfies the API's collaborator check without pretending
-// the demo can act. Nothing calls it: the demo's own client answers cancel and
-// re-run without a request. It exists so /healthz does not report a missing
-// scheduler in a snapshot where that would be misleading noise.
+// refusingController satisfies the API's collaborator check without pretending the demo can act.
 type refusingController struct{}
 
 func (refusingController) Cancel(context.Context, int64, model.CancelReason) error { return errDemo }

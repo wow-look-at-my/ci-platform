@@ -1,0 +1,6 @@
+name: x
+jobs:
+  a:
+    runs-on: x
+    steps:
+      - run: y

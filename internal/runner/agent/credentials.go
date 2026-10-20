@@ -19,14 +19,9 @@ import (
 )
 
 // TokenSource supplies the bearer token for each control-plane call.
-//
-// It is an interface because the token is short-lived by design: a runner holds
-// a key, not a password, and trades a signature for a few minutes of access
-// whenever it needs one.
 type TokenSource interface {
 	Token(ctx context.Context) (string, error)
-	// Invalidate discards the cached token after the control plane rejects it,
-	// so the next call signs a fresh one instead of replaying a dead one.
+	// Invalidate discards the cached token after the control plane rejects it.
 	Invalidate()
 }
 
@@ -39,14 +34,10 @@ func (s StaticToken) Token(context.Context) (string, error) { return string(s), 
 // Invalidate does nothing: there is nothing to refresh.
 func (s StaticToken) Invalidate() {}
 
-// PlaintextWarning returns a sentence to log when a runner is about to talk to
-// the control plane in the clear, and "" when it is not.
+// PlaintextWarning returns a sentence to log when a runner is about to talk to the control. Plane in the clear, and "" when it is
+// not.
 //
-// It is a warning rather than a refusal because a LAN deployment pointing
-// straight at the coordinator is a legitimate, wanted setup. What is not
-// legitimate is doing it without knowing: an assignment carries the job's
-// secrets and its token, so on a network somebody else is on, "plain HTTP"
-// means "those secrets are readable".
+// It is a warning rather than a refusal because a LAN deployment pointing straight at the coordinator is a legitimate, wanted setup. What is not legitimate is doing it without knowing. An assignment carries the job's secrets and its token, so on a network somebody else is on, "plain HTTP" means "those secrets are readable".
 //
 // Loopback is exempt: there is no network to sniff.
 func PlaintextWarning(baseURL string) string {
@@ -63,10 +54,7 @@ func PlaintextWarning(baseURL string) string {
 		"point this runner at the https public URL instead if it is not."
 }
 
-// ErrNotApproved is what a host gets until an operator approves its
-// fingerprint. It is a distinct error because it is not a fault: it is the
-// normal state of a machine somebody just set up, and the runner waits it out
-// rather than crash-looping.
+// ErrNotApproved is what a host gets until an operator approves its fingerprint.
 var ErrNotApproved = errors.New("agent: this runner host has not been approved yet")
 
 // Credentials proves this host's identity with its Ed25519 key and keeps a
@@ -135,8 +123,9 @@ func (c *Credentials) Labels() []string {
 }
 
 // Enrol offers this host's public key. It is safe to call on every start: the
-// control plane records the first sighting and returns the existing state
-// afterwards, so restarting neither resets an approval nor creates a duplicate.
+// control plane records the first sighting. The control plane returns the
+// existing state afterwards, so restarting neither resets an approval nor
+// creates a duplicate.
 func (c *Credentials) Enrol(ctx context.Context, name, os, arch, version string, labels []string) (protocol.EnrolResponse, error) {
 	pub, _ := c.key.Public().(ed25519.PublicKey)
 	at := c.now()
@@ -158,9 +147,7 @@ func (c *Credentials) Enrol(ctx context.Context, name, os, arch, version string,
 	return out, nil
 }
 
-// renewBefore is how much of a token's life is left when it is replaced. A
-// token that expires mid-job would fail a log flush or a completion report,
-// which is the one moment a runner cannot afford to lose access.
+// renewBefore is how much of a token's life is left when it is replaced.
 const renewBefore = 2 * time.Minute
 
 // Token returns a valid session token, exchanging a signature for a new one
@@ -202,7 +189,7 @@ func (c *Credentials) Invalidate() {
 }
 
 // call posts a signed request. It does not retry: the caller decides how to
-// wait, and a signed request has a timestamp that would go stale in a retry
+// wait. A signed request has a timestamp that would go stale in a retry
 // loop anyway.
 func (c *Credentials) call(ctx context.Context, path string, in, out any) error {
 	body, err := json.Marshal(in)
@@ -235,7 +222,7 @@ func (c *Credentials) call(ctx context.Context, path string, in, out any) error 
 }
 
 // message pulls the human sentence out of an error body, falling back to the
-// raw body so a failure is never reported as an empty string.
+// raw body. So a failure is never reported as an empty string.
 func message(payload []byte) string {
 	var body struct {
 		Message string `json:"message"`

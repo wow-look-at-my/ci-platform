@@ -1,0 +1,9 @@
+name: Services
+on: push
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container:
+      image: node:20
+    steps:
+      - run: node --version

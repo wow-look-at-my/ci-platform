@@ -1,4 +1,4 @@
-// Package disk is the single-node blob driver: one file per key under a root
+// Package disk is the single-node blob driver. One file per key under a root
 // directory, written temp-then-rename so a reader never sees a partial object.
 package disk
 
@@ -17,8 +17,7 @@ import (
 	"github.com/wow-look-at-my/ci-platform/internal/blob"
 )
 
-// tmpDir holds in-progress writes. It is inside the root so a rename is never
-// a cross-device copy, and it is reserved: no key may start with it.
+// tmpDir holds in-progress writes.
 const tmpDir = "_tmp"
 
 // Store is a blob.Store backed by a directory.
@@ -55,8 +54,7 @@ func (s *Store) path(key string) (string, error) {
 		return "", fmt.Errorf("%w: %q uses the reserved %q prefix", blob.ErrBadKey, key, tmpDir)
 	}
 	p := filepath.Join(s.root, filepath.FromSlash(key))
-	// Belt and braces: ValidateKey already rejects traversal, but a mapping bug
-	// here would be a directory-escape, so the result is checked too.
+	// Belt and braces: ValidateKey already rejects traversal, but a mapping bug here would be a directory-escape.
 	rel, err := filepath.Rel(s.root, p)
 	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
 		return "", fmt.Errorf("%w: %q escapes the store root", blob.ErrBadKey, key)

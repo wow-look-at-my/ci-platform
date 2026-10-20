@@ -11,17 +11,13 @@ import (
 	"github.com/wow-look-at-my/ci-platform/internal/protocol"
 )
 
-// maxSkippedDequeues bounds how many already-finished jobs Acquire will step
-// over before giving up, so a queue full of cancelled rows cannot spin.
+// maxSkippedDequeues bounds how many already-finished jobs Acquire will step over before giving up.
 const maxSkippedDequeues = 16
 
-// SecretsAllowed reports whether a run may receive repository secrets. A pull
-// request from a fork never does: its workflow is attacker-controlled.
+// SecretsAllowed reports whether a run may receive repository secrets.
 func SecretsAllowed(run *model.Run) bool { return !run.IsForkPR }
 
-// OIDCAllowed reports whether a run's jobs may mint OIDC tokens. Same rule, and
-// the OIDC endpoint must ask it: protocol.Assignment has no field to carry the
-// answer to the runner.
+// OIDCAllowed reports whether a run's jobs may mint OIDC tokens.
 func OIDCAllowed(run *model.Run) bool { return !run.IsForkPR }
 
 // Acquire hands one queued job to a runner under a lease and returns the
@@ -109,7 +105,7 @@ func (s *Scheduler) dispatch(ctx context.Context, runnerID string, j *model.Job,
 
 // buildAssignment resolves everything a runner needs for one attempt.
 //
-// A fork pull request gets no secrets and no OIDC: the workflow is under the
+// A fork pull request gets no secrets and no OIDC. The workflow is under the
 // contributor's control, so handing it the repository's credentials would let
 // any stranger read them. That is enforced here rather than trusted to callers.
 func (s *Scheduler) buildAssignment(ctx context.Context, run *model.Run, repo *model.Repo, p *plan.Plan, pj *plan.PlannedJob, j *model.Job, needs needsState) (*protocol.Assignment, error) {
@@ -209,8 +205,7 @@ func (s *Scheduler) buildAssignment(ctx context.Context, run *model.Run, repo *m
 			}
 		}
 	} else {
-		// Say it out loud: a workflow that silently sees no secrets looks
-		// broken, and the operator needs to know why it was.
+		// Say it out loud: a workflow that silently sees no secrets looks broken, and the operator needs to know why it was.
 		a.Secrets = nil
 		delete(a.Contexts, "secrets")
 		if err := s.emit(ctx, run.ID, j.ID, EventRestricted,

@@ -1,0 +1,14 @@
+name: CI
+on: push
+jobs:
+  build:
+    runs-on: [linux]
+    retry:
+      attempts: 3
+      on: [infra]
+      backoff: fixed
+      initial: 150ms
+      max: 150ms
+      jitter: false
+    steps:
+      - run: make build

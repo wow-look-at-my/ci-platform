@@ -9,7 +9,7 @@ import (
 	"github.com/wow-look-at-my/ci-platform/internal/store/sqlite"
 )
 
-// The two stores must agree on the key ResolveSecrets reads, or a secret stored
+// Both stores must agree on the key ResolveSecrets reads, or a secret stored
 // against one and resolved by the other silently disappears.
 func TestScopeKeyAgreesAcrossStores(t *testing.T) {
 	cases := []struct {

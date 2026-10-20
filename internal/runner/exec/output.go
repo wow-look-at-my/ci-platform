@@ -10,8 +10,7 @@ import (
 	"github.com/wow-look-at-my/ci-platform/internal/runner/mask"
 )
 
-// tail keeps the last n bytes of output, which is what the classifier reads. A
-// build that prints a gigabyte must not cost a gigabyte of memory to classify.
+// tail keeps the last n bytes of output, which is what the classifier reads.
 type tail struct {
 	buf   []byte
 	limit int
@@ -29,7 +28,7 @@ func (t *tail) add(line string) {
 
 func (t *tail) String() string { return string(t.buf) }
 
-// collector turns a step's two output streams into log lines: it splits them
+// collector turns a step's output streams into log lines. It splits them
 // into lines, runs the workflow-command protocol, masks every line, and only
 // then hands them to the log.
 type collector struct {
@@ -65,8 +64,7 @@ func newCollector(number int, log Log, masker *mask.Masker) *collector {
 	return c
 }
 
-// writer returns an io.Writer for one stream. Both streams share the command
-// processor, because ::group:: opened on stdout closes on stderr.
+// writer returns an io.Writer for one stream.
 func (c *collector) writer(stream string) *streamWriter {
 	return &streamWriter{c: c, stream: stream}
 }

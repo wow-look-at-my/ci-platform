@@ -8,9 +8,7 @@ import (
 	"github.com/wow-look-at-my/ci-platform/internal/store"
 )
 
-// The DTOs below are the wire contract. They are written out by hand rather
-// than reusing the model structs so that renaming a Go field never silently
-// renames a JSON key a gh-alike client parses.
+// The DTOs below are the wire contract.
 
 // TimingDTO is the phase breakdown, in seconds.
 type TimingDTO struct {
@@ -424,8 +422,7 @@ type RunnerDTO struct {
 	Arch          string    `json:"arch"`
 	FirstSeenAt   time.Time `json:"first_seen_at"`
 	LastHeartbeat time.Time `json:"last_heartbeat"`
-	// HeartbeatAge is seconds since the last heartbeat. The fleet page colours
-	// by it, so it is computed here rather than by clock-skewed browsers.
+	// HeartbeatAge is seconds since the last heartbeat.
 	HeartbeatAge float64 `json:"heartbeat_age"`
 }
 

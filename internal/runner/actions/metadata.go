@@ -13,8 +13,7 @@ type Metadata struct {
 	Name        string
 	Description string
 	Inputs      map[string]Input
-	// InputOrder preserves declaration order so INPUT_ env vars and error
-	// messages are deterministic.
+	// InputOrder preserves declaration order so INPUT_ env vars and error messages are deterministic.
 	InputOrder []string
 	Outputs    map[string]Output
 	Runs       Runs
@@ -32,8 +31,7 @@ type Input struct {
 // Output is one declared output.
 type Output struct {
 	Description string
-	// Value is the ${{ }} expression a composite action computes its output
-	// from; empty for JavaScript actions, which write to $GITHUB_OUTPUT.
+	// Value is the ${{ }} expression a composite action computes its output from; empty for JavaScript actions.
 	Value string
 }
 
@@ -47,8 +45,7 @@ type Runs struct {
 	PostIf string
 	Steps  []CompositeStep
 
-	// Docker action fields, parsed so the unsupported failure can name what it
-	// found rather than reporting an empty runs: block.
+	// Docker action fields, parsed so the unsupported failure can name what it found rather than reporting an empty runs.
 	Image      string
 	Entrypoint string
 	Args       []string
@@ -236,8 +233,8 @@ func decodeOutputs(n *yaml.Node, m *Metadata) error {
 
 // InputEnv builds the INPUT_<NAME> environment for an action invocation from
 // the caller's `with:` and the action's declared defaults. A required input
-// with neither a value nor a default is an error naming the input, because an
-// action run without it will fail in a way that does not.
+// with neither a value nor a default is an error naming the input. This is
+// because an action run without it will fail in a way that does not.
 func (m *Metadata) InputEnv(with map[string]string) (map[string]string, []string, error) {
 	env := map[string]string{}
 	var warnings []string

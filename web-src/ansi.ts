@@ -1,7 +1,4 @@
 // SGR parser for job logs. Emits styled spans; no DOM.
-//
-// Carriage returns are honoured the way a terminal does (move to column 0 and
-// overwrite), because progress bars otherwise render as one unreadable line.
 
 export interface AnsiStyle {
 	fg?: string;
@@ -17,7 +14,6 @@ export interface AnsiSpan {
 	style: AnsiStyle;
 }
 
-/** The 16 basic colours resolve to custom properties so themes own the palette. */
 function basicColour(index: number): string {
 	return `var(--ansi-${index})`;
 }
@@ -74,8 +70,6 @@ export function applySgr(style: AnsiStyle, params: number[]): AnsiStyle {
 				out[target] = `rgb(${r}, ${g}, ${b})`;
 				i += 4;
 			} else {
-				// An unknown extended-colour mode: consume nothing rather than
-				// swallowing the rest of the line as colour parameters.
 			}
 		}
 	}

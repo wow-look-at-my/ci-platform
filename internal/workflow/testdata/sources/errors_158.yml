@@ -1,0 +1,4 @@
+runs-on: x
+steps:
+  - run: y
+    shell: /bin/bash -e {0}

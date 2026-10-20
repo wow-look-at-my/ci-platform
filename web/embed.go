@@ -1,8 +1,8 @@
 // Package web holds the committed esbuild output and embeds it.
 //
 // The embed directive has to live in this directory: go:embed patterns cannot
-// escape their own package with "..", so internal/webui cannot reach a
-// top-level web/ on its own. It imports this package's FS instead.
+// escape their own package with "..". Internal/webui cannot reach a top-level
+// web/ on its own. It imports this package's FS instead.
 //
 // Regenerate with: go run ./cmd/buildweb
 package web

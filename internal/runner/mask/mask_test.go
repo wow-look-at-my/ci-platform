@@ -45,8 +45,7 @@ func TestMaskMultiLineSecretLineByLine(t *testing.T) {
 	m := New()
 	m.Add(key)
 
-	// A tool that prints only the middle of a multi-line secret must still be
-	// redacted.
+	// A tool that prints only the middle of a multi-line secret must still be redacted.
 	out := m.Mask("leaked: DDDDEEEEFFFF")
 	assert.NotContains(t, out, "DDDDEEEEFFFF")
 

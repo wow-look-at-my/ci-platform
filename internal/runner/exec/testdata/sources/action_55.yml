@@ -1,0 +1,4 @@
+name: d
+runs:
+  using: node12
+  main: i.js

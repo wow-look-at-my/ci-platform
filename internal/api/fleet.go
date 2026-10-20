@@ -58,9 +58,9 @@ type QueueHistoryDTO struct {
 //
 // It exists for one field: OldestWaiting is a time.Duration, and a Duration
 // marshals to nanoseconds. Serving the store's struct directly sent 2.2e12 to
-// a UI that reads every other duration in this API as seconds, which rendered
-// a 37-minute wait as "616666666h 40m" -- the queue's own starvation signal,
-// unreadable.
+// a UI. That UI reads every other duration in this API as seconds, which
+// rendered a 37-minute wait as "616666666h 40m" -- the queue's own starvation
+// signal, unreadable.
 type QueueStatsDTO struct {
 	Depth          int            `json:"depth"`
 	DepthByLabel   map[string]int `json:"depth_by_label"`

@@ -79,8 +79,7 @@ type harness struct {
 	logs  *fakeLogs
 	st    store.Store
 	http  *httptest.Server
-	// token is a session token for an approved host, which is what every
-	// authenticated call on this surface now carries.
+	// token is a session token for an approved host, which is what every authenticated call on this surface now carries.
 	token string
 }
 
@@ -272,7 +271,7 @@ func TestRequestCancel_RefusesAnUnexplainedCancellation(t *testing.T) {
 	require.Error(t, h.srv.RequestCancel(1, model.CancelReason{Sentence: "x"}))
 }
 
-// A runner whose lease was taken must stop without reporting a result, or two
+// A runner whose lease was taken must stop without reporting a result, or
 // runners both complete the same job.
 func TestHeartbeat_ReportsALostLease(t *testing.T) {
 	h := newHarness(t)

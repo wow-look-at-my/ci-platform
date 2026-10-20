@@ -134,8 +134,7 @@ func TestStateForMapping(t *testing.T) {
 		{model.StatusCompleted, model.ConclusionSuccess, StateSuccess},
 		{model.StatusCompleted, model.ConclusionFailure, StateFailure},
 		{model.StatusCompleted, model.ConclusionTimedOut, StateFailure},
-		// The deviation that matters: infra and config are "error", the legacy
-		// API's slot for "not your build".
+		// The deviation that matters: infra and config are "error", the API's slot for "not your build".
 		{model.StatusCompleted, model.ConclusionInfraFailure, StateError},
 		{model.StatusCompleted, model.ConclusionConfigError, StateError},
 		{model.StatusCompleted, model.ConclusionActionRequired, StateError},

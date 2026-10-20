@@ -145,8 +145,6 @@ func TestClientDoesNotRetryClientErrors(t *testing.T) {
 	assert.Equal(t, http.StatusBadRequest, e.Status)
 }
 
-// A session token lasts minutes, and the control plane discards its signing key
-// on restart, so a 401 is an expected event mid-job rather than a rejection.
 // Retrying it with a freshly signed token is what keeps a running job alive.
 func TestClientRetriesAnExpiredSessionWithAFreshToken(t *testing.T) {
 	var calls atomic.Int32

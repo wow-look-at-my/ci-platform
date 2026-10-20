@@ -1,9 +1,9 @@
 // Package store defines the persistence contract for run metadata, the durable
-// job queue, and the lease protocol that makes a lost runner a requeue rather
+// job queue, and the lease protocol that makes a lost runner. A requeue rather
 // than a failure.
 //
-// Two implementations exist: store/sqlite (the production store) and
-// store/mem (in-process, for tests and for a dev instance that says so loudly).
+// Implementations exist: store/sqlite (the production store) and store/mem
+// (in-process, for tests and for a dev instance that says so loudly).
 package store
 
 import (
@@ -17,17 +17,13 @@ import (
 // ErrNotFound is returned by every getter for a missing row.
 var ErrNotFound = errors.New("store: not found")
 
-// ErrLeaseLost is returned when a lease operation is attempted by a runner that
-// no longer holds the lease. The runner must stop work; the job has already
-// been requeued elsewhere.
+// ErrLeaseLost is returned when a lease operation is attempted by a runner that no longer holds the lease.
 var ErrLeaseLost = errors.New("store: lease lost")
 
 // ErrConflict is returned when an optimistic update loses a race.
 var ErrConflict = errors.New("store: conflict")
 
-// Store is the whole persistence surface. It is one interface rather than
-// several because every implementation implements all of it, and splitting it
-// would only spread the transaction boundary across packages.
+// Store is the whole persistence surface.
 type Store interface {
 	Repos
 	Runs
@@ -42,9 +38,7 @@ type Store interface {
 	Secrets
 	Events
 
-	// Durable reports whether a control-plane restart preserves state. A false
-	// answer is surfaced in /healthz and logged at startup, because a queue
-	// that silently forgets is the failure mode this platform exists to avoid.
+	// Durable reports whether a control-plane restart preserves state.
 	Durable() bool
 	// Migrate applies pending schema migrations.
 	Migrate(ctx context.Context) error
@@ -92,8 +86,7 @@ type Jobs interface {
 	GetJob(ctx context.Context, id int64) (*model.Job, error)
 	UpdateJob(ctx context.Context, j *model.Job) error
 	ListJobsForRun(ctx context.Context, runID int64) ([]*model.Job, error)
-	// ListJobsInConcurrencyGroup returns live jobs sharing a group, oldest
-	// first, so the scheduler can admit one and cancel or hold the rest.
+	// ListJobsInConcurrencyGroup returns live jobs sharing a group, oldest first.
 	ListJobsInConcurrencyGroup(ctx context.Context, group string) ([]*model.Job, error)
 }
 
@@ -108,10 +101,7 @@ type Steps interface {
 type QueuedJob struct {
 	JobID int64
 	RunID int64
-	// Attempt states the attempt being enqueued. It is stated rather than read
-	// back off the job row because it is half of the dispatch idempotency key:
-	// inferring it would silently point the key at the wrong attempt whenever a
-	// caller enqueues before writing the new attempt number.
+	// Attempt states the attempt being enqueued.
 	Attempt  int
 	Labels   []string
 	Group    string
@@ -129,38 +119,28 @@ type QueueStats struct {
 	OldestJobID    int64          `json:"oldest_job_id,omitempty"`
 	RunnersByLabel map[string]int `json:"runners_by_label"`
 	IdleByLabel    map[string]int `json:"idle_by_label"`
-	// StarvedLabels are labels with queued work and zero online runners. This
-	// is the signal that explains "why has this been queued for five minutes".
+	// StarvedLabels are labels with queued work and zero online runners.
 	StarvedLabels []string  `json:"starved_labels"`
 	At            time.Time `json:"at"`
 }
 
 // Queue is the durable job queue and the lease protocol.
 //
-// Dispatch is idempotent on (run_id, job_id, attempt): a job is never executed
+// Dispatch is idempotent on (run_id, job_id, attempt). A job is never executed
 // twice with side effects, even if the control plane restarts between handing
 // out a lease and recording that it did.
 type Queue interface {
-	// Enqueue makes a job eligible for dispatch. Enqueuing a job that is
-	// already queued or leased is a no-op, not an error.
+	// Enqueue makes a job eligible for dispatch.
 	Enqueue(ctx context.Context, q QueuedJob) error
-	// Dequeue atomically claims the highest-priority eligible job matching the
-	// runner's labels and returns it with a lease held until now+ttl. Returns
-	// ErrNotFound when nothing matches.
+	// Dequeue atomically claims the highest-priority eligible job matching the runner's labels and returns it with a lease held until now+ttl.
 	Dequeue(ctx context.Context, runnerID string, labels []string, ttl time.Duration) (*model.Job, error)
 	// Heartbeat extends the lease. ErrLeaseLost means the job was requeued.
 	Heartbeat(ctx context.Context, runnerID string, jobID int64, ttl time.Duration) error
-	// DropFromQueue removes a job's queue entry, lease and all, without
-	// requeuing it. A new attempt uses it before enqueuing: Enqueue refuses to
-	// disturb a live lease, so without this the old leased row survives, the
-	// new attempt's backoff is discarded, and the stale row is later reaped as
-	// a runner that was never lost.
+	// DropFromQueue removes a job's queue entry, lease and all, without requeuing it.
 	DropFromQueue(ctx context.Context, jobID int64) error
 	// ReleaseLease drops a lease without completing the job, requeuing it.
 	ReleaseLease(ctx context.Context, runnerID string, jobID int64, reason model.CancelReason) error
-	// ReapExpiredLeases requeues every job whose lease expired and returns
-	// them. This is what turns "the runner disappeared" into a requeue rather
-	// than a lost or failed job.
+	// ReapExpiredLeases requeues every job whose lease expired and returns them.
 	ReapExpiredLeases(ctx context.Context, now time.Time) ([]*model.Job, error)
 	// QueueStats powers the queue page and the starvation alarm.
 	QueueStats(ctx context.Context, now time.Time) (*QueueStats, error)
@@ -185,8 +165,7 @@ type Runners interface {
 	RunnerHeartbeat(ctx context.Context, id string, at time.Time) error
 	GetRunner(ctx context.Context, id string) (*model.Runner, error)
 	ListRunners(ctx context.Context) ([]*model.Runner, error)
-	// MarkOfflineRunners flips runners past the deadline to offline and returns
-	// them, so their in-flight jobs can be requeued with a recorded reason.
+	// MarkOfflineRunners flips runners past the deadline to offline and returns them.
 	MarkOfflineRunners(ctx context.Context, deadline time.Time) ([]*model.Runner, error)
 }
 
@@ -194,10 +173,7 @@ type Runners interface {
 // state. A host is written on enrolment and read on every session request, so
 // revoking one takes effect on that host's next renewal.
 type RunnerHosts interface {
-	// EnrolRunnerHost records a first sighting. It never changes the state or
-	// the public key of a host that already exists: re-enrolling must not be a
-	// way to reset an approval, or to swap the key behind an approved
-	// fingerprint.
+	// EnrolRunnerHost records a first sighting.
 	EnrolRunnerHost(ctx context.Context, h *model.RunnerHost) (*model.RunnerHost, error)
 	GetRunnerHost(ctx context.Context, fingerprint string) (*model.RunnerHost, error)
 	ListRunnerHosts(ctx context.Context) ([]*model.RunnerHost, error)
@@ -222,8 +198,7 @@ type Artifacts interface {
 	GetArtifact(ctx context.Context, id int64) (*model.Artifact, error)
 	FindArtifact(ctx context.Context, runID int64, name string) (*model.Artifact, error)
 	ListArtifacts(ctx context.Context, runID int64) ([]*model.Artifact, error)
-	// ArtifactUsage totals a repository's finalized artifact bytes, so the
-	// quota check is a query rather than something the caller has to track.
+	// ArtifactUsage totals a repository's finalized artifact bytes.
 	ArtifactUsage(ctx context.Context, repoID int64) (int64, error)
 	DeleteExpiredArtifacts(ctx context.Context, now time.Time) ([]*model.Artifact, error)
 }
@@ -232,19 +207,15 @@ type Artifacts interface {
 type Caches interface {
 	ReserveCache(ctx context.Context, e *model.CacheEntry) error
 	FinalizeCache(ctx context.Context, id int64, size int64) error
-	// LookupCache implements restore-keys semantics: exact key first, then each
-	// prefix in order, newest match wins. matchedOn names which key hit.
+	// LookupCache implements restore-keys semantics: exact key first, then each prefix in order, newest match wins.
 	LookupCache(ctx context.Context, repoID int64, key string, restoreKeys []string, version, ref string) (*model.CacheEntry, string, error)
 	GetCache(ctx context.Context, id int64) (*model.CacheEntry, error)
 	// ListCacheEntries returns a repository's finalized entries, newest first.
-	// Without it the cache page can only reconstruct state from the event log,
-	// which is approximate and has to say so.
 	ListCacheEntries(ctx context.Context, repoID int64) ([]*model.CacheEntry, error)
 	TouchCache(ctx context.Context, id int64, at time.Time) error
 	RecordCacheEvent(ctx context.Context, e model.CacheEvent) error
 	ListCacheEvents(ctx context.Context, repoID int64, limit int) ([]model.CacheEvent, error)
-	// EvictCaches enforces the per-repo quota, returning what it removed so the
-	// eviction can be logged. Silent eviction is forbidden.
+	// EvictCaches enforces the per-repo quota, returning what it removed so the eviction can be logged.
 	EvictCaches(ctx context.Context, repoID int64, quotaBytes int64, now time.Time) ([]*model.CacheEntry, error)
 	CacheUsage(ctx context.Context, repoID int64) (int64, error)
 }

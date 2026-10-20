@@ -132,8 +132,7 @@ func (e *Executor) runJavaScript(ctx context.Context, spec protocol.StepSpec, me
 
 	node, err := e.nodeBinary(ctx, meta.Runs.NodeVersion())
 	if err != nil {
-		// A missing runtime is the sandbox image's problem, never the
-		// workflow's, and it is a failure rather than a skipped step.
+		// A missing runtime is the sandbox image's problem, never the workflow's.
 		return outcome{exitCode: 1, err: err, phase: "setup"}
 	}
 

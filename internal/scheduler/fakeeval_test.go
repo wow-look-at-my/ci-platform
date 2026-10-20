@@ -7,9 +7,7 @@ import (
 	"github.com/wow-look-at-my/ci-platform/internal/plan"
 )
 
-// fakeEval is a small stand-in for workflow/expr: dotted context paths, the
-// four status functions, and `a == 'b'` comparisons, which is everything these
-// tests put in an if:.
+// fakeEval is a small stand-in for workflow/expr.
 type fakeEval struct {
 	contexts map[string]any
 	status   plan.Status

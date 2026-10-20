@@ -1,12 +1,12 @@
 // Package demoseed fills a store with the runs the demo site shows.
 //
 // The data is chosen to answer the question the platform exists to answer:
-// what happened, and whose fault was it. Every one of the five incidents in
-// docs/incidents.md is visible somewhere in this seed -- an infra failure that
-// retried and is not coloured like a build failure, a job whose runner vanished
-// and was requeued rather than failed, a cancellation that names its actor and
-// says why, a job whose setup time is measured rather than inferred, and a
-// green run whose green means work actually ran.
+// what happened, and whose fault was it. Every one of the incidents in
+// docs/incidents.md is visible somewhere in this seed. An infra failure that
+// retried and is not coloured like a build failure, a job whose runner
+// vanished and was requeued rather than failed. A cancellation that names its
+// actor. It says why, a job whose setup time is measured rather than
+// inferred, and a green run whose green means work ran.
 //
 // see docs/demo.md
 package demoseed
@@ -20,8 +20,7 @@ import (
 	"github.com/wow-look-at-my/ci-platform/internal/store"
 )
 
-// Now is the demo's fixed clock. A fixed instant keeps a recapture of an
-// unchanged seed byte-identical, which is what lets -check mean anything.
+// Now is the demo's fixed clock.
 var Now = time.Date(2026, 8, 6, 15, 4, 5, 0, time.UTC)
 
 func ago(d time.Duration) time.Time   { return Now.Add(-d) }
@@ -156,9 +155,6 @@ func steps(ctx context.Context, st store.Store, jobID int64, specs []stepSpec, s
 	return nil
 }
 
-// attemptOf is 2 for the job that retried and 1 for everything else. The demo
-// has exactly one retried job, so a lookup table would be more machinery than
-// the fact deserves.
 func attemptOf(jobID int64) int {
 	if jobID == retriedJobID {
 		return 2
@@ -166,8 +162,7 @@ func attemptOf(jobID int64) int {
 	return 1
 }
 
-// retriedJobID is the publish job in the Release run: the fourth job created,
-// and the only one on attempt 2.
+// retriedJobID is the publish job in the Release run: the fourth job created, and the only one on a later attempt.
 const retriedJobID int64 = 4
 
 func appendLog(ctx context.Context, logs Logs, jobID int64, attempt int, text []logLine) error {

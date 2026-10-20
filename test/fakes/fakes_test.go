@@ -27,8 +27,8 @@ func TestRegistry_ServesUntilToldOtherwise(t *testing.T) {
 	assert.Equal(t, int64(1), r.BlobRequests())
 }
 
-// The body a real Cloudflare 524 returns says nothing about the registry or the
-// build, which is exactly why it needs classifying rather than displaying.
+// The body a real a later cloudflare returns says nothing about the registry or
+// the build. This is exactly why it needs classifying rather than displaying.
 func TestRegistry_Cloudflare524(t *testing.T) {
 	r := NewRegistry()
 	defer r.Close()

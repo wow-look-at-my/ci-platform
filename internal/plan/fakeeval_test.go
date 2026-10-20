@@ -5,10 +5,7 @@ import (
 	"strings"
 )
 
-// fakeEval is a deliberately small stand-in for workflow/expr: it resolves
-// dotted context paths, the four status functions, and a table of canned
-// answers for expressions (fromJSON and friends) that a real evaluator would
-// compute.
+// fakeEval is a deliberately small stand-in for workflow/expr.
 type fakeEval struct {
 	contexts map[string]any
 	status   Status

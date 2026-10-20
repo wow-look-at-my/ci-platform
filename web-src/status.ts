@@ -1,9 +1,4 @@
 // Status/conclusion to presentation tone. No DOM.
-//
-// The whole point: an infra failure and a config error are NOT the red a broken
-// build gets. They are their own tones with their own icons, so an operator
-// reading the run list never mistakes "the registry timed out" for "your tests
-// failed".
 
 export type Tone =
 	| "success"
@@ -63,8 +58,8 @@ const LABELS: Record<Tone, string> = {
 	waiting: "Waiting",
 };
 
-// Distinct glyphs, not just colour: colour alone fails for a colour-blind
-// operator and for a screenshot pasted into a ticket.
+// Distinct glyphs, not colour: colour alone fails for a colour-blind operator
+// and for a screenshot pasted into a ticket.
 const ICONS: Record<Tone, string> = {
 	success: "✔",
 	failure: "✘",
@@ -86,7 +81,7 @@ export function toneIcon(tone: Tone): string {
 	return ICONS[tone];
 }
 
-/** True for the two tones that mean "not your code". */
+/** True for both tones that mean "not your code". */
 export function isPlatformFault(tone: Tone): boolean {
 	return tone === "infra" || tone === "config";
 }

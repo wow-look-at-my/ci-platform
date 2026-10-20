@@ -51,9 +51,6 @@ func TestNewRejectsWeakConfig(t *testing.T) {
 	assert.Contains(t, err.Error(), "Issuer")
 }
 
-// TestScpClaimMatchesToolkitParser replays getBackendIdsFromToken() from
-// @actions/artifact: base64-decode the payload, read scp, split on spaces, find
-// the Actions.Results entry, split on ":" into exactly three parts.
 func TestScpClaimMatchesToolkitParser(t *testing.T) {
 	s := newSigner(t, nil)
 	tok, err := s.Mint(42, 7, 2)
@@ -384,8 +381,8 @@ func TestScopeValid(t *testing.T) {
 	assert.False(t, jobtoken.Scope("admin").Valid())
 }
 
-// TestSignedURLToleratesAppendedParams is the Azure case: the Storage SDK adds
-// comp= and blockid= to the upload URL after it is handed over, so a signature
+// TestSignedURLToleratesAppendedParams is the Azure case. The Storage SDK adds
+// comp= and blockid= to the upload URL after it is handed over. A signature
 // covering the whole query would reject every block upload.
 func TestSignedURLToleratesAppendedParams(t *testing.T) {
 	s := newSigner(t, nil)

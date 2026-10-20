@@ -2,6 +2,11 @@ name: CI
 
 on:
   push:
+    branches: ['**']
+
+concurrency:
+  group: gha_${{ github.repository }}_${{ github.workflow }}_${{ github.ref != 'refs/heads/master' && github.ref || github.run_id }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/master' }}
 
 permissions:
   id-token: write
@@ -10,18 +15,18 @@ permissions:
   checks: read
   deployments: write
   artifact-metadata: write
+  pull-requests: write
 
 jobs:
   test:
-    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
+    runs-on: ${{ github.event.repository.visibility == 'public' && 'ubuntu-latest' || vars.CI_RUNNER || 'ubuntu-latest' }}
     steps:
       - uses: actions/checkout@v4
-      - uses: wow-look-at-my/go-toolchain@v1
+      - uses: wow-look-at-my/go-toolchain@lkgb
 
-  # The committed web/ bundle is what go:embed ships. A stale bundle is a
-  # silent lie about what the UI does, so a mismatch fails the build.
+  # The committed web/ bundle is what go:embed ships. A stale bundle is a silent lie about what the UI does, so a mismatch fails the build.
   web-bundle:
-    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
+    runs-on: ${{ github.event.repository.visibility == 'public' && 'ubuntu-latest' || vars.CI_RUNNER || 'ubuntu-latest' }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
@@ -29,72 +34,57 @@ jobs:
           go-version-file: go.mod
       - run: go run ./cmd/buildweb -check
 
-  # The demo site: the real UI against a snapshot captured from the real API.
-  # Published per branch, so a UI change can be looked at before it is merged.
+  # The demo site: the real UI against a snapshot captured from the real API. Published per branch, so a UI change can be looked at before it is merged.
   demo:
-    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
+    runs-on: ${{ github.event.repository.visibility == 'public' && 'ubuntu-latest' || vars.CI_RUNNER || 'ubuntu-latest' }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
-      # A stale snapshot would show shapes the API no longer returns, which is
-      # the one thing a demo of this platform must not do.
+      # A stale snapshot would show shapes the API no longer returns, which is the one thing a demo of this platform must not do.
       - run: go run ./cmd/demofixtures -check
       - run: go run ./cmd/buildweb -demo -out demo-site
-      # buildhost serves a site under one path segment, so anything outside
-      # [A-Za-z0-9._-] is flattened out of the branch name.
+      # buildhost serves a site under one path segment, so anything outside [A-Za-z0-9._-] is flattened out of the branch name.
       - name: Site branch name
         id: sitename
         uses: wow-look-at-my/actions@typescript#latest
         with:
           script: |
             core.setOutput('branch', (github.ref_name || 'branch').replace(/[^A-Za-z0-9._-]/g, '-'));
-      - uses: wow-look-at-my/buildhost/.github/actions/buildhost-publish-site@master
+      - uses: wow-look-at-my/buildhost/.github/actions/buildhost-publish-site@lkgb
         with:
           server: https://pazer.build
           project: ci-platform
           branch: ${{ steps.sitename.outputs.branch }}
           source_dir: demo-site
 
-  # The two images this deploys as. Until now nothing built them, so the only
-  # proof they worked was somebody running `docker compose up --build` by hand
-  # -- which is incident 5 in docs/incidents.md wearing a different hat.
-  # Building on every branch is the point; buildhost tags each push with its
-  # branch and only moves :latest on the default branch.
+  # The two images this deploys as. Until now nothing built them. The only proof they worked was somebody running `docker compose up --build` by hand -- which is incident 5 in docs/incidents.md wearing a different hat. Building on every branch is the point; buildhost tags each push with its branch and only moves :latest on the default branch.
   images:
-    runs-on: ${{ vars.CI_RUNNER_DIND || 'ubuntu-latest' }}
+    runs-on: ${{ github.event.repository.visibility == 'public' && 'ubuntu-latest' || vars.CI_RUNNER_DIND || 'ubuntu-latest' }}
     strategy:
       matrix:
         include:
           - project: ci-platform
             file: Dockerfile
-          # Namespaced under the repository's own project, not a sibling
-          # name: an Actions OIDC token is granted this repo's project and
-          # anything below it, so "ci-platform-runner" is a project this
-          # workflow has no right to create and buildhost answers 404.
+          # Namespaced under the repository's own project, not a sibling name: an Actions OIDC token is granted this repo's project and anything below it. "ci-platform-runner" is a project this workflow has no right to create and buildhost answers 404.
           - project: ci-platform/runner
             file: Dockerfile.runner
-          # The supervisor an operator installs on a machine, and the one an
-          # image updater is pointed at. It keeps the runners current, so it is
-          # the only image on a runner machine anything else has to update.
+          # The supervisor an operator installs on a machine, and the one an image updater is pointed at. It keeps the runners current, so it is the only image on a runner machine anything else has to update.
           - project: ci-platform/runner-host
             file: Dockerfile.runner-host
     steps:
       - uses: actions/checkout@v4
-      - uses: wow-look-at-my/buildhost/.github/actions/buildhost-publish-docker@master
+      - uses: wow-look-at-my/buildhost/.github/actions/buildhost-publish-docker@lkgb
         with:
           server: https://pazer.build
           project: ${{ matrix.project }}
           file: ${{ matrix.file }}
           build-args: VERSION=${{ github.sha }}
 
-  # Reads every workflow in the corpus and asserts each is either fully
-  # supported or explicitly refused, and that job names still match GitHub's.
-  # A job name is what branch protection matches on, so a change here breaks
-  # somebody's merge queue silently.
+  # Reads every workflow in the corpus and asserts each is either fully supported or explicitly refused, and that job names still match GitHub's. A job name is what branch protection matches on, so a change here breaks somebody's merge queue silently.
   conformance:
-    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
+    runs-on: ${{ github.event.repository.visibility == 'public' && 'ubuntu-latest' || vars.CI_RUNNER || 'ubuntu-latest' }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
@@ -102,11 +92,9 @@ jobs:
           go-version-file: go.mod
       - run: go test ./test/conformance/... -count=1
 
-  # One test per incident in docs/incidents.md. These are the product: if a
-  # killed runner stops requeuing, or a 524 stops being classified as infra,
-  # the platform has lost the only thing it claims over GitHub Actions.
+  # One test per incident in docs/incidents.md. These are the product. If a killed runner stops requeuing, or a 524 stops being classified as infra, the platform has lost the only thing it claims over GitHub Actions.
   chaos:
-    runs-on: ${{ vars.CI_RUNNER_DIND || 'ubuntu-latest' }}
+    runs-on: ${{ github.event.repository.visibility == 'public' && 'ubuntu-latest' || vars.CI_RUNNER_DIND || 'ubuntu-latest' }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
@@ -116,10 +104,9 @@ jobs:
           CIPLATFORM_TEST_DOCKER: "1"
         run: go test ./test/chaos/... -count=1 -timeout 20m
 
-  # Runs real workflows through a real control plane and a real runner, using
-  # unmodified actions/checkout, actions/cache, and actions/upload-artifact.
+  # Runs real workflows through a real control plane and a real runner, using unmodified actions/checkout, actions/cache, and actions/upload-artifact.
   e2e:
-    runs-on: ${{ vars.CI_RUNNER_DIND || 'ubuntu-latest' }}
+    runs-on: ${{ github.event.repository.visibility == 'public' && 'ubuntu-latest' || vars.CI_RUNNER_DIND || 'ubuntu-latest' }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5

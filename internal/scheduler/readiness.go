@@ -17,8 +17,7 @@ import (
 type needsState struct {
 	// ready is false while any needed job still has work outstanding.
 	ready bool
-	// context is the needs context exactly as expressions see it:
-	// {<job key>: {outputs: {...}, result: "success"|"failure"|"cancelled"|"skipped"}}.
+	// context is the needs context exactly as expressions see it: {<job key>: {outputs: {...}, result.
 	context map[string]any
 	status  plan.Status
 	// why explains a non-success state in one sentence, for the skip event.
@@ -86,19 +85,6 @@ func computeNeeds(pj *plan.PlannedJob, byKey map[string][]*model.Job, runCancell
 }
 
 // needsResult reduces a job's legs to the value the needs context reports.
-//
-// This deliberately does NOT go through model.Aggregate, and the distinction is
-// the important part. Aggregate answers "what should we TELL somebody about
-// this run", where a mix of skipped and successful work is not a success.
-// needsResult answers "should dependents RUN", which is execution semantics and
-// has to match GitHub Actions: there, a matrix job with one skipped leg and one
-// successful leg is `success` and its dependents run.
-//
-// Reducing gating through Aggregate would skip those dependents instead, which
-// is a deploy job silently not running because an unrelated matrix leg was
-// filtered out. That is incident 5 in docs/incidents.md, reintroduced by the
-// mechanism meant to prevent it. The job's real conclusion is untouched and
-// still flows into the rollup and the check run.
 func needsResult(cs []model.Conclusion) string {
 	if len(cs) == 0 {
 		return "skipped"
@@ -150,11 +136,7 @@ func (s *Scheduler) shouldRun(p *plan.Plan, pj *plan.PlannedJob, needs needsStat
 	if err != nil {
 		return false, fmt.Errorf("job %q if: %w", pj.Name, err)
 	}
-	// GitHub wraps a condition naming no status function as
-	// "success() && (<condition>)", so a plain `if: github.ref == ...` still
-	// does not run after a failed need. This asks the expression parser rather
-	// than scanning the text, which a status-function name inside a string
-	// literal would fool.
+	// GitHub wraps a condition naming no status function as "success() && (<condition>)".
 	named, err := expr.ReferencesStatusFunction(pj.IR.If.Raw)
 	if err != nil {
 		return false, fmt.Errorf("job %q if: %w", pj.Name, err)
@@ -172,7 +154,7 @@ func matrixContext(pj *plan.PlannedJob) any {
 	return pj.Matrix
 }
 
-// admitReadyJobs is the dispatch decision: what may go on the queue now, what
+// admitReadyJobs is the dispatch decision. What may go on the queue now, what
 // is skipped, and what waits for a concurrency group or a max-parallel slot.
 func (s *Scheduler) admitReadyJobs(ctx context.Context, run *model.Run, p *plan.Plan, jobs []*model.Job, now time.Time) error {
 	if blocked, err := s.runGroupBlocked(ctx, run, p); err != nil {
@@ -242,8 +224,8 @@ func (s *Scheduler) admitReadyJobs(ctx context.Context, run *model.Run, p *plan.
 	return nil
 }
 
-// pendingJob reports whether a job is still waiting for the scheduler to decide
-// about it. QueuedAt is the marker for "already handed to the queue".
+// pendingJob reports whether a job is still waiting for the scheduler to
+// decide about it.
 func pendingJob(j *model.Job) bool {
 	return j.Status != model.StatusCompleted && j.QueuedAt == nil && !j.AwaitingApproval
 }

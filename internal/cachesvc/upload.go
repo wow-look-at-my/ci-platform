@@ -120,8 +120,6 @@ func (s *Service) handleReserve(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// The declared size checked above is a claim about the body, not the body.
-	// Without this the limit is advisory and a client that lies about its size
-	// writes whatever it likes.
 	upload.LimitBytes(s.maxSize)
 	s.mu.Lock()
 	s.uploads[entry.ID] = upload
@@ -242,8 +240,7 @@ func (s *Service) handleCommit(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	size, _, err := upload.Commit(ctx, req.Size)
 	if err != nil {
-		// The archive is incomplete, so the entry must not become visible. A
-		// half-written cache is worse than no cache: it fails jobs downstream.
+		// The archive is incomplete, so the entry must not become visible.
 		_ = upload.Abort(ctx)
 		writeErr(w, http.StatusBadRequest, "cachesvc: "+err.Error())
 		return
@@ -262,8 +259,7 @@ func (s *Service) handleCommit(w http.ResponseWriter, r *http.Request) {
 		fmt.Sprintf("stored %d bytes for version %s on ref %s", size, entry.Version, entry.Ref), size)
 
 	if err := s.Evict(ctx, claims.RepoID); err != nil {
-		// The entry is stored; the quota is now over. That is worth reporting
-		// rather than hiding behind a 204.
+		// The entry is stored; the quota is now over.
 		writeErr(w, http.StatusInternalServerError, fmt.Sprintf(
 			"cachesvc: entry %d was stored but enforcing the repository quota failed: %v", id, err))
 		return
@@ -313,8 +309,7 @@ func (s *Service) handleDownload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// The client ranges over the archive when it downloads concurrently, so
-	// http.ServeContent is used for its Range handling.
+	// The client ranges over the archive when it downloads concurrently.
 	rc, err := s.blob.Get(r.Context(), storageKey(id))
 	if errors.Is(err, blob.ErrNotFound) {
 		http.Error(w, fmt.Sprintf("cachesvc: entry %d has no stored archive", id), http.StatusNotFound)
@@ -331,17 +326,14 @@ func (s *Service) handleDownload(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Length", strconv.FormatInt(entry.SizeBytes, 10))
 	}
 	if rs, ok := rc.(io.ReadSeeker); ok {
-		// ServeContent brings Range handling, which the client uses when it
-		// downloads an archive with concurrent range requests.
+		// ServeContent brings Range handling.
 		http.ServeContent(w, r, "cache", entry.CreatedAt, rs)
 		return
 	}
 	_, _ = io.Copy(w, rc)
 }
 
-// handleV2NotImplemented answers the v2 Twirp CacheService. The client only
-// picks v2 when ACTIONS_CACHE_SERVICE_V2 is set in the job environment, which
-// the runner does not do; saying so beats a 404.
+// handleV2NotImplemented answers the v2 Twirp CacheService.
 func (s *Service) handleV2NotImplemented(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusNotImplemented)

@@ -20,7 +20,6 @@ type Command struct {
 // Param returns a parameter value, or "" when absent.
 func (c Command) Param(k string) string { return c.Params[k] }
 
-// intParam parses a numeric parameter, returning 0 when absent or malformed.
 func (c Command) intParam(k string) int {
 	n, err := strconv.Atoi(strings.TrimSpace(c.Params[k]))
 	if err != nil {
@@ -76,8 +75,6 @@ func parseParams(s string) map[string]string {
 	return out
 }
 
-// unescapeData reverses the message escaping. %25 is decoded last so an
-// encoded percent cannot be re-interpreted as the start of another escape.
 func unescapeData(s string) string {
 	s = strings.ReplaceAll(s, "%0D", "\r")
 	s = strings.ReplaceAll(s, "%0A", "\n")
@@ -92,9 +89,8 @@ func unescapeProperty(s string) string {
 	return strings.ReplaceAll(s, "%25", "%")
 }
 
-// Handler receives the side effects of the commands a step emits. A nil field
-// means the runner does not care about that command; it is still never
-// silently swallowed, because the emitted log line reports it.
+// Handler receives the side effects of the commands a step emits. A nil field means the runner does not care about that command; it is still never silently swallowed,
+// because the emitted log line reports it.
 type Handler struct {
 	Annotation func(model.Annotation)
 	Mask       func(value string)
@@ -116,7 +112,7 @@ type Processor struct {
 // NewProcessor returns a processor bound to h.
 func NewProcessor(h Handler) *Processor { return &Processor{h: h} }
 
-// Group is the ::group:: title currently in effect, "" at top level.
+// Group is the ::group:: title in effect, "" at top level.
 func (p *Processor) Group() string {
 	if len(p.groups) == 0 {
 		return ""
@@ -176,9 +172,6 @@ func (p *Processor) Line(text string) (out string, group string, emit bool) {
 	case "stop-commands":
 		token := cmd.Value
 		if err := validateStopToken(token); err != nil {
-			// A guessable token lets untrusted output disable command
-			// processing and then re-enable it at will (CVE-2020-15228), so an
-			// invalid one fails the step rather than pausing.
 			return "Error: " + err.Error(), p.Group(), true
 		}
 		if p.h.Mask != nil && len(token) > 6 {

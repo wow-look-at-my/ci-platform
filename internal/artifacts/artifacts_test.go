@@ -55,8 +55,7 @@ func newHarness(t *testing.T, mutate func(*artifacts.Options)) *harness {
 	require.NoError(t, err)
 
 	h := &harness{store: fs, blob: bs, signer: signer}
-	// The service needs its own public URL before the test server exists, so
-	// the server is created first with a placeholder handler.
+	// The service needs its own public URL before the test server exists.
 	mux := http.NewServeMux()
 	h.srv = httptest.NewServer(mux)
 	t.Cleanup(h.srv.Close)
@@ -79,7 +78,6 @@ func newHarness(t *testing.T, mutate func(*artifacts.Options)) *harness {
 	return h
 }
 
-// twirp posts a Results API request the way ArtifactServiceClientJSON does.
 func (h *harness) twirp(t *testing.T, method string, body any) *http.Response {
 	t.Helper()
 	return h.twirpAs(t, h.token, method, body)
@@ -111,9 +109,6 @@ func backendIDs() (string, string) {
 	return jobtoken.BackendRunID(runID), jobtoken.BackendJobID(jobID, attempt)
 }
 
-// TestUploadArtifactV4EndToEnd drives the exact call sequence
-// @actions/artifact's uploadArtifact makes: CreateArtifact, an Azure block
-// upload of the zip, then FinalizeArtifact with the size and sha256.
 func TestUploadArtifactV4EndToEnd(t *testing.T) {
 	h := newHarness(t, nil)
 	runBackend, jobBackend := backendIDs()
@@ -154,8 +149,6 @@ func TestUploadArtifactV4EndToEnd(t *testing.T) {
 	assert.NotEmpty(t, h.store.eventsOfKind("artifact_finalized"))
 }
 
-// TestDownloadArtifactV4EndToEnd drives downloadArtifactInternal: ListArtifacts
-// with an id filter, GetSignedArtifactURL, then an unauthenticated GET.
 func TestDownloadArtifactV4EndToEnd(t *testing.T) {
 	h := newHarness(t, nil)
 	runBackend, jobBackend := backendIDs()
@@ -183,8 +176,7 @@ func TestDownloadArtifactV4EndToEnd(t *testing.T) {
 	url := decode[artifacts.GetSignedArtifactURLResponse](t, signed).SignedURL
 	require.NotEmpty(t, url)
 
-	// The client downloads with a fresh HTTP client that sends no
-	// Authorization header, so the URL must authenticate itself.
+	// The client downloads with a fresh HTTP client that sends no Authorization header.
 	resp, err := http.Get(url)
 	require.NoError(t, err)
 	defer resp.Body.Close()

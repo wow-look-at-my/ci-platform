@@ -5,15 +5,15 @@ import "github.com/wow-look-at-my/ci-platform/internal/model"
 // ConclusionToCheck maps a platform conclusion onto the Checks API, returning
 // the wire conclusion and the prefix that opens output.title.
 //
-// Two mappings deviate from a naive pass-through, deliberately:
+// Mappings deviate from a naive pass-through, deliberately:
 //
 //	infra_failure -> action_required, not failure
 //	config_error  -> action_required, not failure
 //
 // A red X on GitHub must mean the user's code is broken. A registry 5xx and a
 // failing test rendering identically is the exact experience this platform
-// exists to replace, so an infra or config failure gets a visually distinct
-// state that does not accuse the commit. The cost is that action_required also
+// exists to replace. An infra or config failure gets a visually distinct state
+// that does not accuse the commit. The cost is that action_required also
 // blocks a required check, which is correct: neither outcome is a pass.
 func ConclusionToCheck(c model.Conclusion) (conclusion string, titlePrefix string) {
 	switch c {

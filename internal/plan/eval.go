@@ -15,12 +15,10 @@ type Evaluator interface {
 	Eval(raw string) (any, error)
 }
 
-// EvaluatorFactory builds an Evaluator over a set of named contexts
-// ("github", "env", "needs", "matrix", "strategy", "vars", "secrets", "inputs", ...).
+// EvaluatorFactory builds an Evaluator over a set of named contexts.
 type EvaluatorFactory func(contexts map[string]any, status Status) Evaluator
 
-// Status is what success(), failure() and cancelled() answer inside an
-// expression. Exactly one of the three is true for a given evaluation.
+// Status is what success(), failure() and cancelled() answer inside an expression.
 type Status struct{ Success, Failure, Cancelled bool }
 
 // EvalString evaluates an Expr to text, short-circuiting literals so a literal

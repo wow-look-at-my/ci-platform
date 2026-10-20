@@ -11,9 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// Vectors are the published AWS "Signature Version 4" examples. The canonical
-// request and string-to-sign are asserted verbatim so a mismatch names the
-// stage that broke rather than just "signature wrong".
+// Vectors are the published AWS "Signature Version 4" examples.
 
 var exampleCreds = credentials{
 	accessKeyID:     "AKIAIOSFODNN7EXAMPLE",
@@ -90,7 +88,7 @@ func TestSigV4PresignedURL(t *testing.T) {
 		q.Get("X-Amz-Signature"))
 }
 
-// TestSigV4PutObject is the "PUT Object" example: a signed body hash and two
+// TestSigV4PutObject is the "PUT Object" example: a signed body hash and
 // extra x-amz headers.
 func TestSigV4PutObject(t *testing.T) {
 	ts := mustTime(t, "20130524T000000Z")
@@ -113,7 +111,7 @@ func TestSigV4PutObject(t *testing.T) {
 		signature(exampleCreds.secretAccessKey, ts, "us-east-1", "s3", sts))
 }
 
-// TestSigV4WrongSecretFailsLoudly proves the vectors are actually discriminating.
+// TestSigV4WrongSecretFailsLoudly proves the vectors are discriminating.
 func TestSigV4WrongSecretFailsLoudly(t *testing.T) {
 	ts := mustTime(t, "20130524T000000Z")
 	sts := stringToSign(ts, credentialScope(ts, "us-east-1", "s3"), "canonical")

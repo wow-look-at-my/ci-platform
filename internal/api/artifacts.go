@@ -106,8 +106,7 @@ func (s *Server) downloadArtifact(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("X-Artifact-Digest", a.Digest)
 	}
 	if _, err := io.Copy(w, rc); err != nil {
-		// Headers are already sent; the truncated body is the failure signal a
-		// client sees, and this line is the one an operator can grep for.
+		// Headers are already sent; the truncated body is the failure signal a client sees.
 		fmt.Fprintf(w, "\n[artifact %d truncated: %v]\n", a.ID, err)
 	}
 }

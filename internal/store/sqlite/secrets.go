@@ -8,8 +8,7 @@ import (
 	"github.com/wow-look-at-my/ci-platform/internal/store"
 )
 
-// Scope names. A secret is stored under exactly one of them, and resolution
-// merges org then repo then environment, so the narrowest scope wins.
+// Scope names.
 const (
 	ScopeOrg         = "org"
 	ScopeRepo        = "repo"

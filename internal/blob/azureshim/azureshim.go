@@ -1,11 +1,11 @@
 // Package azureshim serves the subset of the Azure Block Blob REST API that
-// the Azure Storage SDK uses when it uploads, backed by a blob.Store.
+// the Azure Storage. SDK uses when it uploads, backed by a blob.Store.
 //
-// It exists because @actions/artifact hands CreateArtifact's signed_upload_url
-// to BlockBlobClient.uploadStream, which always stages blocks and then commits
-// a block list. Serving artifact uploads therefore means speaking Put Block and
-// Put Block List, whatever the bytes actually land on. Nothing here talks to
-// Azure; only the wire shape is shared.
+// It exists because @actions/artifact hands CreateArtifact's
+// signed_upload_url to BlockBlobClient.uploadStream, which always stages
+// blocks and then commits a block list. Serving artifact uploads therefore
+// means speaking Put Block and Put Block List, whatever the bytes land on.
+// Nothing here talks to Azure; only the wire shape is shared.
 //
 // Implemented: PUT ?comp=block&blockid=, PUT ?comp=blocklist, and the
 // single-shot PUT with x-ms-blob-type: BlockBlob.
@@ -34,9 +34,7 @@ const (
 	HeaderErrorCode       = "x-ms-error-code"
 )
 
-// APIVersion is echoed back on every response. The SDK does not require a
-// particular value, but it does log it, and an empty one reads as a broken
-// endpoint during an incident.
+// APIVersion is echoed back on every response.
 const APIVersion = "2021-08-06"
 
 // Error is a failure rendered in Azure's shape so the SDK surfaces something
@@ -58,8 +56,7 @@ func Errorf(status int, code, format string, args ...any) *Error {
 type Target struct {
 	// Key is the blob.Store key the committed object lands at.
 	Key string
-	// Ref is an opaque caller-side identity (an artifact id, a cache id) passed
-	// back to OnCommit.
+	// Ref is an opaque caller-side identity (an artifact id, a cache id) passed back to OnCommit.
 	Ref string
 }
 
@@ -67,12 +64,9 @@ type Target struct {
 type Options struct {
 	// Store receives the bytes.
 	Store blob.Store
-	// Resolve authenticates the request and says where it writes. Returning an
-	// Error rejects the upload in Azure's error shape.
+	// Resolve authenticates the request and says where it writes.
 	Resolve func(*http.Request) (Target, *Error)
-	// OnCommit runs after the object is assembled, with its final size and hex
-	// sha256. An error here fails the upload: the client must not believe an
-	// artifact landed when the record of it did not.
+	// OnCommit runs after the object is assembled, with its final size and hex sha256.
 	OnCommit func(ctx context.Context, t Target, size int64, digest, contentType string) error
 	// MaxBlocks bounds how many blocks one upload may stage.
 	MaxBlocks int
@@ -106,8 +100,7 @@ func New(opts Options) (*Handler, error) {
 	return h, nil
 }
 
-// blockKey stages one block. The block id is hex-encoded because Azure block
-// ids are arbitrary base64 and would otherwise not be a safe path element.
+// blockKey stages one block.
 func blockKey(objectKey, blockID string) string {
 	return objectKey + ".blocks/" + hex.EncodeToString([]byte(blockID))
 }
@@ -162,8 +155,8 @@ func (h *Handler) putBlock(w http.ResponseWriter, r *http.Request, t Target) {
 }
 
 // ordered returns the block ids in the order they appear in the document.
-// Azure orders the committed blob by document order across all three element
-// types, and the SDK writes Latest entries.
+// Azure orders the committed blob by document order across all of them
+// element types, and the SDK writes Latest entries.
 func orderedBlockIDs(body []byte) ([]string, error) {
 	dec := xml.NewDecoder(strings.NewReader(string(body)))
 	var ids []string
@@ -219,9 +212,8 @@ func (h *Handler) putBlockList(w http.ResponseWriter, r *http.Request, t Target)
 	for i, id := range ids {
 		keys[i] = blockKey(t.Key, id)
 		if _, err := h.store.Stat(r.Context(), keys[i]); err != nil {
-			// A block list naming a block that was never staged means the
-			// upload lost data; assembling the rest would produce a corrupt
-			// artifact that looks fine.
+			// A block list naming a block that was never staged means the upload lost
+			// data.
 			writeAzureError(w, Errorf(http.StatusBadRequest, "InvalidBlockList",
 				"block %q was named in the block list but never staged: %v", id, err))
 			return

@@ -1,0 +1,5 @@
+runs-on: x
+permissions:
+  id-token: read
+steps:
+  - run: y

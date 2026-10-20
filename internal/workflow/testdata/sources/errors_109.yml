@@ -1,0 +1,5 @@
+runs-on: x
+defaults:
+  shell: bash
+steps:
+  - run: y

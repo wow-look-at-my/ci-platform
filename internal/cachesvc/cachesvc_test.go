@@ -149,8 +149,7 @@ func TestSaveAndRestoreCache(t *testing.T) {
 	assert.Equal(t, jobRef, entry.Scope)
 	require.NotEmpty(t, entry.ArchiveLocation)
 
-	// downloadCacheHttpClient sends no Authorization header, so the archive URL
-	// must authenticate itself.
+	// downloadCacheHttpClient sends no Authorization header, so the archive URL must authenticate itself.
 	dl, err := http.Get(entry.ArchiveLocation)
 	require.NoError(t, err)
 	defer dl.Body.Close()
@@ -228,8 +227,6 @@ func TestCommitRejectsSizeMismatch(t *testing.T) {
 	assert.Contains(t, decode[map[string]string](t, commit)["message"], "declared as 99")
 }
 
-// TestMissIs204 is load-bearing: the client treats any non-2xx other than 204
-// as an error, so a 404 on a miss fails the whole step.
 func TestMissIs204(t *testing.T) {
 	h := newHarness(t, jobtoken.DefaultScopes, nil)
 	resp := h.do(t, http.MethodGet, lookupPath([]string{"nothing-here"}, version), nil, nil)

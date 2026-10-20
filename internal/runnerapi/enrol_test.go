@@ -123,7 +123,7 @@ func TestSession_IssuesATokenOnceApproved(t *testing.T) {
 	require.NotEmpty(t, out.Token)
 	assert.True(t, out.ExpiresAt.After(time.Now()))
 
-	// The token it just issued opens the rest of the surface.
+	// The token it issued opens the rest of the surface.
 	saved := h.token
 	h.token = out.Token
 	defer func() { h.token = saved }()
@@ -201,8 +201,7 @@ func TestEnrol_RefusesANewHostOnceTooManyAreWaiting(t *testing.T) {
 	_, err := h.st.GetRunnerHost(t.Context(), flood.fingerprint)
 	require.Error(t, err, "a refused enrolment must leave no row behind")
 
-	// Approving clears the queue, and the next host is let in: the cap counts
-	// what is waiting, not what exists.
+	// Approving clears the queue, and the next host is let in: the cap counts what is waiting, not what exists.
 	hosts, err := h.st.ListRunnerHosts(t.Context())
 	require.NoError(t, err)
 	for _, existing := range hosts {
@@ -217,7 +216,7 @@ func TestEnrol_RefusesANewHostOnceTooManyAreWaiting(t *testing.T) {
 }
 
 // A runner restarting must not be turned away because somebody else flooded the
-// queue: it already has a row, so the cap does not apply to it.
+// queue: it already has a row. The cap does not apply to it.
 func TestEnrol_LetsAKnownHostBackInWhenTheQueueIsFull(t *testing.T) {
 	h := newHarness(t)
 	h.srv.opts.MaxPendingHosts = 1
@@ -229,9 +228,9 @@ func TestEnrol_LetsAKnownHostBackInWhenTheQueueIsFull(t *testing.T) {
 		h.postAnon(t, protocol.PathEnrol, newHost(t).enrolRequest(t, time.Now()), nil))
 }
 
-// A signature made to enrol must not be usable to get a token, or an operator
-// approving a host would be handing out access retroactively to whoever
-// captured the enrolment.
+// Consider a signature made to enrol. That signature must not be usable to
+// get a token. Otherwise, an operator approving a host would be handing out
+// access retroactively to whoever captured the enrolment.
 func TestSession_RefusesAnEnrolSignature(t *testing.T) {
 	h := newHarness(t)
 	box := newHost(t)
@@ -267,7 +266,7 @@ func TestAuthenticated_StopsAHostRevokedMidSession(t *testing.T) {
 	assert.Equal(t, http.StatusForbidden, code, "a revoked host kept working on the token it already held")
 }
 
-// A runner's labels decide which jobs it is offered, so a host cannot widen its
+// A runner's labels decide which jobs it is offered. A host cannot widen its
 // own reach by claiming labels the operator did not allow it.
 func TestRegister_DropsLabelsTheHostIsNotApprovedFor(t *testing.T) {
 	h := newHarness(t)

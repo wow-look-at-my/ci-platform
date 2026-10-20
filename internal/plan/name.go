@@ -9,9 +9,7 @@ import (
 	"github.com/wow-look-at-my/ci-platform/internal/model"
 )
 
-// MaxJobNameLength is GitHub's cap on a generated job name. Longer names are
-// truncated with an ellipsis, and branch protection matches the truncated form,
-// so the cap is part of the contract rather than cosmetic.
+// MaxJobNameLength is GitHub's cap on a generated job name.
 const MaxJobNameLength = 100
 
 // RenderValue renders one matrix value as text. Scalars stringify; a list or
@@ -47,13 +45,7 @@ func RenderValue(v any) string {
 	return string(b)
 }
 
-// NameSegments flattens one matrix value into display-name segments the way
-// GitHub does: it walks the value and emits every scalar leaf, so an object
-// value contributes its leaves rather than a rendering of the object. An empty
-// string contributes nothing.
-//
-// Object keys are walked in sorted order. GitHub walks them in source order,
-// which a map in the IR cannot preserve.
+// NameSegments flattens one matrix value into display-name segments the way.
 func NameSegments(v any) []string {
 	var out []string
 	appendLeaves(&out, v)

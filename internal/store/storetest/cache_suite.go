@@ -39,8 +39,7 @@ func testCacheRestoreKeys(t *testing.T, f *fixture) {
 	require.Equal(t, exact.ID, got.ID)
 	require.Equal(t, "deps-exact", matched)
 
-	// No exact hit: newest prefix match wins, and the unfinalized entry is
-	// invisible however new it is.
+	// No exact hit: newest prefix match wins, and the unfinalized entry is invisible however new it is.
 	got, matched, err = f.s.LookupCache(f.ctx, repo.ID, "deps-missing", []string{"deps-"}, "v1", "refs/heads/main")
 	require.NoError(t, err)
 	require.Equal(t, newestPrefix.ID, got.ID)
@@ -115,7 +114,7 @@ func testCacheEviction(t *testing.T, f *fixture) {
 	require.NoError(t, err)
 	require.Equal(t, "c", survivor.Key)
 
-	// Every eviction is on the record with what was dropped.
+	// Every eviction is on the record with what.
 	events, err := f.s.ListCacheEvents(f.ctx, repo.ID, 0)
 	require.NoError(t, err)
 	var evictions int

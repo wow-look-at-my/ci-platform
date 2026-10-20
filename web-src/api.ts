@@ -300,11 +300,7 @@ export class ApiError extends Error {
 	}
 }
 
-/**
- * Called when the server rejects the session, so a cookie that expired
- * mid-session puts the sign-in form up instead of painting every panel with an
- * unauthorized error the operator cannot act on.
- */
+/** Called when the server rejects the session. */
 let unauthorizedHandler: (() => void) | null = null;
 
 export function onUnauthorized(fn: () => void): void {
@@ -326,7 +322,6 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 			const body = JSON.parse(text) as { message?: string; error?: string };
 			if (body.message) message = body.message;
 		} catch {
-			// A non-JSON error body is still the truth about what went wrong.
 		}
 		throw new ApiError(resp.status, message);
 	}

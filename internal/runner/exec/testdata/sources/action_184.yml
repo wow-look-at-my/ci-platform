@@ -1,0 +1,17 @@
+name: Composite
+description: c
+inputs:
+  greeting:
+    default: hello
+outputs:
+  said:
+    description: what was said
+    value: ${{ steps.say.outputs.text }}
+runs:
+  using: composite
+  steps:
+    - id: say
+      shell: bash
+      run: echo ${{ inputs.greeting }}
+    - shell: sh
+      run: echo second

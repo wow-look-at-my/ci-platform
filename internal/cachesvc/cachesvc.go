@@ -1,11 +1,7 @@
 // Package cachesvc serves the actions/cache v1 REST API that @actions/cache
 // speaks, verified against the toolkit rather than assumed.
 //
-// Version: getCacheServiceVersion() returns v1 unless ACTIONS_CACHE_SERVICE_V2
-// is set in the job environment, and always v1 on GHES. The runner does not set
-// that variable, so v1 is what runs. The v2 Twirp CacheService is deliberately
-// not implemented; TwirpPrefix answers it with an error that says so rather
-// than a 404 nobody can act on.
+// The runner does not set that variable, so v1 is what runs.
 //
 // Download URLs are fetched by an HTTP client with no credential handler
 // (downloadCacheHttpClient constructs its own), so archiveLocation carries its
@@ -32,9 +28,7 @@ import (
 const (
 	EnvCacheURL     = "ACTIONS_CACHE_URL"
 	EnvRuntimeToken = "ACTIONS_RUNTIME_TOKEN"
-	// EnvCacheMode is the client-side read/write gate: none, read, write, or
-	// write-only. The server enforces the same thing from the token's scopes;
-	// this variable stops the client wasting a round trip.
+	// EnvCacheMode is the client-side read/write gate: none, read, write, or write-only.
 	EnvCacheMode = "ACTIONS_CACHE_MODE"
 )
 
@@ -64,9 +58,7 @@ func ModeForScopes(c *jobtoken.Claims) string {
 	}
 }
 
-// RunnerEnv is the environment the runner injects. The base URL keeps its
-// trailing slash: the client builds `${baseUrl}_apis/artifactcache/...` by
-// concatenation, so dropping it produces a 404 on every cache call.
+// RunnerEnv is the environment the runner injects.
 func RunnerEnv(baseURL, jobToken, mode string) map[string]string {
 	return map[string]string{
 		EnvCacheURL:     strings.TrimSuffix(baseURL, "/") + "/",
@@ -75,12 +67,10 @@ func RunnerEnv(baseURL, jobToken, mode string) map[string]string {
 	}
 }
 
-// ReadDeniedPrefix is the prefix the client matches to turn a denial into a
-// CacheReadDeniedError instead of a generic HTTP failure. It must appear in
-// the "message" field of the error body.
+// ReadDeniedPrefix is the prefix the client matches to turn a denial into a CacheReadDeniedError instead of a generic HTTP failure.
 const ReadDeniedPrefix = "cache read denied:"
 
-// CacheFileSizeLimit is the client's own 10 GiB per-repository archive cap.
+// CacheFileSizeLimit is the client's a later own GiB per-repository archive cap.
 const CacheFileSizeLimit = 10 * 1024 * 1024 * 1024
 
 // Route paths.
@@ -88,9 +78,7 @@ const (
 	PathLookup   = "/_apis/artifactcache/cache"
 	PathCaches   = "/_apis/artifactcache/caches"
 	PathDownload = "/_apis/artifactcache/artifacts/"
-	// TwirpPrefix is the v2 CacheService route, answered with a clear
-	// "not implemented" rather than a 404.
-	TwirpPrefix = "/twirp/github.actions.results.api.v1.CacheService/"
+	TwirpPrefix  = "/twirp/github.actions.results.api.v1.CacheService/"
 )
 
 // Store is the persistence this service needs.
@@ -107,8 +95,7 @@ type Options struct {
 	Signer *jobtoken.Signer
 	// BaseURL is this service's public URL; archiveLocation is built from it.
 	BaseURL string
-	// RepoQuotaBytes caps one repository's cache. Eviction runs on every
-	// commit to hold the line.
+	// RepoQuotaBytes caps one repository's cache. Eviction runs on every commit to hold the line.
 	RepoQuotaBytes int64
 	// MaxEntryBytes rejects an archive too large to be worth storing.
 	MaxEntryBytes int64
@@ -232,9 +219,7 @@ type ArtifactCacheList struct {
 	ArtifactCaches []ArtifactCacheEntry `json:"artifactCaches"`
 }
 
-// handleLookup implements restore-keys semantics. A miss is 204: the client
-// treats any other non-2xx as an error, so a 404 would fail the step rather
-// than proceed without a cache.
+// handleLookup implements restore-keys semantics.
 func (s *Service) handleLookup(w http.ResponseWriter, r *http.Request) {
 	claims, _ := jobtoken.ClaimsFrom(r.Context())
 	if !claims.CanReadCache() {
@@ -265,8 +250,7 @@ func (s *Service) handleLookup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Ref scoping is enforced here as well as in the store: a branch may read
-	// its own entries and the default branch's, never a sibling branch's.
+	// Ref scoping is enforced here as well as in the store.
 	allowed, reason, err := s.refAllowed(ctx, claims, entry)
 	if err != nil {
 		writeErr(w, http.StatusInternalServerError, err.Error())

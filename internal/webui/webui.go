@@ -1,4 +1,4 @@
-// Package webui serves the embedded dashboard: correct content types, an
+// Package webui serves the embedded dashboard. Correct content types, an
 // immutable cache for content-hashed asset URLs, and an SPA fallback so a
 // deep link like /#/jobs/12 survives a reload.
 package webui
@@ -27,8 +27,6 @@ func New() (*Handler, error) { return NewFS(web.FS) }
 func NewFS(files fs.FS) (*Handler, error) {
 	index, err := fs.ReadFile(files, "index.html")
 	if err != nil {
-		// Without index.html there is no UI to serve, and answering 200 with
-		// nothing would look like a working deployment.
 		return nil, errors.New("webui: index.html is missing from the embedded bundle; run: go run ./cmd/buildweb")
 	}
 	return &Handler{files: files, index: index}, nil
@@ -58,8 +56,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		h.serveIndex(w, r)
 		return
 	}
-	// An API path reaching here means the mux is misrouted. Serving HTML to an
-	// API client would look like a malformed response instead of a 404.
+	// An API path reaching here means the mux is misrouted.
 	if strings.HasPrefix(name, "api/") || name == "healthz" {
 		http.Error(w, `{"error":"not_found","message":"no such API endpoint"}`, http.StatusNotFound)
 		return
@@ -67,8 +64,6 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	body, err := fs.ReadFile(h.files, name)
 	if err != nil {
-		// A missing file with an extension is a genuine 404; anything else is
-		// a client-side route, which index.html handles.
 		if path.Ext(name) != "" {
 			http.NotFound(w, r)
 			return
@@ -116,7 +111,6 @@ func (h *Handler) write(w http.ResponseWriter, r *http.Request, name string, bod
 // Mount registers the UI on mux as the catch-all, leaving more specific
 // patterns (the API, /healthz) to win on their own.
 func (h *Handler) Mount(mux *http.ServeMux) {
-	// Registered without a method so it cannot conflict with a method-specific
-	// API pattern; non-read methods are rejected by the handler itself.
+	// Registered without a method so it cannot conflict with a method-specific.
 	mux.Handle("/", h)
 }

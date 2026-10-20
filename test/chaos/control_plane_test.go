@@ -18,14 +18,13 @@ import (
 	"github.com/wow-look-at-my/ci-platform/internal/runner/agent"
 )
 
-// Incident 2: the runner could not reach the control plane, retried three times
-// with backoff, and the job never started. From the outside the run just sat
-// there, with a BadGateway in the runner log and nothing anywhere else.
+// From the outside the run sat there, with a BadGateway in the runner log and
+// nothing anywhere else.
 //
-// The requirement is not that this never happens; it is that when it does, the
-// failure is the platform's and is named as such. There is no user code in the
-// dispatch path, so a control plane that cannot be reached can never be the
-// user's fault.
+// The requirement is not that this never happens; it is that when it does,
+// the failure is the platform's and is named as such. There is no user code
+// in the dispatch path, so a control plane that cannot be reached can never
+// be the user's fault.
 func TestIncident2_ControlPlaneUnreachableIsInfraNotABuildFailure(t *testing.T) {
 	var attempts atomic.Int64
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -53,9 +52,7 @@ func TestIncident2_ControlPlaneUnreachableIsInfraNotABuildFailure(t *testing.T) 
 	require.Error(t, err, "an unreachable control plane must be reported, not silently retried forever")
 	assert.Greater(t, attempts.Load(), int64(1), "it must retry before giving up")
 
-	// Whatever the agent does next, the classification is the load-bearing
-	// part: this is infrastructure, so it is retried and never rendered as a
-	// red build.
+	// Whatever the agent does next.
 	var c classify.Classifier
 	d := c.Classify(classify.Signal{
 		Phase: "dispatch",
@@ -97,7 +94,7 @@ func TestControlPlaneRecoveryIsNotAFailure(t *testing.T) {
 	assert.Equal(t, int64(3), attempts.Load())
 }
 
-// A runner told its lease is gone stops without reporting a result. Two runners
+// A runner told its lease is gone stops without reporting a result. Runners
 // completing the same job is how a run gets a result nobody can explain.
 func TestLeaseLostStopsTheRunnerWithoutAResult(t *testing.T) {
 	var completes atomic.Int64

@@ -1,11 +1,11 @@
 // Package ghaccounts is a named set of GitHub account logins.
 //
-// Two questions in this platform have the same shape and the same failure
-// mode: which accounts may run work here (internal/installpolicy) and which
+// Questions in this platform have the same shape and the same failure mode.
+// Which accounts may run work here (internal/installpolicy) and which
 // accounts may administer it (internal/adminauth). Both are answered by an
 // operator-supplied list of logins, both are case-insensitive because GitHub
-// logins are, and both are catastrophic if an empty value is read as "allow
-// everybody". Writing that once means it cannot drift into two answers.
+// logins are. Both are catastrophic if an empty value is read as "allow
+// everybody". Writing that once means it cannot drift into multiple answers.
 package ghaccounts
 
 import (
@@ -14,9 +14,7 @@ import (
 	"strings"
 )
 
-// Anyone is the explicit opt-out. It has to be spelled out, alone, because
-// "everybody" is a decision with a blast radius and must not be reachable by
-// leaving a variable empty.
+// Anyone is the explicit opt-out.
 const Anyone = "*"
 
 // Set is a set of account logins.
@@ -30,8 +28,8 @@ type Set struct {
 // New builds a set. name is what the set is for, used in error messages so a
 // startup failure names the variable the operator has to fix.
 //
-// An empty list is an error, not an open or a closed door: both readings are
-// defensible, which is exactly why the operator has to say which one they mean.
+// An empty list is an error, not an open or a closed door. Both readings are
+// defensible, which is exactly why the operator has to say which they mean.
 func New(name string, logins []string) (*Set, error) {
 	s := &Set{logins: map[string]struct{}{}, name: name}
 	for _, raw := range logins {

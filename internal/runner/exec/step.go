@@ -192,8 +192,7 @@ func (e *Executor) completeFailure(ctx context.Context, res StepResult, spec pro
 		res.Duration = time.Since(started)
 	}
 	if spec.ContinueOnError {
-		// The step still reports what really happened; only the job's verdict
-		// changes, exactly as continue-on-error promises.
+		// The step still reports what happened; only the job's verdict changes, exactly as continue-on-error promises.
 		res.Conclusion = model.ConclusionSuccess
 		e.platform(spec.Number, fmt.Sprintf("step %q failed but continue-on-error is set, so the job continues", res.Name))
 	} else {
@@ -217,8 +216,8 @@ func (e *Executor) finish(ctx context.Context, res StepResult, s *scope) {
 	}
 }
 
-// reportErr puts the failure's own message in the log. The classification says
-// whose fault it was; only this says what actually happened.
+// reportErr puts the failure's own message in the log. The classification
+// says whose fault it was; only this says what happened.
 func (e *Executor) reportErr(step int, err error) {
 	if err != nil {
 		e.platform(step, "error: "+err.Error())
@@ -389,7 +388,7 @@ func absUnder(base, p string) string {
 	return path.Join(base, p)
 }
 
-// createEnvFiles makes the five per-step files empty, so a step reading one
+// createEnvFiles makes those per-step files empty, so a step reading one
 // before writing it sees an empty file rather than an error.
 func (e *Executor) createEnvFiles(ctx context.Context, files commands.EnvFiles) error {
 	if err := e.cfg.Sandbox.MkdirAll(ctx, e.cfg.TempDir); err != nil {

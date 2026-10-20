@@ -1,0 +1,21 @@
+name: Test Action
+description: does a thing
+inputs:
+  who-to-greet:
+    description: name
+    required: true
+    default: World
+  token:
+    description: a token
+    required: true
+  old-input:
+    description: legacy
+    deprecationMessage: use who-to-greet
+outputs:
+  time:
+    description: when
+runs:
+  using: node20
+  main: dist/index.js
+  pre: dist/pre.js
+  post: dist/post.js

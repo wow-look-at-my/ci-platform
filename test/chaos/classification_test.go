@@ -1,7 +1,7 @@
 // Package chaos holds one test per incident in docs/incidents.md. These are the
-// product: if a killed runner stops requeuing, or a 524 stops being classified
-// as infrastructure, the platform has lost the only thing it claims over
-// GitHub Actions.
+// product. If a killed runner stops requeuing, or a stops being classified as
+// infrastructure, the platform has lost the only thing it claims over GitHub
+// Actions.
 package chaos
 
 import (
@@ -18,16 +18,13 @@ import (
 	"github.com/wow-look-at-my/ci-platform/test/fakes"
 )
 
-// Incident 1: a registry blob upload died with `failed: 524 : error code: 524`
-// and three of six matrix legs were reported as build failures.
-//
 // The platform must classify it as infrastructure, retry it, and never surface
 // it as a red build.
 func TestIncident1_RegistryTimeoutIsInfraAndRecoversOnRetry(t *testing.T) {
 	reg := fakes.NewRegistry()
 	defer reg.Close()
 
-	// Fail the first two blob pushes the way Cloudflare does, then serve.
+	// Fail the first blob pushes the way Cloudflare does, then serve.
 	reg.SetFault(fakes.FaultCloudflare524, 2)
 
 	var c classify.Classifier
@@ -79,7 +76,7 @@ func TestIncident1_RegistryTimeoutIsInfraAndRecoversOnRetry(t *testing.T) {
 }
 
 // A genuine test failure in the same shape must still be the user's, or the
-// classifier has simply learned to excuse everything.
+// classifier has learned to excuse everything.
 func TestIncident1_RealFailureIsStillTheUsers(t *testing.T) {
 	var c classify.Classifier
 	d := c.Classify(classify.Signal{
@@ -92,10 +89,8 @@ func TestIncident1_RealFailureIsStillTheUsers(t *testing.T) {
 	assert.True(t, model.ConclusionFailure.UserVisibleRed())
 }
 
-// Incident 1, second half: the aggregate said "5/9 builds failed" without
-// distinguishing the three legs the network ate. Aggregate must name the worst
-// thing that happened, and infrastructure outranks a build failure so the
-// headline is not "your code is broken".
+// Aggregate must name the worst thing that happened, and infrastructure
+// outranks a build failure so the headline is not "your code is broken".
 func TestIncident1_AggregateNamesInfrastructureNotTheBuild(t *testing.T) {
 	legs := []model.Conclusion{
 		model.ConclusionSuccess,
@@ -120,8 +115,7 @@ func TestGreenMeansTheWorkRan(t *testing.T) {
 		"a mix must not launder the skip into a green")
 }
 
-// Incident 3: an attempt went from in-progress to cancelled with no reason
-// anywhere. A CancelReason cannot be built without one.
+// A CancelReason cannot be built without one.
 func TestIncident3_CancellationCannotBeUnexplained(t *testing.T) {
 	require.Error(t, model.CancelReason{Actor: model.CancelActorTimeout}.Validate(),
 		"an actor with no sentence must be rejected")
@@ -136,8 +130,7 @@ func TestIncident3_CancellationCannotBeUnexplained(t *testing.T) {
 	require.NoError(t, ok.Validate())
 }
 
-// Incident 4: setup took 5m30s with nothing to explain it. Setup is a measured
-// phase, not something inferred from adjacent timestamps.
+// Setup is a measured phase, not something inferred from adjacent timestamps.
 func TestIncident4_SetupIsMeasuredNotInferred(t *testing.T) {
 	base := timeAt(0)
 	j := model.Job{
