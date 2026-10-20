@@ -9,6 +9,7 @@ import (
 
 	"github.com/wow-look-at-my/ci-platform/internal/model"
 	"github.com/wow-look-at-my/ci-platform/internal/store"
+	"github.com/wow-look-at-my/go-containers/set"
 )
 
 // Event kinds written by the queue, identical to the SQLite store's.
@@ -25,12 +26,12 @@ func labelsSatisfied(have, want []string) bool {
 	if len(want) == 0 {
 		return true
 	}
-	set := make(map[string]struct{}, len(have))
+	offered := set.New[string]()
 	for _, l := range have {
-		set[l] = struct{}{}
+		offered.Add(l)
 	}
 	for _, l := range want {
-		if _, ok := set[l]; !ok {
+		if !offered.Contains(l) {
 			return false
 		}
 	}

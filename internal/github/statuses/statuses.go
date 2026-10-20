@@ -18,6 +18,7 @@ import (
 
 	gh "github.com/wow-look-at-my/ci-platform/internal/github"
 	"github.com/wow-look-at-my/ci-platform/internal/model"
+	"github.com/wow-look-at-my/go-containers/set"
 )
 
 // MaxDescription is the commit status description limit GitHub enforces.
@@ -87,16 +88,16 @@ type Options struct {
 // Reporter posts legacy commit statuses.
 type Reporter struct {
 	cli       *gh.Client
-	forbidden map[string]struct{}
+	forbidden set.Set[string]
 	log       *slog.Logger
 }
 
 // NewReporter builds a Reporter. all-builds is always forbidden.
 func NewReporter(cli *gh.Client, opts Options) *Reporter {
-	f := map[string]struct{}{normalizeContext(AllBuildsContext): {}}
+	f := set.Of(normalizeContext(AllBuildsContext))
 	for _, c := range opts.ForbiddenContexts {
 		if n := normalizeContext(c); n != "" {
-			f[n] = struct{}{}
+			f.Add(n)
 		}
 	}
 	log := opts.Logger
@@ -110,8 +111,7 @@ func normalizeContext(c string) string { return strings.ToLower(strings.TrimSpac
 
 // Forbidden reports whether a context is refused.
 func (r *Reporter) Forbidden(name string) bool {
-	_, bad := r.forbidden[normalizeContext(name)]
-	return bad
+	return r.forbidden.Contains(normalizeContext(name))
 }
 
 type statusPayload struct {

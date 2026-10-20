@@ -10,6 +10,8 @@ import (
 	"sort"
 	"strings"
 	"sync"
+
+	"github.com/wow-look-at-my/go-containers/set"
 )
 
 // Placeholder is what a redacted value is replaced with.
@@ -21,18 +23,17 @@ const MinLength = 3
 // Masker holds the registered secret values and renderings; safe for concurrent use.
 type Masker struct {
 	mu       sync.RWMutex
-	values   map[string]struct{}
+	values   set.Set[string]
 	replacer *strings.Replacer
 }
 
 // New returns an empty masker.
 func New() *Masker {
-	return &Masker{values: make(map[string]struct{})}
+	return &Masker{values: set.New[string]()}
 }
 
 // Add registers a secret value and every rendering of it that could appear in
-// output. A multi-line secret is also registered line by line. This is because
-// a build that prints it through a tool may emit only one of its lines.
+// output. A multi-line secret is also registered line by line.
 func (m *Masker) Add(secret string) {
 	if len(secret) < MinLength {
 		return
@@ -43,7 +44,7 @@ func (m *Masker) Add(secret string) {
 		if len(v) < MinLength {
 			continue
 		}
-		m.values[v] = struct{}{}
+		m.values.Add(v)
 	}
 	m.replacer = nil
 }
@@ -72,13 +73,13 @@ func (m *Masker) Mask(s string) string {
 func (m *Masker) Count() int {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
-	return len(m.values)
+	return m.values.Len()
 }
 
 func (m *Masker) build() *strings.Replacer {
 	m.mu.RLock()
 	r := m.replacer
-	n := len(m.values)
+	n := m.values.Len()
 	m.mu.RUnlock()
 	if r != nil || n == 0 {
 		return r
@@ -89,8 +90,8 @@ func (m *Masker) build() *strings.Replacer {
 	if m.replacer != nil {
 		return m.replacer
 	}
-	vals := make([]string, 0, len(m.values))
-	for v := range m.values {
+	vals := make([]string, 0, m.values.Len())
+	for v := range m.values.All() {
 		vals = append(vals, v)
 	}
 	// Longest first: strings.Replacer prefers the earliest-listed pattern, so a prefix value must not win.
@@ -126,15 +127,15 @@ func renderings(secret string) []string {
 	}
 
 	out := make([]string, 0, len(seeds)*6)
-	seen := make(map[string]struct{}, len(seeds)*6)
+	seen := set.New[string]()
 	add := func(v string) {
 		if v == "" {
 			return
 		}
-		if _, ok := seen[v]; ok {
+		if seen.Contains(v) {
 			return
 		}
-		seen[v] = struct{}{}
+		seen.Add(v)
 		out = append(out, v)
 	}
 	for _, s := range seeds {

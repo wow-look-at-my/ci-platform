@@ -340,11 +340,9 @@ func TestSecretsNeverReachTheLog(t *testing.T) {
 	h.msk.AddAll(h.asg.Secrets)
 
 	h.sb.handle = func(sb *fakeSandbox, req RunRequest) (RunResult, error) {
-		fmt.Fprintln(req.Stdout, "key is sup3r-s3cret-value")
-		fmt.Fprintln(req.Stdout, "b64 is c3VwM3ItczNjcmV0LXZhbHVl")
+		fmt.Fprint(req.Stdout, "key is sup3r-s3cret-value\nb64 is c3VwM3ItczNjcmV0LXZhbHVl\n")
 		fmt.Fprintln(req.Stderr, "url is sup3r-s3cret-value")
-		fmt.Fprintln(req.Stdout, "::add-mask::dynamic-secret-1")
-		fmt.Fprintln(req.Stdout, "later dynamic-secret-1 appears")
+		fmt.Fprint(req.Stdout, "::add-mask::dynamic-secret-1\nlater dynamic-secret-1 appears\n")
 		return RunResult{}, nil
 	}
 
@@ -359,10 +357,7 @@ func TestSecretsNeverReachTheLog(t *testing.T) {
 func TestWorkflowCommandsProduceAnnotationsAndGroups(t *testing.T) {
 	h := newHarness(t, []protocol.StepSpec{{Number: 1, Run: "x"}}, nil)
 	h.sb.handle = func(sb *fakeSandbox, req RunRequest) (RunResult, error) {
-		fmt.Fprintln(req.Stdout, "::group::Compile")
-		fmt.Fprintln(req.Stdout, "compiling")
-		fmt.Fprintln(req.Stdout, "::error file=main.go,line=4,title=vet::undefined: x")
-		fmt.Fprintln(req.Stdout, "::endgroup::")
+		fmt.Fprint(req.Stdout, "::group::Compile\ncompiling\n::error file=main.go,line=4,title=vet::undefined: x\n::endgroup::\n")
 		return RunResult{}, nil
 	}
 

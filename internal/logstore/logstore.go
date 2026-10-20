@@ -78,7 +78,7 @@ type attempt struct {
 	lines   []model.LogLine
 	lastSeq int64
 	sealed  bool
-	subs    map[*subscriber]struct{}
+	subs    []*subscriber
 }
 
 // New validates opts and returns a Log.
@@ -115,7 +115,7 @@ func (l *Log) get(k attemptKey, create bool) (a *attempt, created bool) {
 	defer l.mu.Unlock()
 	a = l.attsp[k]
 	if a == nil && create {
-		a = &attempt{subs: map[*subscriber]struct{}{}}
+		a = &attempt{}
 		l.attsp[k] = a
 		created = true
 	}
@@ -186,12 +186,25 @@ func (l *Log) Append(ctx context.Context, jobID int64, attempt int, lines []mode
 
 // fanout delivers to live subscribers. Callers hold a.mu.
 func (a *attempt) fanout(line model.LogLine) {
-	for s := range a.subs {
-		if !s.push(line) {
-			// Too far behind to catch up; unregistered here rather than silently starved.
-			delete(a.subs, s)
+	live := a.subs[:0]
+	for _, s := range a.subs {
+		// Too far behind to catch up; unregistered here rather than silently starved.
+		if s.push(line) {
+			live = append(live, s)
 		}
 	}
+	a.subs = live
+}
+
+// removeSub returns subs without s, reusing subs's storage. Callers hold a.mu.
+func removeSub(subs []*subscriber, s *subscriber) []*subscriber {
+	kept := subs[:0]
+	for _, x := range subs {
+		if x != s {
+			kept = append(kept, x)
+		}
+	}
+	return kept
 }
 
 // Read returns up to limit lines with Seq > fromSeq.
@@ -300,12 +313,12 @@ func (l *Log) Subscribe(ctx context.Context, jobID int64, att int, fromSeq int64
 		}
 	}
 	s := newSubscriber(l.bufN, backlog)
-	a.subs[s] = struct{}{}
+	a.subs = append(a.subs, s)
 	a.mu.Unlock()
 
 	go s.run(ctx, func() {
 		a.mu.Lock()
-		delete(a.subs, s)
+		a.subs = removeSub(a.subs, s)
 		idle := len(a.subs) == 0 && len(a.lines) == 0 && !a.sealed
 		a.mu.Unlock()
 		if idle {
@@ -405,10 +418,10 @@ func (l *Log) Finalize(ctx context.Context, jobID int64, att int) error {
 	a.mu.Lock()
 	a.sealed = true
 	a.lines = nil
-	for s := range a.subs {
+	for _, s := range a.subs {
 		s.close()
-		delete(a.subs, s)
 	}
+	a.subs = nil
 	a.mu.Unlock()
 
 	// Drop the hot buffer; reads now come from the blob, and Append is refused as sealed.

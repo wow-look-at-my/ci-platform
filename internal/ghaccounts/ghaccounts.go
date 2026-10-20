@@ -12,6 +12,8 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+
+	"github.com/wow-look-at-my/go-containers/set"
 )
 
 // Anyone is the explicit opt-out.
@@ -19,7 +21,7 @@ const Anyone = "*"
 
 // Set is a set of account logins.
 type Set struct {
-	logins map[string]struct{}
+	logins set.Set[string]
 	order  []string
 	any    bool
 	name   string
@@ -31,7 +33,7 @@ type Set struct {
 // An empty list is an error, not an open or a closed door. Both readings are
 // defensible, which is exactly why the operator has to say which they mean.
 func New(name string, logins []string) (*Set, error) {
-	s := &Set{logins: map[string]struct{}{}, name: name}
+	s := &Set{logins: set.New[string](), name: name}
 	for _, raw := range logins {
 		login := strings.TrimSpace(raw)
 		if login == "" {
@@ -46,10 +48,10 @@ func New(name string, logins []string) (*Set, error) {
 				"users and organisations, not repositories or email addresses", name, login)
 		}
 		key := strings.ToLower(login)
-		if _, dup := s.logins[key]; dup {
+		if s.logins.Contains(key) {
 			continue
 		}
-		s.logins[key] = struct{}{}
+		s.logins.Add(key)
 		s.order = append(s.order, login)
 	}
 	if s.any && len(s.order) > 0 {
@@ -70,8 +72,7 @@ func (s *Set) Contains(login string) bool {
 	if s.any {
 		return true
 	}
-	_, ok := s.logins[strings.ToLower(strings.TrimSpace(login))]
-	return ok
+	return s.logins.Contains(strings.ToLower(strings.TrimSpace(login)))
 }
 
 // IsAnyone reports whether the set is the open one.
