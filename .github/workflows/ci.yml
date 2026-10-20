@@ -20,6 +20,10 @@ permissions:
 jobs:
   test:
     runs-on: ${{ github.event.repository.visibility == 'public' && 'ubuntu-latest' || vars.CI_RUNNER || 'ubuntu-latest' }}
+    # This job and the three below all run the go-toolchain action, whose last step auto-releases the binaries to buildhost. Two of them publishing the same project at once race the release: the loser uploads to a version that appeared between its check. And its upload and gets a 409. One group, no cancel, so they take turns and every later one finds the bytes already there.
+    concurrency:
+      group: buildhost-release
+      cancel-in-progress: false
     steps:
       - uses: actions/checkout@v4
       - uses: wow-look-at-my/go-toolchain@lkgb
@@ -79,6 +83,9 @@ jobs:
   # Reads every workflow in the corpus and asserts each is either fully supported or explicitly refused, and that job names still match GitHub's. A job name is what branch protection matches on, so a change here breaks somebody's merge queue silently.
   conformance:
     runs-on: ${{ github.event.repository.visibility == 'public' && 'ubuntu-latest' || vars.CI_RUNNER || 'ubuntu-latest' }}
+    concurrency:
+      group: buildhost-release
+      cancel-in-progress: false
     steps:
       - uses: actions/checkout@v4
       # These three jobs ran `go test` through the composite action's `go` symlink, and go-toolchain's linked go never returned. Every one of them stopped straight after its first build-cache fetch and sat until the runner killed it six hours later. The org's go-toolchain action is the entry point that runs the suite and the analyzers, and it is what the `test` job already uses.
@@ -87,6 +94,9 @@ jobs:
   # One test per incident in docs/incidents.md.
   chaos:
     runs-on: ${{ github.event.repository.visibility == 'public' && 'ubuntu-latest' || vars.CI_RUNNER || 'ubuntu-latest' }}
+    concurrency:
+      group: buildhost-release
+      cancel-in-progress: false
     steps:
       - uses: actions/checkout@v4
       - uses: wow-look-at-my/go-toolchain@lkgb
@@ -96,6 +106,9 @@ jobs:
   # Runs real workflows through a real control plane and a real runner, using unmodified actions/checkout, actions/cache, and actions/upload-artifact.
   e2e:
     runs-on: ${{ github.event.repository.visibility == 'public' && 'ubuntu-latest' || vars.CI_RUNNER || 'ubuntu-latest' }}
+    concurrency:
+      group: buildhost-release
+      cancel-in-progress: false
     steps:
       - uses: actions/checkout@v4
       - uses: wow-look-at-my/go-toolchain@lkgb
