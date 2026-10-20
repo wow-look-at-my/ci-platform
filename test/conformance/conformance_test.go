@@ -190,23 +190,23 @@ func TestJobNamesMatchGitHub(t *testing.T) {
 	}{
 		{
 			name: "unmatrixed job uses its key",
-			src: fx("conformance_207.yml"),
+			src:  fx("conformance_207.yml"),
 			want: []string{"build"},
 		},
 		{
 			name: "matrix legs carry their values in declaration order",
-			src: fx("conformance_217.yml"),
+			src:  fx("conformance_217.yml"),
 			want: []string{"test (linux, 1.24)", "test (macos, 1.24)"},
 		},
 		{
 			// The shape the operator called out: an include-only key contributes a segment, in file order.
 			name: "include-only keys contribute a segment",
-			src: fx("conformance_232.yml"),
+			src:  fx("conformance_232.yml"),
 			want: []string{"publish (claude-host/agent-host)"},
 		},
 		{
 			name: "an explicit name is used as-is with no suffix appended",
-			src: fx("conformance_248.yml"),
+			src:  fx("conformance_248.yml"),
 			want: []string{"Build the thing", "Build the thing"},
 		},
 	}
