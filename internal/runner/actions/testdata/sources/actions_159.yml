@@ -1,0 +1,4 @@
+runs:
+  using: node20
+  main: i.js
+inputs: notamap

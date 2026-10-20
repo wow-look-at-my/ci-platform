@@ -1,0 +1,7 @@
+runs-on: x
+strategy:
+  max-parallel: 0
+  matrix:
+    os: [a]
+steps:
+  - run: y

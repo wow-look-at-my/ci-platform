@@ -1,0 +1,5 @@
+runs-on: x
+strategy:
+  matrix: everything
+steps:
+  - run: y

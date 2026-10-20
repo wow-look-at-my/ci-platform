@@ -73,29 +73,7 @@ func TestCacheKey(t *testing.T) {
 	assert.Equal(t, "actions/checkout@deadbeef", ref.CacheKey("deadbeef"))
 }
 
-const jsActionYAML = `
-name: Test Action
-description: does a thing
-inputs:
-  who-to-greet:
-    description: name
-    required: true
-    default: World
-  token:
-    description: a token
-    required: true
-  old-input:
-    description: legacy
-    deprecationMessage: use who-to-greet
-outputs:
-  time:
-    description: when
-runs:
-  using: node20
-  main: dist/index.js
-  pre: dist/pre.js
-  post: dist/post.js
-`
+var jsActionYAML = fx("actions_76.yml")
 
 func TestParseMetadataJavaScript(t *testing.T) {
 	m, err := ParseMetadata([]byte(jsActionYAML))
@@ -114,26 +92,7 @@ func TestParseMetadataJavaScript(t *testing.T) {
 }
 
 func TestParseMetadataComposite(t *testing.T) {
-	m, err := ParseMetadata([]byte(`
-name: Composite
-description: d
-inputs:
-  greeting:
-    default: hi
-outputs:
-  result:
-    description: r
-    value: ${{ steps.one.outputs.v }}
-runs:
-  using: composite
-  steps:
-    - id: one
-      run: echo ${{ inputs.greeting }}
-      shell: bash
-    - uses: actions/checkout@v4
-      with:
-        ref: main
-`))
+	m, err := ParseMetadata([]byte(fx("actions_117.yml")))
 	require.NoError(t, err)
 	require.True(t, m.Runs.IsComposite())
 	require.Len(t, m.Runs.Steps, 2)
@@ -145,7 +104,7 @@ runs:
 }
 
 func TestParseMetadataDockerAndErrors(t *testing.T) {
-	m, err := ParseMetadata([]byte("name: d\nruns:\n  using: docker\n  image: Dockerfile\n"))
+	m, err := ParseMetadata([]byte(fx("actions_148.yml")))
 	require.NoError(t, err)
 	assert.True(t, m.Runs.IsDocker())
 
@@ -156,11 +115,11 @@ func TestParseMetadataDockerAndErrors(t *testing.T) {
 	_, err = ParseMetadata([]byte("\tnot yaml: ["))
 	require.Error(t, err)
 
-	_, err = ParseMetadata([]byte("runs:\n  using: node20\n  main: i.js\ninputs: notamap\n"))
+	_, err = ParseMetadata([]byte(fx("actions_159.yml")))
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "inputs must be a mapping")
 
-	_, err = ParseMetadata([]byte("runs:\n  using: node20\n  main: i.js\noutputs: notamap\n"))
+	_, err = ParseMetadata([]byte(fx("actions_163.yml")))
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "outputs must be a mapping")
 }
@@ -269,7 +228,7 @@ func TestResolverFetchesAndCaches(t *testing.T) {
 
 func TestResolverSubdirectoryAndYamlExtension(t *testing.T) {
 	f := &fakeFetcher{sha: "s1", files: map[string]string{
-		"sub/dir/action.yaml": "runs:\n  using: composite\n  steps: []\n",
+		"sub/dir/action.yaml": fx("actions_272.yml"),
 	}}
 	r := NewResolver(t.TempDir(), f)
 	got, err := r.Resolve(context.Background(), "o/p/sub/dir@main")

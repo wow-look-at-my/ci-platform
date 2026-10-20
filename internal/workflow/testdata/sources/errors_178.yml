@@ -1,0 +1,7 @@
+runs-on: x
+strategy:
+  matrix:
+    os: [a]
+    include: []
+steps:
+  - run: y

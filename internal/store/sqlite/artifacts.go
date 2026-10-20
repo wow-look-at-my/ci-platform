@@ -3,6 +3,7 @@ package sqlite
 import (
 	"context"
 	"database/sql"
+	"embed"
 	"fmt"
 	"log/slog"
 	"time"
@@ -10,6 +11,9 @@ import (
 	"github.com/wow-look-at-my/ci-platform/internal/model"
 	"github.com/wow-look-at-my/ci-platform/internal/store"
 )
+
+//go:embed queries/artifact_usage.sql
+var artifactUsageSQL string
 
 const artifactCols = `id, run_id, job_id, name, size_bytes, digest, storage_key, expires_at,
 	created_at, finalized, finalized_at`
@@ -133,9 +137,7 @@ func (s *Store) queryArtifacts(ctx context.Context, op, q string, args ...any) (
 // ArtifactUsage totals a repository's finalized artifact bytes.
 func (s *Store) ArtifactUsage(ctx context.Context, repoID int64) (int64, error) {
 	var total int64
-	err := s.db.QueryRowContext(ctx, `SELECT COALESCE(SUM(a.size_bytes), 0) FROM artifacts a
-JOIN runs r ON r.id = a.run_id
-WHERE r.repo_id = ? AND a.finalized = 1`, repoID).Scan(&total)
+	err := s.db.QueryRowContext(ctx, artifactUsageSQL, repoID).Scan(&total)
 	if err != nil {
 		return 0, mapErr("sqlite: ArtifactUsage", err)
 	}

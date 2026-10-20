@@ -136,13 +136,7 @@ func TestHandlerRejectsOversizeBody(t *testing.T) {
 	assert.Equal(t, http.StatusRequestEntityTooLarge, w.Code)
 }
 
-const pushBody = `{
-	"ref":"refs/heads/main","before":"aaa","after":"bbb","created":false,"deleted":false,"forced":true,
-	"head_commit":{"id":"bbb","message":"fix the thing"},
-	"repository":{"id":9,"name":"ci-platform","full_name":"wow-look-at-my/ci-platform","private":true,"default_branch":"master","owner":{"id":1,"login":"wow-look-at-my","type":"Organization"}},
-	"sender":{"id":2,"login":"PazerOP","type":"User"},
-	"installation":{"id":4242}
-}`
+var pushBody = fx("webhook_139.json")
 
 func TestHandlerDispatchesPushAndKeepsRawBody(t *testing.T) {
 	h, sink := newHandler(t)
@@ -183,9 +177,7 @@ func TestPushTagRef(t *testing.T) {
 
 func TestPullRequestForkDetection(t *testing.T) {
 	h, sink := newHandler(t)
-	body := `{"action":"opened","number":12,"pull_request":{"number":12,"draft":false,
-		"head":{"ref":"feature","sha":"headsha","repo":{"id":2,"full_name":"fork/ci-platform"}},
-		"base":{"ref":"master","sha":"basesha","repo":{"id":1,"full_name":"wow-look-at-my/ci-platform"}}}}`
+	body := fx("webhook_186.json")
 	w := deliver(t, h, "pull_request", body)
 	require.Equal(t, http.StatusOK, w.Code)
 	require.Len(t, sink.pr, 1)

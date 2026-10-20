@@ -1,0 +1,10 @@
+name: x
+description: what this does
+on:
+  release:
+    types: [published]
+jobs:
+  a:
+    runs-on: x
+    steps:
+      - run: echo ${{ github.sha }}

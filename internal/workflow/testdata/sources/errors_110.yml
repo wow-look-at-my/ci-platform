@@ -1,0 +1,6 @@
+runs-on: x
+defaults:
+  run:
+    shell: pwsh
+steps:
+  - run: y

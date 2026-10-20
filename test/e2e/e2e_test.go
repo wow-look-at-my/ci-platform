@@ -66,16 +66,7 @@ func TestPushToAFilteredBranchCreatesNoRun(t *testing.T) {
 func TestUnsupportedWorkflowFailsTheRunRatherThanVanishing(t *testing.T) {
 	t.Parallel()
 	cp := start(t, map[string]string{
-		".github/workflows/svc.yml": `name: Services
-on: push
-jobs:
-  build:
-    runs-on: ubuntu-latest
-    container:
-      image: node:20
-    steps:
-      - run: node --version
-`,
+		".github/workflows/svc.yml": fx("e2e_69.yml"),
 	})
 
 	cp.push(t, "refs/heads/main", "cccccccccccccccccccccccccccccccccccccccc", []string{"main.go"})
@@ -90,7 +81,7 @@ jobs:
 func TestUnparseableWorkflowFailsTheRun(t *testing.T) {
 	t.Parallel()
 	cp := start(t, map[string]string{
-		".github/workflows/broken.yml": "name: Broken\non: push\njobs:\n  a:\n    runs-on: x\n    steps:\n      - run: y\n        uses: actions/checkout@v4\n",
+		".github/workflows/broken.yml": fx("e2e_93.yml"),
 	})
 
 	cp.push(t, "refs/heads/main", "dddddddddddddddddddddddddddddddddddddddd", nil)

@@ -1,0 +1,7 @@
+runs-on: x
+strategy:
+  fail-fast: sometimes
+  matrix:
+    os: [a]
+steps:
+  - run: y

@@ -1,0 +1,9 @@
+on: push
+jobs:
+  build:
+    name: Build the thing
+    runs-on: x
+    strategy:
+      matrix:
+        os: [linux, macos]
+    steps: [{run: y}]

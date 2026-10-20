@@ -1,0 +1,3 @@
+uses: o/r@v1
+steps:
+  - run: y
