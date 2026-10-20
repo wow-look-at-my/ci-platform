@@ -44,8 +44,8 @@ func TestLoad_Complete(t *testing.T) {
 }
 
 // There is no runner credential to configure at all: a host proves itself with
-// a key it generated, so there is nothing here for an operator to reuse, leak,
-// or have to rotate across a fleet.
+// a key it generated. There is nothing here for an operator to reuse, leak, or
+// have to rotate across a fleet.
 func TestLoad_HasNoRunnerCredential(t *testing.T) {
 	m := complete()
 	m["CIPLATFORM_RUNNER_TOKEN"] = "left-over-from-an-older-deployment"
@@ -56,8 +56,8 @@ func TestLoad_HasNoRunnerCredential(t *testing.T) {
 }
 
 // Every job container can route to the control plane, so the operator API's
-// credential must not be one a job or a runner already holds, and must not be
-// short enough to guess.
+// credential must not be one a job. Otherwise, a runner already holds, and
+// must not be short enough to guess.
 func TestLoad_OperatorTokenConstraints(t *testing.T) {
 	tests := []struct {
 		name, val, want string
@@ -95,7 +95,7 @@ func TestLoad_ReportsEveryMissingValueAtOnce(t *testing.T) {
 	} {
 		assert.Contains(t, msg, name)
 	}
-	// Each problem says what the value is for, not just that it is missing.
+	// Each problem says what the value is for, not that it is missing.
 	assert.Contains(t, msg, "check runs cannot be written without App auth")
 }
 

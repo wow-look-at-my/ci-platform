@@ -14,8 +14,8 @@ import (
 // leaves a user asking why something stopped.
 //
 // conclusion is separate from the reason because the reason says who stopped it
-// and the conclusion says what that means: a timeout is timed_out, a setup
-// timeout is an infra failure, everything else is cancelled.
+// and the conclusion says what that means: a timeout is timed_out. A setup
+// timeout is an infra failure. Everything else is cancelled.
 func (s *Scheduler) stopJob(ctx context.Context, pj *plan.PlannedJob, j *model.Job, reason model.CancelReason, conclusion model.Conclusion, class model.FailureClass, now time.Time, allowRetry bool) error {
 	if err := reason.Validate(); err != nil {
 		return fmt.Errorf("scheduler: job %d (%s): %w", j.ID, j.Name, err)
@@ -63,9 +63,7 @@ func (s *Scheduler) CancelAt(ctx context.Context, runID int64, reason model.Canc
 	return s.finalizeIfComplete(ctx, run, jobs, now)
 }
 
-// CancelJob stops one job. Its dependents are not cancelled with it: they are
-// skipped by the readiness rules, which is what GitHub does and what keeps a
-// dependent's own if: in charge of the decision.
+// CancelJob stops one job.
 func (s *Scheduler) CancelJob(ctx context.Context, jobID int64, reason model.CancelReason) error {
 	return s.CancelJobAt(ctx, jobID, reason, time.Now())
 }

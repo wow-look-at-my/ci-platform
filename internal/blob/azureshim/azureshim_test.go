@@ -114,8 +114,7 @@ func TestBlockListOrderIsDocumentOrder(t *testing.T) {
 	put(t, srv, "&comp=block&blockid="+blockID(0), "first", nil)
 	put(t, srv, "&comp=block&blockid="+blockID(1), "second", nil)
 
-	// Commit them in reverse; the committed blob follows the list, not the
-	// order the blocks were staged in.
+	// Commit them in reverse; the committed blob follows the list, not the order the blocks were staged in.
 	body := fmt.Sprintf(`<BlockList><Latest>%s</Latest><Latest>%s</Latest></BlockList>`, blockID(1), blockID(0))
 	require.Equal(t, http.StatusCreated, put(t, srv, "&comp=blocklist", body, nil).StatusCode)
 

@@ -11,8 +11,8 @@ import (
 )
 
 // Every artifact call checks the scope it needs. A scope the minter withholds
-// but no handler checks is a permission that exists only in the documentation:
-// a fork PR's token is issued without cache write for a reason, and the same
+// but no handler checks is a permission that exists only in the documentation.
+// A fork PR's token is issued without cache write for a reason, and the same
 // has to hold on the artifact side.
 func TestEveryCallChecksItsScope(t *testing.T) {
 	h := newHarness(t, nil)
@@ -34,7 +34,7 @@ func TestEveryCallChecksItsScope(t *testing.T) {
 	}
 	for _, tc := range tests {
 		t.Run(tc.method, func(t *testing.T) {
-			// A token carrying everything except the one scope this call needs.
+			// A token carrying everything except the scope this call needs.
 			var scopes []jobtoken.Scope
 			for _, s := range jobtoken.DefaultScopes {
 				if s != tc.needs {

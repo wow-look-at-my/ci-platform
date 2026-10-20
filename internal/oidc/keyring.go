@@ -21,8 +21,7 @@ import (
 	"github.com/wow-look-at-my/ci-platform/internal/blob"
 )
 
-// KeyBits is the RSA modulus size. RS256 with 2048 bits is what GitHub's own
-// OIDC keys use, and what every verifier already accepts.
+// KeyBits is the RSA modulus size.
 const KeyBits = 2048
 
 // StoredKey is one signing key as persisted.
@@ -30,21 +29,17 @@ type StoredKey struct {
 	KID        string    `json:"kid"`
 	PrivatePEM string    `json:"private_pem"`
 	CreatedAt  time.Time `json:"created_at"`
-	// RetiredAt is when the key stopped signing. A retired key stays in JWKS
-	// until every token it signed has expired.
+	// RetiredAt is when the key stopped signing. A retired key stays in JWKS until every token it signed has expired.
 	RetiredAt *time.Time `json:"retired_at,omitempty"`
 }
 
-// KeyStore persists the keyring. Keys must survive a restart: regenerating
-// them in memory would invalidate every token already issued and every
-// verifier's cached JWKS, silently, which is the failure mode this platform
-// exists to avoid.
+// KeyStore persists the keyring.
 type KeyStore interface {
 	Load(ctx context.Context) ([]StoredKey, error)
 	Save(ctx context.Context, keys []StoredKey) error
 }
 
-// FileKeyStore persists the keyring to a JSON file with 0600 permissions.
+// FileKeyStore persists the keyring to a JSON file with multiple permissions.
 type FileKeyStore struct{ path string }
 
 // NewFileKeyStore stores keys at path.
@@ -141,10 +136,7 @@ func (b *BlobKeyStore) Save(ctx context.Context, keys []StoredKey) error {
 
 // KeyringOptions configures a Keyring.
 type KeyringOptions struct {
-	// TokenTTL is how long an issued token stays valid. A retired key is served
-	// in JWKS for this long after retirement, then dropped: dropping it sooner
-	// would break tokens still in flight, later would serve a key nothing can
-	// use.
+	// TokenTTL is how long an issued token stays valid.
 	TokenTTL time.Duration
 	Now      func() time.Time
 }
@@ -168,7 +160,7 @@ type keyEntry struct {
 }
 
 // NewKeyring loads the keyring, generating and persisting a first key when the
-// store is empty. A key that cannot be persisted is a startup failure: an
+// store is empty. A key that cannot be persisted is a startup failure. An
 // in-memory fallback would invalidate every token on the next restart without
 // anyone being told.
 func NewKeyring(ctx context.Context, store KeyStore, opts KeyringOptions) (*Keyring, error) {
@@ -270,8 +262,7 @@ func (k *Keyring) stored() []StoredKey {
 	for _, e := range k.keys {
 		der, err := x509.MarshalPKCS8PrivateKey(e.priv)
 		if err != nil {
-			// MarshalPKCS8PrivateKey cannot fail for an RSA key produced by
-			// GenerateKey or parsed by decodeKey.
+			// MarshalPKCS8PrivateKey cannot fail for an RSA key produced by GenerateKey or parsed by decodeKey.
 			continue
 		}
 		out = append(out, StoredKey{

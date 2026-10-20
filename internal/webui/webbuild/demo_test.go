@@ -64,8 +64,6 @@ func TestDemoBannerNamesTheCaptureTime(t *testing.T) {
 		"the banner must name demoseed.Now; update web-src/demo/index.html when the seed's clock moves")
 }
 
-// A demo built for a site branch is served under a path prefix, so an absolute
-// asset URL would 404 there.
 func TestDemoAssetsAreRelative(t *testing.T) {
 	files, err := webbuild.Build(webbuild.BuildOptions{SrcDir: srcDir(t), Demo: true})
 	require.NoError(t, err)

@@ -23,8 +23,8 @@ func cloneRunnerHost(h *model.RunnerHost) *model.RunnerHost {
 }
 
 // EnrolRunnerHost records a host the first time it is seen, and returns the
-// existing row unchanged afterwards -- otherwise restarting would be a way for
-// a revoked host to clear its own state.
+// existing row unchanged afterwards. Otherwise restarting would be a way for a
+// revoked host to clear its own state.
 func (s *Store) EnrolRunnerHost(_ context.Context, h *model.RunnerHost) (*model.RunnerHost, error) {
 	if h == nil || h.Fingerprint == "" {
 		return nil, fmt.Errorf("mem: EnrolRunnerHost: host has no fingerprint")

@@ -2,13 +2,7 @@ package model
 
 import "time"
 
-// The IR is the parser's output and the scheduler's and executor's input. It is
-// deliberately not a GitHub Actions AST: the GHA YAML frontend is one frontend
-// among several (see docs/format-trajectory.md), and everything downstream of
-// the parser knows only these types.
-//
-// Expressions survive into the IR unevaluated, as Expr, because most of them
-// cannot be evaluated until earlier jobs have produced outputs.
+// The IR is the parser's output and the scheduler's and executor's input.
 
 // Expr is a string that may contain ${{ }} interpolation. An Expr whose Raw
 // contains no "${{" is a literal and evaluates to itself.
@@ -41,9 +35,7 @@ type Workflow struct {
 	Path string `json:"path"`
 	// Name is the workflow's display name, defaulting to Path.
 	Name string `json:"name"`
-	// Description is the optional description: prose. It affects nothing, but
-	// it is a valid key in GitHub's schema, so dropping it would mean failing a
-	// run over a documentation string.
+	// Description is the optional description: prose.
 	Description string `json:"description,omitempty"`
 	// RunName is the optional run-name: template.
 	RunName Expr `json:"run_name,omitempty"`
@@ -54,12 +46,10 @@ type Workflow struct {
 	Concurrency *Concurrency      `json:"concurrency,omitempty"`
 	Permissions *Permissions      `json:"permissions,omitempty"`
 	Jobs        map[string]*JobIR `json:"jobs"`
-	// JobOrder preserves declaration order for stable display and stable
-	// matrix-leg numbering; Go map iteration order is not stable.
+	// JobOrder preserves declaration order for stable display and stable matrix-leg numbering.
 	JobOrder []string `json:"job_order"`
 
-	// Deviations records every place this platform knowingly differs from GHA
-	// for this workflow, so the UI can surface it at the point it matters.
+	// Deviations records every place this platform knowingly differs from GHA for this workflow.
 	Deviations []Deviation `json:"deviations,omitempty"`
 }
 
@@ -190,8 +180,7 @@ type JobIR struct {
 	With    map[string]Expr `json:"with,omitempty"`
 	Secrets *JobSecrets     `json:"secrets,omitempty"`
 
-	// Retry is this platform's first-class retry policy. Absent means the
-	// default policy: infra retries, user failures never do.
+	// Retry is this platform's first-class retry policy.
 	Retry *RetryPolicy `json:"retry,omitempty"`
 }
 
@@ -234,16 +223,11 @@ type Strategy struct {
 // Matrix is the matrix declaration.
 type Matrix struct {
 	Dimensions map[string][]any `json:"dimensions,omitempty"`
-	// Order is every matrix key in file order: the dimensions first, then any
-	// key appearing only under include. Both contribute segments to a leg's
-	// display name, and Include is a []map here so it cannot carry the order
-	// itself. Getting this wrong renames every leg, which breaks the branch
-	// protection rule keyed on the name.
+	// Order is every matrix key in file order: the dimensions first, then any key appearing only under include.
 	Order   []string         `json:"order,omitempty"`
 	Include []map[string]any `json:"include,omitempty"`
 	Exclude []map[string]any `json:"exclude,omitempty"`
-	// FromExpr is set when the whole matrix is a ${{ fromJSON(...) }}; it is
-	// resolved at plan time once needs outputs exist.
+	// FromExpr is set when the whole matrix is a ${{ fromJSON(...) }}.
 	FromExpr Expr `json:"from_expr,omitempty"`
 }
 
@@ -284,9 +268,9 @@ type RetryPolicy struct {
 	Jitter   bool           `json:"jitter"`
 }
 
-// DefaultRetryPolicy is what applies when a workflow declares nothing: infra
-// failures retry three times with exponential backoff, user failures never
-// retry, config errors never retry because retrying cannot fix them.
+// DefaultRetryPolicy is what applies when a workflow declares nothing. Infra
+// failures retry a few times with exponential backoff, user failures never
+// retry, config errors never retry.
 func DefaultRetryPolicy() RetryPolicy {
 	return RetryPolicy{
 		Attempts: 3,
@@ -299,7 +283,7 @@ func DefaultRetryPolicy() RetryPolicy {
 }
 
 // Retries reports whether this policy retries the given class at the given
-// attempt number (1-based, so attempt 1 is the first try).
+// attempt number (1-based, so one attempt is the first try).
 func (p RetryPolicy) Retries(class FailureClass, attempt int) bool {
 	if attempt >= p.Attempts {
 		return false
@@ -313,7 +297,7 @@ func (p RetryPolicy) Retries(class FailureClass, attempt int) bool {
 }
 
 // Delay is the wait before the given attempt number (1-based: the delay before
-// attempt 2 is Delay(2)).
+// a later attempt is Delay(2)).
 func (p RetryPolicy) Delay(attempt int) time.Duration {
 	if attempt < 2 {
 		return 0

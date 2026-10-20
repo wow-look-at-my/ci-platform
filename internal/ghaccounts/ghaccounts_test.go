@@ -37,8 +37,7 @@ func TestNew_AnyoneServesEverybodyButOnlyOnItsOwn(t *testing.T) {
 	assert.True(t, s.IsAnyone())
 	assert.True(t, s.Contains("a-total-stranger"))
 
-	// Listing both states two intentions, and guessing which one is meant is
-	// how an instance ends up serving everybody by accident.
+	// Listing both states intentions, and guessing which is meant is how an instance ends up serving everybody by accident.
 	_, err = New("owners", []string{Anyone, "PazerOP"})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "two different intentions")

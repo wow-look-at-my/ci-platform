@@ -45,8 +45,8 @@ func TestOpen_RejectsAnythingThisKeyDidNotSign(t *testing.T) {
 	}
 }
 
-// A payload that verifies but is not base64 cannot happen from this Sign, so
-// the error says what it is rather than pretending the signature was wrong.
+// A payload that verifies but is not base64 cannot happen from this Sign.
+// The error says what it is rather than pretending the signature was wrong.
 func TestOpen_ReportsAMalformedPayloadSeparately(t *testing.T) {
 	bad := "!!!not-base64!!!"
 	_, err := key.Open(bad + "." + key.mac(bad))

@@ -1,15 +1,15 @@
 // Package runnerhost supervises a pool of runner containers on one machine.
 //
 // It exists to answer the questions every self-hosted CI fleet asks and most
-// answer badly: how do N runners stay up to date, how does each get storage
-// that is genuinely fresh per job and genuinely cleaned up afterwards, and how
+// answer badly. It how do N runners stay up to date, how does each get storage
+// that is genuinely fresh per job and genuinely cleaned up afterwards. How
 // does an update avoid killing a build that is halfway through.
 //
 // The answers here: one deterministic container per slot, so a supervisor
-// restart adopts what is already running instead of doubling it; the container's
+// restart adopts what is already running instead of doubling it. The container's
 // own writable layer as the runner's state, so removing the container is the
-// cleanup; and `docker stop` with a long timeout to restart, because the agent
-// finishes the job it is holding when it is asked to stop.
+// cleanup. This also covers `docker stop` with a long timeout to restart,
+// because the agent finishes the job it is holding when it is asked to stop.
 //
 // see docs/runners.md
 package runnerhost
@@ -29,37 +29,29 @@ import (
 // Options configures the supervisor.
 type Options struct {
 	Docker sandbox.Docker
-	// ControlPlaneURL is where the runners get their work. On a LAN this is the
-	// coordinator's address directly; over the internet it is the public URL.
+	// ControlPlaneURL is where the runners get their work.
 	ControlPlaneURL string
 	// Runners is how many to keep running.
 	Runners int
 	Labels  []string
-	// Name identifies this machine, and is the prefix of every container and
-	// volume it owns.
+	// Name identifies this machine, and is the prefix of every container and volume it owns.
 	Name string
-	// HostKeyPath is the identity all this host's runners share, copied into
-	// each container rather than passed as an environment variable, so it is
-	// not visible in `docker inspect`.
+	// HostKeyPath is the identity all this host's runners share, copied into each container rather than passed as an environment variable.
 	HostKeyPath string
-	// RunnerImage is the agent image. RunnerImageUpdates checks for a newer one.
+	// RunnerImage is the agent image.
 	RunnerImage string
 	// SandboxImage is the Docker-in-Docker image each job runs in.
 	SandboxImage string
-	// DockerHost is the daemon the runners themselves talk to. Empty means the
-	// default socket, mounted into each runner.
+	// DockerHost is the daemon the runners themselves talk to. Empty means the default socket, mounted into each runner.
 	DockerHost string
 	// ActionsAPIURL is where `uses:` steps are fetched from.
 	ActionsAPIURL string
 
-	// ReconcileInterval is how often the pool is checked against what should be
-	// running.
+	// ReconcileInterval is how often the pool is checked against what should be running.
 	ReconcileInterval time.Duration
 	// UpdateInterval is how often a newer runner image is looked for.
 	UpdateInterval time.Duration
-	// DrainTimeout bounds how long a runner may take to finish the job it holds
-	// when it is asked to stop. It is hours rather than seconds: the whole point
-	// is that an update does not kill a build.
+	// DrainTimeout bounds how long a runner may take to finish the job it holds when it is asked to stop.
 	DrainTimeout time.Duration
 
 	Logger *slog.Logger
@@ -70,8 +62,7 @@ type Options struct {
 type Host struct {
 	opts Options
 	log  *slog.Logger
-	// imageID is the runner image the pool was last built from. An empty value
-	// means it has not been resolved yet.
+	// imageID is the runner image the pool was last built from. An empty value means it has not been resolved yet.
 	imageID string
 }
 
@@ -116,9 +107,7 @@ func (h *Host) container(slot int) string {
 	return "ci-runner-" + h.opts.Name + "-" + strconv.Itoa(slot)
 }
 
-// imageCacheVolume is the slot's Docker image cache. It deliberately survives a
-// runner restart -- it is a cache, and throwing it away means every job after an
-// update re-pulls its images -- and is removed only when the slot itself goes.
+// imageCacheVolume is the slot's Docker image cache.
 func (h *Host) imageCacheVolume(slot int) string {
 	return h.container(slot) + "-images"
 }
@@ -126,12 +115,11 @@ func (h *Host) imageCacheVolume(slot int) string {
 // Run supervises the pool until ctx is cancelled.
 //
 // Cancelling does NOT stop the runners. A supervisor being restarted, by an
-// image update or by an operator, must not take running jobs down with it; the
+// image update or by an operator, must not take running jobs down with it. The
 // next supervisor adopts the same containers by name.
 func (h *Host) Run(ctx context.Context) error {
 	if err := h.reconcile(ctx); err != nil {
-		// A first pass that cannot even talk to Docker is a misconfiguration
-		// worth failing on, rather than logging every fifteen seconds forever.
+		// A first pass that cannot even talk to Docker is a misconfiguration worth failing on, rather than logging every few seconds forever.
 		return err
 	}
 
@@ -186,9 +174,7 @@ func (h *Host) ensureSlot(ctx context.Context, slot int) error {
 	case state == "":
 		return h.create(ctx, slot)
 	default:
-		// Exited, dead, or created-but-never-started. Whatever it was, its
-		// storage is not fresh any more, so the container goes and a new one
-		// takes its place rather than being restarted in place.
+		// Exited, dead, or created-but-never-started.
 		h.log.Warn("runner is not running; replacing it", "container", name, "state", state)
 		if err := h.remove(ctx, name); err != nil {
 			return err
@@ -225,7 +211,7 @@ func (h *Host) removeExtraSlots(ctx context.Context) error {
 	return nil
 }
 
-// update pulls the runner image and, if it changed, rebuilds the pool one slot
+// update pulls the runner image. If it changed, it rebuilds the pool one slot
 // at a time so the host never goes to zero capacity mid-update.
 func (h *Host) update(ctx context.Context) error {
 	if _, err := sandbox.Capture(ctx, h.opts.Docker, "pull", h.opts.RunnerImage); err != nil {
@@ -259,8 +245,8 @@ func (h *Host) update(ctx context.Context) error {
 }
 
 // drain asks a runner to stop and waits for it. The agent stops taking work and
-// finishes the job it holds, so the wait is bounded by the job, not by a signal
-// handler; the timeout is the backstop for a runner that is genuinely wedged.
+// finishes the job it holds. The wait is bounded by the job, not by a signal
+// handler. The timeout is the backstop for a runner that is genuinely wedged.
 func (h *Host) drain(ctx context.Context, name string) error {
 	seconds := int(h.opts.DrainTimeout / time.Second)
 	h.log.Info("draining runner", "container", name, "timeout", h.opts.DrainTimeout)
@@ -280,8 +266,8 @@ func (h *Host) remove(ctx context.Context, name string) error {
 }
 
 // create builds one runner: a container with no state of its own beyond its
-// writable layer, the host key copied in, and the image cache it shares with
-// nobody.
+// writable layer. This also covers the host key copied in, and the image
+// cache it shares with nobody.
 func (h *Host) create(ctx context.Context, slot int) error {
 	name := h.container(slot)
 	cache := h.imageCacheVolume(slot)
@@ -293,14 +279,12 @@ func (h *Host) create(ctx context.Context, slot int) error {
 		"create", "--name", name,
 		"--label", "ci-platform.runner-host=" + h.opts.Name,
 		"--label", "ci-platform.slot=" + strconv.Itoa(slot),
-		// The supervisor decides when a runner goes away; Docker restarting it
-		// behind our back would skip the draining and the fresh storage.
+		// The supervisor decides when a runner goes away.
 		"--restart", "no",
 		"-e", "CI_CONTROL_PLANE_URL=" + h.opts.ControlPlaneURL,
 		"-e", "CI_RUNNER_LABELS=" + strings.Join(h.opts.Labels, ","),
 		"-e", "CI_RUNNER_NAME=" + h.opts.Name + "-" + strconv.Itoa(slot),
-		// The id is stable per slot, so a replaced runner is the same runner to
-		// the control plane rather than an ever-growing list of dead ones.
+		// The id is stable per slot.
 		"-e", "CI_RUNNER_ID=" + name,
 		"-e", "CI_RUNNER_STATE_DIR=" + stateDir,
 		"-e", "CI_RUNNER_HOST_KEY=" + stateDir + "/host.key",
@@ -315,8 +299,7 @@ func (h *Host) create(ctx context.Context, slot int) error {
 	if h.opts.DockerHost != "" {
 		args = append(args, "-e", "CI_RUNNER_DOCKER_HOST="+h.opts.DockerHost)
 	} else {
-		// A runner builds its job sandboxes on the same daemon this supervisor
-		// uses, so it needs the socket.
+		// A runner builds its job sandboxes on the same daemon this supervisor uses, so it needs the socket.
 		args = append(args, "-v", "/var/run/docker.sock:/var/run/docker.sock")
 	}
 	args = append(args, h.opts.RunnerImage, "run")
@@ -325,9 +308,7 @@ func (h *Host) create(ctx context.Context, slot int) error {
 		return fmt.Errorf("creating %s: %w", name, err)
 	}
 	// Copied into the stopped container rather than mounted or passed as an
-	// environment variable: a bind mount would need a path that means the same
-	// thing inside this supervisor and on the host, and an environment variable
-	// would put the private key in `docker inspect` output.
+	// environment variable: a bind mount will need a path.
 	if _, err := sandbox.Capture(ctx, h.opts.Docker, "cp", h.opts.HostKeyPath, name+":"+stateDir+"/host.key"); err != nil {
 		return fmt.Errorf("installing the host key into %s: %w", name, err)
 	}
@@ -338,8 +319,7 @@ func (h *Host) create(ctx context.Context, slot int) error {
 	return nil
 }
 
-// stateDir is where a runner keeps its state inside its own container. It is
-// the container's writable layer, so it is gone when the container is.
+// stateDir is where a runner keeps its state inside its own container.
 const stateDir = "/var/lib/ci-runner"
 
 // inspect returns the container's state, or "" when there is no such container.

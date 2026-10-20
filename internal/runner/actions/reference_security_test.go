@@ -8,7 +8,7 @@ import (
 )
 
 // A traversal in any element walks out of the action cache: Owner and Repo
-// become directory names, and Path is joined onto the extracted directory
+// become directory names. Path is joined onto the extracted directory
 // before that directory is copied into the job's sandbox.
 func TestParseReferenceRefusesPathTraversal(t *testing.T) {
 	bad := []string{

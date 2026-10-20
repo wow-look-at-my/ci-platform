@@ -1,10 +1,5 @@
 #!/opt/homebrew/bin/bash
-# Runs a live control plane on localhost against a freshly seeded demo dataset,
-# for driving the real UI while developing it. Every start reseeds from scratch.
-#
-# Sign in with the operator token printed below. The GitHub App values are
-# placeholders: GitHub sign-in, webhooks, and check runs have no App behind
-# them and fail when used.
+# Runs a live control plane on localhost against a freshly seeded demo dataset, for driving the real UI while developing it.
 set -euo pipefail
 
 repo="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"

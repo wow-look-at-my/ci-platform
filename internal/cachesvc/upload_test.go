@@ -144,8 +144,7 @@ func TestCrossRepoAccessIsDenied(t *testing.T) {
 	commit := h.postJSON(t, fmt.Sprintf("%s/%d", cachesvc.PathCaches, other), cachesvc.CommitCacheRequest{Size: 1})
 	assert.Equal(t, http.StatusForbidden, commit.StatusCode)
 
-	// A lookup is scoped to the token's repository, so another repo's entry is
-	// simply not there.
+	// A lookup is scoped to the token's repository, so another repo's entry is not there.
 	lookup := h.do(t, http.MethodGet, lookupPath([]string{"theirs"}, version), nil, nil)
 	assert.Equal(t, http.StatusNoContent, lookup.StatusCode)
 }

@@ -2,9 +2,9 @@
 // live-streamed to watchers and sealed into the blob store when the attempt
 // ends.
 //
-// A re-run never overwrites the previous attempt's log, because "the log I was
-// reading was replaced by the retry" is exactly the failure this platform
-// exists to avoid. ANSI escapes are stored verbatim; the UI renders them.
+// A re-run never overwrites the attempt's log, because "the log I was reading
+// was replaced by the retry" is exactly the failure this platform exists to
+// avoid. ANSI escapes are stored verbatim; the UI renders them.
 package logstore
 
 import (
@@ -28,9 +28,7 @@ var ErrNotFound = errors.New("logstore: no log for that job attempt")
 // ErrSealed is returned when a finalized attempt is appended to.
 var ErrSealed = errors.New("logstore: attempt is finalized; its log is append-only and closed")
 
-// FellBehindText is the line a dropped subscriber receives as its last. It is
-// a line rather than a silent close so the client knows to reconnect and from
-// where, instead of believing the job simply stopped logging.
+// FellBehindText is the line a dropped subscriber receives as its last.
 const FellBehindText = "log stream fell behind, reconnect"
 
 // Store is the log surface every other package consumes.
@@ -45,12 +43,9 @@ type Store interface {
 
 // Options configures a Log.
 type Options struct {
-	// Blob is where sealed logs land. Required: without it a restart loses
-	// every finished job's log, which is not a mode worth offering.
+	// Blob is where sealed logs land.
 	Blob blob.Store
-	// SubscriberBuffer bounds each live subscriber's queue. A subscriber that
-	// exceeds it is dropped with FellBehindText rather than allowed to stall
-	// the writer.
+	// SubscriberBuffer bounds each live subscriber's queue.
 	SubscriberBuffer int
 	// KeyPrefix namespaces sealed logs in the blob store.
 	KeyPrefix string
@@ -161,8 +156,7 @@ func (l *Log) Append(ctx context.Context, jobID int64, attempt int, lines []mode
 	k := attemptKey{jobID, attempt}
 	a, created := l.get(k, true)
 	if created {
-		// A hot buffer for an attempt that was already sealed would shadow the
-		// sealed log, which is the one thing this store must never allow.
+		// A hot buffer for an attempt that was already sealed would shadow the sealed log.
 		sealed, err := l.sealedExists(ctx, jobID, attempt)
 		if err != nil {
 			l.forget(k)
@@ -194,9 +188,7 @@ func (l *Log) Append(ctx context.Context, jobID int64, attempt int, lines []mode
 func (a *attempt) fanout(line model.LogLine) {
 	for s := range a.subs {
 		if !s.push(line) {
-			// The subscriber is too far behind to catch up. It is told so and
-			// unregistered here; silently starving it would look identical to
-			// a job that stopped producing output.
+			// The subscriber is too far behind to catch up.
 			delete(a.subs, s)
 		}
 	}
@@ -269,7 +261,7 @@ func (l *Log) snapshot(ctx context.Context, jobID int64, att int) ([]model.LogLi
 // closes when the attempt is finalized, when ctx ends, or when this subscriber
 // falls too far behind, in which case FellBehindText arrives first.
 //
-// An attempt that has not logged yet gets a live stream, not an error: the job
+// An attempt that has not logged yet gets a live stream, not an error. The job
 // page opens when the job starts, which is before its first line.
 func (l *Log) Subscribe(ctx context.Context, jobID int64, att int, fromSeq int64) (<-chan model.LogLine, error) {
 	if err := validate(jobID, att); err != nil {
@@ -277,9 +269,7 @@ func (l *Log) Subscribe(ctx context.Context, jobID int64, att int, fromSeq int64
 	}
 	a, _ := l.get(attemptKey{jobID, att}, false)
 	if a == nil {
-		// Either the attempt is finished (replay the sealed log and close) or
-		// it has not logged its first line yet, which is the normal case for a
-		// UI that opened the job page the moment the job started.
+		// Either the attempt is finished.
 		sealed, err := l.sealedExists(ctx, jobID, att)
 		if err != nil {
 			return nil, err
@@ -319,8 +309,7 @@ func (l *Log) Subscribe(ctx context.Context, jobID int64, att int, fromSeq int64
 		idle := len(a.subs) == 0 && len(a.lines) == 0 && !a.sealed
 		a.mu.Unlock()
 		if idle {
-			// A subscriber that arrived before the first line, and left before
-			// one came, must not leave an entry behind for every id it named.
+			// A subscriber that arrived before the first line, and left before one came, must not leave an entry behind for every id it named.
 			l.forget(attemptKey{jobID, att})
 		}
 	})
@@ -372,8 +361,8 @@ func (l *Log) Raw(ctx context.Context, jobID int64, att int) (io.ReadCloser, err
 
 // Finalize seals the attempt and flushes it to the blob store. The attempt is
 // only marked sealed once the bytes are durable: a failed flush leaves the log
-// live and returns the reason, because a log that silently vanished on restart
-// is worse than an upload that failed loudly.
+// live. The failed flush returns the reason, because a log that silently
+// vanished on restart is worse than an upload that failed loudly.
 func (l *Log) Finalize(ctx context.Context, jobID int64, att int) error {
 	if err := validate(jobID, att); err != nil {
 		return err
@@ -422,8 +411,7 @@ func (l *Log) Finalize(ctx context.Context, jobID int64, att int) error {
 	}
 	a.mu.Unlock()
 
-	// Drop the hot buffer; reads now come from the blob, and a later Append
-	// for this attempt is refused because the sealed object exists.
+	// Drop the hot buffer; reads now come from the blob, and a later Append for this attempt is refused.
 	l.forget(attemptKey{jobID, att})
 	return nil
 }

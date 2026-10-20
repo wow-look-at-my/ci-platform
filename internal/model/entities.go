@@ -29,7 +29,7 @@ type Run struct {
 	WorkflowPath string `json:"workflow_path"`
 	// RunNumber increments per workflow per repo, like GHA's.
 	RunNumber int64 `json:"run_number"`
-	// Attempt starts at 1 and increments on re-run.
+	// Attempt starts at a set value and increments on re-run.
 	Attempt int `json:"attempt"`
 
 	Event      string `json:"event"`
@@ -50,8 +50,7 @@ type Run struct {
 	// Cancel is set whenever Conclusion is cancelled. Never nil in that case.
 	Cancel *CancelReason `json:"cancel,omitempty"`
 
-	// EventPayload is the raw webhook body, kept so the github context can be
-	// rebuilt on re-run without re-fetching.
+	// EventPayload is the raw webhook body, kept so the github context can be rebuilt on re-run without re-fetching.
 	EventPayload json.RawMessage `json:"-"`
 	// Inputs are workflow_dispatch inputs, already defaulted and type-checked.
 	Inputs map[string]any `json:"inputs,omitempty"`
@@ -69,9 +68,7 @@ type Job struct {
 
 	// Key is the workflow's jobs.<key>. Stable across matrix legs.
 	Key string `json:"key"`
-	// Name is the display name including any matrix suffix, e.g.
-	// "publish (claude-host/agent-host, Dockerfile)". This is the check run
-	// name, and existing branch protection matches on it.
+	// Name is the display name including any matrix suffix, e.g. "publish (claude-host/agent-host, Dockerfile)".
 	Name string `json:"name"`
 	// MatrixKey is a stable identity for one leg, "" for an unmatrixed job.
 	MatrixKey string         `json:"matrix_key,omitempty"`
@@ -111,9 +108,7 @@ type Job struct {
 	ClassificationLog []string          `json:"classification_log,omitempty"`
 }
 
-// Timing is the queued/setup/execute breakdown surfaced on every job page. The
-// "job setup took 5m30s with nothing to explain it" incident is why setup is a
-// first-class measured phase rather than something inferred from timestamps.
+// Timing is the queued/setup/execute breakdown surfaced on every job page.
 type Timing struct {
 	QueuedFor  time.Duration `json:"queued_for"`
 	SetupFor   time.Duration `json:"setup_for"`
@@ -171,8 +166,7 @@ type Step struct {
 
 	StartedAt   *time.Time `json:"started_at,omitempty"`
 	CompletedAt *time.Time `json:"completed_at,omitempty"`
-	// LogStart and LogEnd bound this step's slice of the job log, so the UI can
-	// deep-link to the failing step without a separate log per step.
+	// LogStart and LogEnd bound this step's slice of the job log.
 	LogStart int64 `json:"log_start"`
 	LogEnd   int64 `json:"log_end"`
 }
@@ -260,37 +254,28 @@ type RunnerHost struct {
 	// PublicKey is the Ed25519 public key, base64.
 	PublicKey string          `json:"public_key"`
 	State     RunnerHostState `json:"state"`
-	// Name, OS, Arch and Version are what the host says about itself. They are
-	// display only: nothing is authorised on their basis, because a machine
-	// that has not been approved yet can say anything.
+	// Name, OS, Arch and Version are what the host says about itself.
 	Name    string `json:"name"`
 	OS      string `json:"os,omitempty"`
 	Arch    string `json:"arch,omitempty"`
 	Version string `json:"version,omitempty"`
-	// Labels are the job labels this host may serve. They start as what the
-	// host asked for and are the operator's to change; a runner registering
-	// under this host cannot claim a label outside them.
+	// Labels are the job labels this host may serve.
 	Labels []string `json:"labels"`
-	// EnrolledFrom is the address the enrolment arrived from, so an operator
-	// approving a fingerprint can see whether it came from where they expect.
+	// EnrolledFrom is the address the enrolment arrived from, so an operator approving a fingerprint can see whether it came from where they expect.
 	EnrolledFrom string    `json:"enrolled_from,omitempty"`
 	EnrolledAt   time.Time `json:"enrolled_at"`
-	// ApprovedBy is the account that approved it. Approval is the one action
-	// here that hands out access, so it is the one that must name a person.
+	// ApprovedBy is the account that approved it.
 	ApprovedBy string    `json:"approved_by,omitempty"`
 	ApprovedAt time.Time `json:"approved_at,omitzero"`
 	LastSeenAt time.Time `json:"last_seen_at,omitzero"`
-	// Note is the operator's own words: which machine this is, or why it was
-	// revoked.
+	// Note is the operator's own words: which machine this is, or why it was revoked.
 	Note string `json:"note,omitempty"`
 }
 
 // Approved reports whether this host may hold a session.
 func (h RunnerHost) Approved() bool { return h.State == RunnerHostApproved }
 
-// AllowsLabel reports whether a runner on this host may claim a label. An
-// approved host with no labels recorded serves anything, which is what a
-// single-host deployment wants and what enrolment defaults to.
+// AllowsLabel reports whether a runner on this host may claim a label.
 func (h RunnerHost) AllowsLabel(label string) bool {
 	if len(h.Labels) == 0 {
 		return true
@@ -307,10 +292,9 @@ func (h RunnerHost) AllowsLabel(label string) bool {
 // including across retries: every attempt keeps its own log.
 type LogLine struct {
 	// Seq is monotonic per (job, attempt) and is the deep-link anchor.
-	Seq       int64     `json:"seq"`
-	Timestamp time.Time `json:"ts"`
-	// StepNumber attributes the line to a step, 0 for platform-emitted lines.
-	StepNumber int `json:"step"`
+	Seq        int64     `json:"seq"`
+	Timestamp  time.Time `json:"ts"`
+	StepNumber int       `json:"step"`
 	// Stream is "stdout", "stderr", or "platform".
 	Stream string `json:"stream"`
 	Text   string `json:"text"`
@@ -347,9 +331,9 @@ type CacheEntry struct {
 	Finalized    bool      `json:"finalized"`
 }
 
-// CacheEvent records a hit, miss, or eviction. Eviction is recorded explicitly
-// because a cache that silently drops entries is indistinguishable from one
-// that is simply slow.
+// CacheEvent records a hit, miss, or eviction. Eviction is recorded
+// explicitly because a cache that silently drops entries is indistinguishable
+// from one that is slow.
 type CacheEvent struct {
 	ID        int64     `json:"id"`
 	RepoID    int64     `json:"repo_id"`

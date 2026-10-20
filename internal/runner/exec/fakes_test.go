@@ -184,8 +184,8 @@ func (r *recordingReporter) Annotate(_ context.Context, a []model.Annotation) er
 	return r.err
 }
 
-// fakeEvaluator understands just enough expression syntax to drive the
-// executor's decisions: status functions, literals, and dotted context lookups.
+// fakeEvaluator understands enough expression syntax to drive the executor's
+// decisions: status functions, literals, and dotted context lookups.
 type fakeEvaluator struct {
 	contexts map[string]any
 	status   Status

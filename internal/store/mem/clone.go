@@ -9,12 +9,6 @@ import (
 )
 
 // Everything crossing the store boundary is deep-copied, in both directions.
-// Handing a caller a pointer into the map lets an unrelated goroutine mutate
-// stored state by accident, which is a bug that only ever shows up in
-// production; returning a copy makes that impossible.
-//
-// Empty collections normalize to nil so a value round-trips through this store
-// and the SQLite one identically.
 
 func cloneTime(t *time.Time) *time.Time {
 	if t == nil {
@@ -61,9 +55,7 @@ func cloneAnyMap(m map[string]any) map[string]any {
 	}
 	b, err := json.Marshal(m)
 	if err != nil {
-		// The same values are stored as JSON text in SQLite, where this is a hard
-		// write error. Panicking keeps the two stores honest about what they
-		// accept rather than quietly storing a value pg would reject.
+		// The same values are stored as JSON text in SQLite, where this is a hard write error.
 		panic("mem: value is not JSON-encodable, and the SQLite store would reject it: " + err.Error())
 	}
 	var out map[string]any

@@ -10,8 +10,7 @@ import (
 )
 
 // KeyStore remembers which idempotency keys this runner has started, across
-// restarts. A job redelivered after a crash must not run a second time: its
-// side effects already happened, and nothing downstream can undo them.
+// restarts.
 type KeyStore struct {
 	mu   sync.Mutex
 	path string
@@ -61,8 +60,8 @@ func (s *KeyStore) Started(key string) bool {
 }
 
 // MarkStarted records the key durably. It is called BEFORE the job runs and
-// fsyncs, because a key recorded after execution is a key lost in the crash
-// that made it matter.
+// fsyncs, because a key recorded after execution is a key lost in the
+// crash. That crash made it matter.
 func (s *KeyStore) MarkStarted(key string) error {
 	if strings.TrimSpace(key) == "" {
 		return fmt.Errorf("idempotency store: refusing to record an empty key")

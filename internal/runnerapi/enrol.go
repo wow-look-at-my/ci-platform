@@ -20,7 +20,7 @@ import (
 //
 // It is deliberately reachable without a credential, because it is the step
 // before a host has one. What stops it being a way in is that it grants
-// nothing: the row it writes is pending, and a pending host is refused
+// nothing: the row it writes is pending. A pending host is refused
 // everywhere else.
 func (s *Server) enrol(w http.ResponseWriter, r *http.Request) {
 	var req protocol.EnrolRequest
@@ -41,8 +41,7 @@ func (s *Server) enrol(w http.ResponseWriter, r *http.Request) {
 	at := time.Unix(req.Timestamp, 0)
 
 	// Proving possession of the private half is what makes the fingerprint mean
-	// something. Without it, anybody could enrol a key they do not hold and the
-	// operator would approve a machine that is not the one in front of them.
+	// something.
 	if err := s.sessions.CheckFreshness(fingerprint, at, req.Nonce); err != nil {
 		writeErr(w, http.StatusBadRequest, err.Error())
 		return
@@ -53,17 +52,9 @@ func (s *Server) enrol(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Enrolment has to answer without a credential, and a signature over a key
-	// the sender generated proves only that they generated it. So anything that
-	// can reach this route can mint fingerprints, and without a cap that is an
-	// unbounded table and an approval page nobody can read.
-	//
-	// The cap is on PENDING hosts, so it never gets in the way of a fleet that
-	// is actually approved, and clearing it is the same action the operator was
-	// going to take anyway.
+	// the sender generated proves only that they generated it.
 	if err := s.checkPendingCapacity(r.Context(), fingerprint); err != nil {
-		// A full queue and a broken store are different problems, and answering
-		// 429 for the second would have an operator hunting for hosts to
-		// approve that do not exist.
+		// A full queue and a broken store are different problems.
 		status := http.StatusInternalServerError
 		if errors.Is(err, errPendingFull) {
 			status = http.StatusTooManyRequests
@@ -94,8 +85,7 @@ func (s *Server) enrol(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// errPendingFull marks a refusal the operator can clear, as opposed to one
-// that means the store is broken.
+// errPendingFull marks a refusal the operator can clear, as opposed to one that means the store is broken.
 var errPendingFull = errors.New("too many hosts are waiting for approval")
 
 // checkPendingCapacity refuses a NEW fingerprint once too many are already
@@ -136,7 +126,7 @@ func enrolMessage(h *model.RunnerHost) string {
 }
 
 // session exchanges a signature for a short-lived bearer token. This is where
-// approval is enforced, and it is re-read from the store on every renewal, so
+// approval is enforced. It is re-read from the store on every renewal, so
 // revoking a host stops it within one token lifetime.
 func (s *Server) session(w http.ResponseWriter, r *http.Request) {
 	var req protocol.SessionRequest
@@ -170,9 +160,8 @@ func (s *Server) session(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if !host.Approved() {
-		// Say plainly what is wrong. A runner that sits silent because nobody
-		// pressed approve is the most likely thing to happen here, and it must
-		// not look like a network fault.
+		// Say plainly what is wrong. A runner that sits silent because nobody pressed approve is the most likely thing to happen here. It must not
+		// look like a network fault.
 		writeErr(w, http.StatusForbidden, "this host is "+string(host.State)+
 			"; an operator has to approve the fingerprint "+host.Fingerprint+" before it can take jobs")
 		return
@@ -210,7 +199,7 @@ func CallerFrom(ctx context.Context) (*model.RunnerHost, enrol.Session, bool) {
 }
 
 // allowedLabels intersects what a runner asked for with what its host is
-// approved to serve, and reports what was dropped so the drop is never silent.
+// approved to serve, and reports what.
 func allowedLabels(ctx context.Context, asked []string) (kept, dropped []string) {
 	host, _, ok := CallerFrom(ctx)
 	if !ok || host == nil {
@@ -226,10 +215,8 @@ func allowedLabels(ctx context.Context, asked []string) (kept, dropped []string)
 	return kept, dropped
 }
 
-// remoteHost is the address the request came from, for an operator comparing an
-// enrolment against the machine they expect it from. A proxy header is
-// deliberately not consulted: anything can send one, and a wrong address here
-// would be worse than none.
+// remoteHost is the address the request came from, for an operator comparing
+// an enrolment against the machine they expect it from.
 func remoteHost(r *http.Request) string {
 	host, _, err := net.SplitHostPort(strings.TrimSpace(r.RemoteAddr))
 	if err != nil {

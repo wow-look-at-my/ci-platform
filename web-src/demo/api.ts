@@ -1,10 +1,4 @@
-// The demo build's API client: it answers from a captured snapshot instead of
-// a server.
-//
-// The snapshot is not written by hand. cmd/demofixtures seeds a real store,
-// serves it with the real internal/api handlers, and records what they return,
-// so the demo cannot show a shape the product does not produce. Anything the
-// snapshot does not contain fails loudly here rather than rendering as empty.
+// The demo build's API client: it answers from a captured snapshot instead of a server.
 
 import fixtures from "./fixtures.json";
 
@@ -20,8 +14,7 @@ export class ApiError extends Error {
 	}
 }
 
-// Kept so the demo build swaps cleanly for the real client. Nothing here can
-// return 401: there is no session to expire.
+// Kept so the demo build swaps cleanly for the real client.
 export function onUnauthorized(_fn: () => void): void {}
 
 function lookup<T>(path: string): Promise<T> {
@@ -86,8 +79,6 @@ interface LogPageLike {
 	lines: { text: string; ts: string; stream: string }[];
 }
 
-// The raw-log link is a real download in the demo: the bytes come from the
-// captured log rather than from a URL that would 404.
 function rawLogDataURL(id: number): string {
 	const page = responses[`/api/v1/jobs/${id}/logs`] as LogPageLike | undefined;
 	const text = (page?.lines ?? []).map((l) => `${l.ts} ${l.stream} ${l.text}`).join("\n");
@@ -113,8 +104,7 @@ export const api = {
 		lookup<never>(`/api/v1/jobs/${id}/logs`),
 	rawLogUrl: (id: number, _attempt?: number) => rawLogDataURL(id),
 	// No stream: every job in the snapshot is finished, so the log view never
-	// opens one. Returning a dead URL would be a page that says "reconnecting"
-	// forever.
+	// opens one.
 	streamUrl: (id: number, opts: { from_seq?: number; attempt?: number } = {}) =>
 		`/api/v1/jobs/${id}/logs/stream${query(opts)}`,
 	runners: () => lookup<never>("/api/v1/runners"),

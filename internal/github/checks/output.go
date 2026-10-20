@@ -16,9 +16,7 @@ type Output struct {
 	Annotations []Annotation `json:"annotations,omitempty"`
 }
 
-// stepTableNote says plainly what a third-party App cannot do. GitHub renders
-// its native per-step expander only for its own runner, so the step list is a
-// markdown table here and the live view lives at details_url.
+// stepTableNote says plainly what a third-party App cannot do.
 const stepTableNote = "GitHub renders its collapsible per-step view only for its own Actions runner, so the steps below are a table. The live view, with logs, is at the details link above."
 
 // Title is the one-line headline of the check run.

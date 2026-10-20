@@ -1,14 +1,14 @@
-// Package e2e starts the real control-plane binary against a real SQLite file and
-// a fake GitHub, and drives events through it.
+// Package e2e starts the real control-plane binary against a real SQLite file
+// and a fake GitHub, and drives events through it.
 //
-// It runs the shipped binary rather than wiring the packages up in-process, so
-// what it proves is that the thing we deploy works, not that the pieces compose
-// in a test harness.
+// It runs the shipped binary rather than wiring the packages up in-process.
+// What it proves is that the thing we deploy works, not that the pieces
+// compose in a test harness.
 //
-// Every test runs in parallel and every test starts its own control plane, on
+// Every test runs in parallel. Every test starts its own control plane, on
 // its own port, with its own database and its own fake GitHub. That is what
-// keeps a package of process-spawning tests inside one 30-second budget: the
-// alternative is having fewer of them, and each one here is a property worth
+// keeps a package of process-spawning tests inside one 30-second budget. The
+// alternative is having fewer of them, and each here is a property worth
 // keeping.
 package e2e
 
@@ -37,8 +37,7 @@ import (
 	"github.com/wow-look-at-my/ci-platform/test/fakes"
 )
 
-// operatorToken is what the suite signs its API reads with. The control plane
-// refuses to start without one.
+// operatorToken is what the suite signs its API reads with. The control plane refuses to start without one.
 const operatorToken = "e2e-operator-token-0123456789"
 
 // controlPlane is a running instance under test.
@@ -47,8 +46,7 @@ type controlPlane struct {
 	GitHub *fakes.GitHub
 	cmd    *exec.Cmd
 	out    *bytes.Buffer
-	// repo is unique per test: each control plane gets its own database file,
-	// but distinct repositories keep a failure legible.
+	// repo is unique per test: each control plane gets its own database file.
 	repoID   int64
 	repoName string
 }
@@ -73,8 +71,7 @@ func start(t *testing.T, workflows map[string]string) *controlPlane {
 	cmd.Env = append(os.Environ(),
 		"CIPLATFORM_LISTEN=127.0.0.1:"+port,
 		"CIPLATFORM_PUBLIC_URL=http://ci.localhost:"+port,
-		// The stand-in GitHub is where the repositories are, so it is also
-		// where a browser would be sent to sign in.
+		// The stand-in GitHub is where the repositories are, so it is also where a browser would be sent to sign in.
 		"CIPLATFORM_GITHUB_SERVER_URL=http://github.localhost",
 		"CIPLATFORM_ALLOWED_OWNERS=acme",
 		"CIPLATFORM_ADMIN_LOGINS=PazerOP",
@@ -256,10 +253,6 @@ var (
 )
 
 // TestMain owns the one control-plane binary every test in this package runs.
-//
-// It is built once rather than per test because the whole package shares a
-// 30-second budget, and a dozen `go build` invocations spend it on work that
-// produces the same bytes every time.
 func TestMain(m *testing.M) {
 	code := m.Run()
 	if binDir != "" {

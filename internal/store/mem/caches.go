@@ -109,8 +109,8 @@ func newest(cands []*model.CacheEntry) *model.CacheEntry {
 }
 
 // LookupCache implements restore-keys semantics: the exact key first, then each
-// restore key as a prefix in declaration order, newest created_at winning
-// within a key. matchedOn names the key that hit.
+// restore key as a prefix in declaration order, newest created_at. That
+// created_at is winning within a key. matchedOn names the key that hit.
 //
 // ref is recorded on the entry and returned, not filtered on: which refs may
 // restore from which is the caller's policy.

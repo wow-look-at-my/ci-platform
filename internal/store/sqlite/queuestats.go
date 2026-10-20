@@ -15,7 +15,7 @@ import (
 // QueueStats is the queue page's data and the starvation alarm.
 //
 // "Online" is idle or busy. A drained runner is deliberately not counted: it
-// finishes what it has and takes nothing new, so counting it would hide a
+// finishes what it has and takes nothing new. Counting it would hide a
 // starving label behind a runner that will never pick the work up.
 func (s *Store) QueueStats(ctx context.Context, now time.Time) (*store.QueueStats, error) {
 	now = now.UTC()

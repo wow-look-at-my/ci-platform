@@ -78,14 +78,11 @@ type PushEvent struct {
 	Deleted    bool    `json:"deleted"`
 	Forced     bool    `json:"forced"`
 	HeadCommit *Commit `json:"head_commit"`
-	// Commits carries every commit in the push. A paths: filter matches against
-	// all of them, not just the head, or a push of several commits would miss
-	// files changed in any but the last.
+	// Commits carries every commit in the push.
 	Commits []Commit `json:"commits,omitempty"`
 }
 
-// Branch returns the branch name for a branch push, "" for a tag or anything
-// else.
+// Branch returns the branch name for a branch push, "" for a tag or anything else.
 func (e *PushEvent) Branch() string { return trimPrefix(e.Ref, "refs/heads/") }
 
 // Tag returns the tag name for a tag push, "" otherwise.

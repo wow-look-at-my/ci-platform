@@ -10,8 +10,8 @@ import (
 	"github.com/wow-look-at-my/ci-platform/internal/store"
 )
 
-// errorBody is the single error shape every endpoint returns. Message names
-// the cause; an empty list is never used to stand in for a failure.
+// errorBody is the error shape every endpoint returns. Message names the
+// cause; an empty list is never used to stand in for a failure.
 type errorBody struct {
 	Error   string `json:"error"`
 	Message string `json:"message"`
@@ -21,8 +21,7 @@ func writeErr(w http.ResponseWriter, status int, code, format string, args ...an
 	writeJSON(w, status, errorBody{Error: code, Message: fmt.Sprintf(format, args...)})
 }
 
-// storeErr maps a store failure to a status. ErrNotFound is a 404; anything
-// else is a real 500 naming the operation that failed.
+// storeErr maps a store failure to a status.
 func storeErr(w http.ResponseWriter, op string, err error) {
 	if errors.Is(err, store.ErrNotFound) {
 		writeErr(w, http.StatusNotFound, "not_found", "%s: not found", op)
@@ -35,8 +34,6 @@ func storeErr(w http.ResponseWriter, op string, err error) {
 	writeErr(w, http.StatusInternalServerError, "store_error", "%s: %v", op, err)
 }
 
-// pathID parses an int64 path value, writing a 400 and reporting false when it
-// is not one.
 func pathID(w http.ResponseWriter, r *http.Request, name string) (int64, bool) {
 	raw := r.PathValue(name)
 	id, err := strconv.ParseInt(raw, 10, 64)

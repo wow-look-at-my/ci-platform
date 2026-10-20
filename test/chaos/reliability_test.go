@@ -18,13 +18,10 @@ import (
 )
 
 // rig is a control plane's scheduler over a real store, driven by a real
-// workflow. It is the smallest thing that can exercise the reliability layer
-// without a runner process.
+// workflow.
 type rig struct {
 	t *testing.T
-	// base is wall-clock, not the fixed epoch: the store stamps leases from
-	// time.Now(), so a rig anchored to a fixed date drifts out of the run
-	// timeout as the day goes on and starts failing in the afternoon.
+	// base is wall-clock, not the fixed epoch.
 	base  time.Time
 	st    store.Store
 	s     *scheduler.Scheduler
@@ -114,8 +111,7 @@ jobs:
       - run: make build
 `
 
-// Incident 2: a job whose runner disappears is requeued, not lost and not
-// failed. The lease is the mechanism; a missed heartbeat is the trigger.
+// The lease is the mechanism; a missed heartbeat is the trigger.
 func TestIncident2_LostRunnerRequeuesRatherThanFailing(t *testing.T) {
 	ctx := context.Background()
 	r := newRig(t, oneJob)
@@ -130,9 +126,7 @@ func TestIncident2_LostRunnerRequeuesRatherThanFailing(t *testing.T) {
 	require.Equal(t, job.ID, claimed.ID)
 	require.Equal(t, model.StatusInProgress, r.job("build").Status)
 
-	// Past the lease, the reaper puts the work back. The store stamps leases
-	// from the wall clock, so the tick that reaps them has to be wall-clock
-	// relative rather than relative to the test's fixed epoch.
+	// Past the lease, the reaper puts the work back.
 	require.NoError(t, r.s.Tick(ctx, r.base.Add(5*time.Minute)))
 
 	after := r.job("build")
@@ -154,14 +148,12 @@ func TestIncident2_LostRunnerRequeuesRatherThanFailing(t *testing.T) {
 	}
 	assert.True(t, found, "the requeue must record which runner was lost: %+v", r.events(after.ID))
 
-	// Another runner can pick it straight up: a lost lease is immediately
-	// redispatchable, because the backoff belongs to a retry, not a requeue.
+	// Another runner can pick it straight up: a lost lease is immediately redispatchable, because the backoff belongs to a retry.
 	again, err := r.st.Dequeue(ctx, "runner-b", []string{"linux"}, time.Minute)
 	require.NoError(t, err)
 	assert.Equal(t, after.ID, again.ID)
 }
 
-// Incident 3: nothing is cancelled without a recorded, surfaced reason.
 func TestIncident3_CancellationRecordsItsReasonEverywhere(t *testing.T) {
 	ctx := context.Background()
 	r := newRig(t, oneJob)
@@ -178,8 +170,7 @@ func TestIncident3_CancellationRecordsItsReasonEverywhere(t *testing.T) {
 	require.Equal(t, model.ConclusionCancelled, job.Conclusion)
 	require.NotNil(t, job.Cancel, "the job row carries the reason")
 	assert.Equal(t, model.CancelActorUser, job.Cancel.Actor)
-	// The scheduler appends which job it was, so the sentence a reader sees on
-	// the job says more than the one the operator typed.
+	// The scheduler appends which job it was.
 	assert.Contains(t, job.Cancel.Sentence, reason.Sentence)
 	require.NoError(t, job.Cancel.Validate())
 
@@ -218,7 +209,7 @@ func TestCancellationWithoutAReasonIsRefused(t *testing.T) {
 func TestInfraFailureRetriesAndUserFailureDoesNot(t *testing.T) {
 	ctx := context.Background()
 	// A short, explicit backoff so the test can prove the delay is honoured
-	// without waiting out the default five seconds.
+	// without waiting out the default a few seconds.
 	r := newRig(t, `name: CI
 on: push
 jobs:
@@ -244,8 +235,6 @@ jobs:
 		Conclusion:  model.ConclusionInfraFailure,
 		Class:       model.ClassInfra,
 		ClassReason: `classified infra via rule "cloudflare-524": the remote returned HTTP 524`,
-		// Completed at the rig's wall-clock base so the backoff it schedules is
-		// measured from now; the store dispatches on the real clock.
 	}, r.base))
 
 	retried := r.job("build")
@@ -262,9 +251,7 @@ jobs:
 	}
 	assert.True(t, explained, "the classification decision must be recorded: %+v", r.events(id))
 
-	// The backoff is real: until it elapses the job is not dispatchable. Before
-	// this was fixed the retry kept the previous attempt's leased queue row, so
-	// NotBefore was discarded and the retry ran instantly.
+	// The backoff is real: until it elapses the job is not dispatchable.
 	_, err = r.st.Dequeue(ctx, "runner-b", []string{"linux"}, time.Minute)
 	require.ErrorIs(t, err, store.ErrNotFound, "the retry must wait out its backoff")
 
@@ -284,8 +271,7 @@ jobs:
 	assert.Equal(t, 2, done.Attempt, "a user failure never buys another attempt")
 }
 
-// Incident 5: a default-branch run that did not succeed fires the alarm. This
-// is the merged, green PR that never published.
+// This is the merged, green PR that never published.
 func TestIncident5_DefaultBranchFailureFiresTheAlarm(t *testing.T) {
 	ctx := context.Background()
 	r := newRig(t, oneJob)

@@ -30,8 +30,7 @@ type CacheStats struct {
 	Stores    int     `json:"stores"`
 	Evictions int     `json:"evictions"`
 	HitRate   float64 `json:"hit_rate"`
-	// EventsConsidered is how many events the rates were computed over, so a
-	// rate from three events is not read as a rate from three thousand.
+	// EventsConsidered is how many events the rates were computed over.
 	EventsConsidered int `json:"events_considered"`
 }
 

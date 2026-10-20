@@ -58,7 +58,6 @@ test("0 clears everything", () => {
 test("256-colour 38;5;n", () => {
 	assertEqual(parseAnsi(`${ESC}[38;5;196mx`)[0].style.fg, "rgb(255, 0, 0)");
 	assertEqual(parseAnsi(`${ESC}[48;5;21mx`)[0].style.bg, "rgb(0, 0, 255)");
-	// The first 16 of the 256 palette are the theme's own colours.
 	assertEqual(xterm256(3), "var(--ansi-3)");
 	// Greyscale ramp.
 	assertEqual(xterm256(232), "rgb(8, 8, 8)");

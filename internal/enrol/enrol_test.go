@@ -22,7 +22,7 @@ func testKey(t *testing.T) (ed25519.PrivateKey, string) {
 }
 
 // The fingerprint is a path segment in the approval API and a string an
-// operator compares by eye. Standard base64's "/" would split it in two.
+// operator compares by eye.
 func TestFingerprint_IsStableAndURLSafe(t *testing.T) {
 	pub, _, err := ed25519.GenerateKey(rand.Reader)
 	require.NoError(t, err)
@@ -169,7 +169,7 @@ func TestSessionToken_RejectsAnythingItDidNotSign(t *testing.T) {
 	}
 }
 
-// A nonce with no expiry needs an unbounded record of every nonce ever seen; a
+// A nonce with no expiry needs an unbounded record of every nonce ever seen. A
 // timestamp with no nonce lets a captured request be replayed for the whole
 // window. Both halves are checked here because both are load-bearing.
 func TestCheckFreshness(t *testing.T) {

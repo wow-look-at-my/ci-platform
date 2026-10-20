@@ -202,8 +202,7 @@ func (s *Server) getJob(w http.ResponseWriter, r *http.Request) {
 	for _, e := range events {
 		d.Events = append(d.Events, eventDTO(e))
 	}
-	// Run context so the job page can render a breadcrumb without a second
-	// request. A missing run is a real inconsistency, not something to hide.
+	// Run context so the job page can render a breadcrumb without a second request.
 	run, err := s.cfg.Store.GetRun(r.Context(), job.RunID)
 	if err != nil {
 		storeErr(w, "get run for job", err)

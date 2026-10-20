@@ -14,8 +14,7 @@ import (
 )
 
 func testMigrateIdempotent(t *testing.T, f *fixture) {
-	// The store handed to the suite is already migrated; migrating again must
-	// be a no-op rather than an error or a duplicate-object failure.
+	// The store handed to the suite is already migrated.
 	require.NoError(t, f.s.Migrate(f.ctx))
 	require.NoError(t, f.s.Migrate(f.ctx))
 }

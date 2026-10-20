@@ -1,20 +1,18 @@
-// Package model holds the vocabulary every other package speaks: run/job/step
+// Package model holds the vocabulary every other package speaks. Run/job/step
 // identity, status, conclusion, and the failure classification that the whole
 // platform exists to get right.
 package model
 
 import "fmt"
 
-// Status is the lifecycle phase of a run, job, or step. It mirrors the Checks
-// API status values so the reporter can pass them through unchanged.
+// Status is the lifecycle phase of a run, job, or step.
 type Status string
 
 const (
 	StatusQueued     Status = "queued"
 	StatusInProgress Status = "in_progress"
 	StatusCompleted  Status = "completed"
-	// StatusWaiting covers a job held by a concurrency group, an environment
-	// protection rule, or a fork-PR approval gate. GitHub has "waiting" too.
+	// StatusWaiting covers a job held by a concurrency group, an environment protection rule, or a fork-PR approval gate.
 	StatusWaiting Status = "waiting"
 )
 
@@ -31,11 +29,6 @@ func (s Status) Valid() bool {
 func (s Status) Terminal() bool { return s == StatusCompleted }
 
 // Conclusion is the outcome of a completed unit of work.
-//
-// ConclusionInfraFailure is ours, not GitHub's: it is the whole point of the
-// platform. It maps onto the Checks API as "action_required" so that it is
-// visually distinct from a red build (see internal/github.ConclusionToCheck),
-// because a red build must mean the user's code is broken.
 type Conclusion string
 
 const (
@@ -63,9 +56,7 @@ func (c Conclusion) Valid() bool {
 	return false
 }
 
-// IsFailure reports whether c should stop dependents from running. Skipped is
-// deliberately excluded: a skipped job does not fail its dependents, but it is
-// also never counted as success by the aggregate (see Aggregate).
+// IsFailure reports whether c should stop dependents from running.
 func (c Conclusion) IsFailure() bool {
 	switch c {
 	case ConclusionFailure, ConclusionTimedOut, ConclusionInfraFailure,
@@ -81,8 +72,7 @@ func (c Conclusion) UserVisibleRed() bool {
 	return c == ConclusionFailure || c == ConclusionTimedOut
 }
 
-// FailureClass answers the question that GitHub Actions never answers: whose
-// fault was it? Every non-success outcome carries one.
+// FailureClass answers the question that GitHub Actions never answers: whose fault was it?
 type FailureClass string
 
 const (
@@ -90,12 +80,9 @@ const (
 	ClassNone FailureClass = ""
 	// ClassUser means a command the user wrote exited non-zero. Never retried.
 	ClassUser FailureClass = "user"
-	// ClassInfra means the platform, the network, or a dependency of the
-	// platform failed. Retried with backoff by default.
+	// ClassInfra means the platform, the network, or a dependency of the platform failed. Retried with backoff by default.
 	ClassInfra FailureClass = "infra"
-	// ClassConfig means the workflow itself is wrong: unparseable YAML, an
-	// unresolvable action ref, an unsupported key. Never retried; retrying
-	// cannot help.
+	// ClassConfig means the workflow itself is wrong: unparseable YAML, an unresolvable action ref, an unsupported key.
 	ClassConfig FailureClass = "config"
 )
 
@@ -126,8 +113,7 @@ func (f FailureClass) Conclusion() Conclusion {
 	return ConclusionFailure
 }
 
-// CancelActor identifies who or what cancelled a unit of work. Every
-// cancellation records one; there is no path that cancels without an actor.
+// CancelActor identifies who or what cancelled a unit of work.
 type CancelActor string
 
 const (
@@ -151,17 +137,12 @@ func (a CancelActor) Valid() bool {
 	return false
 }
 
-// CancelReason is the recorded, surfaced explanation for a cancellation. Both
-// fields are required: constructing one without a sentence is a programming
-// error that Validate rejects, because "cancelled with no reason anywhere" is
-// the exact incident this platform was built to never repeat.
+// CancelReason is the recorded, surfaced explanation for a cancellation.
 type CancelReason struct {
 	Actor CancelActor `json:"actor"`
-	// Sentence is a complete human sentence shown verbatim in the UI and in
-	// the check run's output. Not a code, not an enum name.
+	// Sentence is a complete human sentence shown verbatim in the UI and in the check run's output.
 	Sentence string `json:"sentence"`
-	// TriggeredBy is the login of the user, or the ID of the run/group that
-	// caused it. Optional, because a timeout has no principal.
+	// TriggeredBy is the login of the user, or the ID of the run/group that caused it.
 	TriggeredBy string `json:"triggered_by,omitempty"`
 }
 
@@ -227,8 +208,7 @@ func Aggregate(cs []Conclusion) Conclusion {
 	case sawNeutral:
 		return ConclusionNeutral
 	case sawSkipped && !sawSuccess:
-		// Everything was skipped. Saying "success" here is the
-		// zero-work-satisfies-a-required-check lie.
+		// Everything was skipped. Saying "success" here is the zero-work-satisfies-a-required-check lie.
 		return ConclusionSkipped
 	case sawSkipped:
 		// A mix. Report neutral rather than laundering skips into a green.

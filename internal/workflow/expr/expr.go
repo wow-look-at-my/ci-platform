@@ -1,10 +1,7 @@
 // Package expr implements the GitHub Actions expression language: a lexer, a
 // precedence-climbing parser, and an evaluator over a set of named contexts.
 //
-// Two behaviours here are load-bearing and easy to get wrong. Comparisons are
-// LOOSE (null, false, 0 and "" all compare equal, strings compare
-// case-insensitively) and `&&`/`||` return one of their OPERANDS rather than a
-// boolean, so `github.head_ref || github.ref_name` yields a string.
+// Behaviours here are load-bearing and easy to get wrong.
 package expr
 
 import (
@@ -15,10 +12,7 @@ import (
 	"github.com/wow-look-at-my/ci-platform/internal/model"
 )
 
-// Context holds the named-value contexts: "github", "env", "vars", "secrets",
-// "job", "jobs", "steps", "runner", "needs", "strategy", "matrix", "inputs".
-// A name absent from the map is an error, never null: a workflow referring to a
-// context that does not exist here is a config error.
+// Context holds the named-value contexts: "github", "env", "vars", "secrets", "job", "jobs", "steps", "runner", "needs", "strategy", "matrix".
 type Context map[string]any
 
 // Status governs success()/failure()/always()/cancelled().
@@ -51,9 +45,7 @@ func (e *Evaluator) WithStatus(s Status) *Evaluator {
 }
 
 // WithFS returns a copy that can evaluate hashFiles(). root is the workspace
-// directory within fsys that patterns are matched relative to; "" means the
-// root of fsys itself. Without this, hashFiles() is an error rather than a
-// fabricated digest.
+// directory within fsys that patterns are matched relative to.
 func (e *Evaluator) WithFS(fsys fs.FS, root string) *Evaluator {
 	c := *e
 	c.fsys = fsys
@@ -119,8 +111,8 @@ func (e *Evaluator) EvalBool(raw string) (bool, error) {
 func (e *Evaluator) EvalExpr(x model.Expr) (string, error) { return e.EvalString(x.Raw) }
 
 // splitExpr finds the "}}" that closes an expression body, ignoring braces
-// inside single-quoted strings so that format('}}') survives. s starts just
-// after the opening "${{".
+// inside single-quoted strings so that format('}}') survives. s starts after
+// the opening "${{".
 func splitExpr(s string) (body, rest string, ok bool) {
 	inStr := false
 	for i := 0; i < len(s); i++ {

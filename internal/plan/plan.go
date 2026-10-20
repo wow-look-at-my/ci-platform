@@ -1,7 +1,7 @@
 // Package plan turns a parsed workflow into the concrete set of jobs one run
-// will execute: matrix legs expanded with GitHub Actions' include/exclude
-// semantics, display names fixed byte-for-byte because branch protection
-// matches on them, and the needs DAG validated and ordered.
+// will execute. Matrix legs expanded with GitHub Actions' include/exclude
+// semantics, display names fixed byte-for-byte. This is because branch
+// protection matches on them. The needs DAG validated and ordered.
 package plan
 
 import (
@@ -25,12 +25,9 @@ type Plan struct {
 	Jobs  []*PlannedJob
 	Order []string // PlannedJob.ID values, topologically sorted
 
-	// Workflow is the source, kept so the scheduler can resolve workflow-level
-	// env and defaults when it builds an assignment.
+	// Workflow is the source, kept.
 	Workflow *model.Workflow
-	// Contexts are the run-scoped contexts Build was given (github, vars,
-	// inputs, ...), kept so the scheduler evaluates if: and step expressions
-	// against exactly what the plan was built from.
+	// Contexts are the run-scoped contexts Build was given (github, vars, inputs, ...), kept.
 	Contexts map[string]any
 	// RunConcurrencyGroup is the workflow-level concurrency group, evaluated.
 	RunConcurrencyGroup string
@@ -52,10 +49,9 @@ type PlannedJob struct {
 	ConcurrencyGroup string
 	CancelInProgress bool
 	FailFast         bool
-	// MaxParallel caps concurrent legs of this job; 0 means no cap.
+	// MaxParallel caps concurrent legs of this job; a value of zero means no cap.
 	MaxParallel int
-	// MatrixSiblings holds the IDs of every leg of this job, including this
-	// one, so fail-fast can find them. Nil for an unmatrixed job.
+	// MatrixSiblings holds the IDs of every leg of this job, including this, so fail-fast can find them.
 	MatrixSiblings []string
 
 	ContinueOnError bool
@@ -157,9 +153,9 @@ func Build(w *model.Workflow, in Input) (*Plan, error) {
 	return p, nil
 }
 
-// recordIncludeOrderDeviation surfaces the one place a name can differ from
-// GitHub's: an include key the parser did not record in Matrix.Order has no
-// source order left in the IR, so its name segment is placed alphabetically.
+// recordIncludeOrderDeviation surfaces the place a name can differ from
+// GitHub's. An include key the parser did not record in Matrix.Order has no
+// source order left in the IR. Its name segment is placed alphabetically.
 func recordIncludeOrderDeviation(w *model.Workflow, key string) {
 	ir := w.Jobs[key]
 	if ir.Strategy == nil || ir.Strategy.Matrix == nil {
@@ -218,9 +214,8 @@ func buildJob(ir *model.JobIR, in Input, base Evaluator) ([]*PlannedJob, error) 
 		if retry.Attempts < 1 {
 			return nil, fmt.Errorf("retry policy allows %d attempts", retry.Attempts)
 		}
-		// Retrying a user failure manufactures a flaky green, and retrying a
-		// config error cannot fix the YAML. Rejecting the policy is louder
-		// than accepting it and quietly not honouring it.
+		// Retrying a user failure manufactures a flaky green, and retrying a config
+		// error cannot fix the YAML.
 		for _, c := range retry.On {
 			if c != model.ClassInfra {
 				return nil, fmt.Errorf("retry policy asks to retry %q failures; only infrastructure failures are ever retried", c)

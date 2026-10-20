@@ -1,8 +1,8 @@
 // Package artifacts serves the GitHub Actions Results API that
 // actions/upload-artifact@v4 and actions/download-artifact@v4 speak.
 //
-// The protocol has three parts, all verified against @actions/artifact rather
-// than assumed:
+// The protocol has parts, all verified against @actions/artifact rather than
+// assumed:
 //
 //  1. Twirp with JSON encoding at {ACTIONS_RESULTS_URL}/twirp/... (see twirp.go).
 //  2. An Azure Block Blob upload endpoint, because CreateArtifact returns a URL
@@ -12,14 +12,6 @@
 //
 // ACTIONS_RUNTIME_TOKEN must be a JWT carrying an "scp" claim of
 // "Actions.Results:<runBackendId>:<jobBackendId>"; internal/jobtoken mints one.
-//
-// # The GHES trap
-//
-// @actions/artifact refuses to run at all when GITHUB_SERVER_URL's hostname is
-// not github.com and does not end in .ghe.com or .localhost: every operation
-// throws GHESNotSupportedError before a request is made. ValidateServerURL
-// enforces that at startup so the failure is a named config error rather than
-// every artifact step failing at runtime with a message about GHES.
 package artifacts
 
 import (
@@ -45,8 +37,7 @@ const (
 	EnvRuntimeToken = "ACTIONS_RUNTIME_TOKEN"
 	EnvRunID        = "GITHUB_RUN_ID"
 	EnvServerURL    = "GITHUB_SERVER_URL"
-	// EnvRetentionDays caps what the action asks for, before the service
-	// clamps it again.
+	// EnvRetentionDays caps what the action asks for, before the service clamps it again.
 	EnvRetentionDays = "GITHUB_RETENTION_DAYS"
 )
 
@@ -56,12 +47,11 @@ var EnvNames = []string{
 	EnvResultsURL, EnvRuntimeURL, EnvRuntimeToken, EnvRunID, EnvServerURL, EnvRetentionDays,
 }
 
-// RequiredServerURLSuffixes are the GITHUB_SERVER_URL host endings
-// @actions/artifact accepts. "github.com" is accepted as an exact host.
+// RequiredServerURLSuffixes are the GITHUB_SERVER_URL host endings @actions/artifact accepts.
 var RequiredServerURLSuffixes = []string{".ghe.com", ".localhost"}
 
 // ValidateServerURL reports whether a URL will survive the client's isGhes()
-// check. It is a startup gate: a URL that fails it makes every artifact step
+// check. It is a startup gate. A URL that fails it makes every artifact step
 // in every job throw GHESNotSupportedError, and nothing about that failure
 // names the real cause.
 func ValidateServerURL(raw string) error {
@@ -94,8 +84,7 @@ func RunnerEnv(baseURL, serverURL string, runID int64, jobToken string, maxReten
 	base := strings.TrimSuffix(baseURL, "/")
 	return map[string]string{
 		EnvResultsURL: base,
-		// The v3 client builds `${ACTIONS_RUNTIME_URL}_apis/...`, so this one
-		// keeps its trailing slash.
+		// The v3 client builds `${ACTIONS_RUNTIME_URL}_apis/...`, so this keeps its trailing slash.
 		EnvRuntimeURL:    base + "/",
 		EnvRuntimeToken:  jobToken,
 		EnvRunID:         strconv.FormatInt(runID, 10),
@@ -104,8 +93,7 @@ func RunnerEnv(baseURL, serverURL string, runID int64, jobToken string, maxReten
 	}
 }
 
-// Store is the persistence this service needs. It is narrower than store.Store
-// so the service can be tested without a whole store implementation.
+// Store is the persistence this service needs.
 type Store interface {
 	store.Artifacts
 	store.Events
@@ -116,8 +104,7 @@ type Options struct {
 	Store  Store
 	Blob   blob.Store
 	Signer *jobtoken.Signer
-	// BaseURL is the public URL of this service; upload and download URLs are
-	// built from it.
+	// BaseURL is the public URL of this service; upload and download URLs are built from it.
 	BaseURL string
 	// DefaultRetentionDays applies when the client asks for nothing.
 	DefaultRetentionDays int
@@ -125,12 +112,9 @@ type Options struct {
 	MaxRetentionDays int
 	// RepoQuotaBytes caps one repository's stored artifacts.
 	RepoQuotaBytes int64
-	// RepoUsage reports a repository's current artifact bytes. Required
-	// alongside RepoQuotaBytes; the store contract has no usage query, so the
-	// caller supplies one.
+	// RepoUsage reports a repository's current artifact bytes.
 	RepoUsage func(ctx context.Context, repoID int64) (int64, error)
-	// QuotaDisabled runs with no quota at all. It must be set explicitly: a
-	// quota that silently does nothing is worse than none.
+	// QuotaDisabled runs with no quota at all.
 	QuotaDisabled bool
 	// SignedURLTTL bounds a download URL's life.
 	SignedURLTTL time.Duration
@@ -209,9 +193,7 @@ func New(opts Options) (*Service, error) {
 
 // Route paths outside the Twirp surface.
 const (
-	// PathUpload is the Azure-shaped upload endpoint. It has four path
-	// segments because the Azure SDK parses container and blob names out of
-	// the URL and rejects a path with fewer.
+	// PathUpload is the Azure-shaped upload endpoint.
 	PathUpload   = "/_apis/results/artifacts/upload/"
 	PathDownload = "/_apis/results/artifacts/download/"
 )
@@ -275,7 +257,8 @@ func checkBackendIDs(claims *jobtoken.Claims, runBackendID, jobBackendID string)
 // token does not carry the scope a call needs.
 //
 // Every artifact call goes through this: a scope the minter refuses to issue
-// but no handler checks is a permission that exists only in the documentation.
+// but no handler checks is a permission. That permission exists only in the
+// documentation.
 func denyWithoutScope(w http.ResponseWriter, claims *jobtoken.Claims, scope jobtoken.Scope) bool {
 	if claims.Has(scope) {
 		return false
@@ -286,7 +269,7 @@ func denyWithoutScope(w http.ResponseWriter, claims *jobtoken.Claims, scope jobt
 }
 
 // storageKey is where an artifact's bytes live. The artifact id is in the path
-// so two runs uploading the same name never collide.
+// so runs uploading the same name never collide.
 func storageKey(artifactID int64) string {
 	return fmt.Sprintf("artifacts/%d/content.zip", artifactID)
 }
@@ -320,8 +303,7 @@ func (s *Service) createArtifact(w http.ResponseWriter, r *http.Request, claims 
 	}
 
 	if err := s.checkQuota(ctx, claims.RepoID); err != nil {
-		// "insufficient usage" is the substring @actions/artifact matches to
-		// raise its storage-quota error, which is the message a user can act on.
+		// "insufficient usage" is the substring @actions/artifact matches to raise its storage-quota error.
 		writeTwirpError(w, CodeResourceExhausted, "artifacts: insufficient usage: "+err.Error())
 		return
 	}
@@ -361,8 +343,7 @@ func (s *Service) expiryFor(requested string) time.Time {
 	}
 	t, err := time.Parse(time.RFC3339, requested)
 	if err != nil || t.After(max) || !t.After(now) {
-		// An unparseable or out-of-range expiry falls back to the maximum
-		// rather than to "never": an artifact with no expiry is a leak.
+		// An unparseable or out-of-range expiry falls back to the maximum rather than to "never".
 		return max
 	}
 	return t

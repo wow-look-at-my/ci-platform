@@ -1,8 +1,6 @@
 package demoseed
 
-// The demo's job logs. They carry the things the log viewer exists to handle:
-// ::group:: nesting, ANSI colour, stderr interleaved with stdout, and the
-// platform's own lines saying what it decided and why.
+// The demo's job logs.
 
 type logLine struct {
 	step   int
@@ -19,9 +17,7 @@ func errl(step int, group, text string) logLine {
 	return logLine{step: step, stream: "stderr", text: text, group: group}
 }
 
-// plat is a platform line: the control plane narrating its own work, which is
-// what makes setup time and classification visible in the log rather than only
-// in the UI chrome.
+// plat is a platform line.
 func plat(step int, group, text string) logLine {
 	return logLine{step: step, stream: "platform", text: text, group: group}
 }

@@ -49,10 +49,10 @@ func seedRun(t *testing.T, a *app, forkPR bool) *model.Run {
 	return run
 }
 
-// The environment a job runs with carries two different URLs, and they are not
+// The environment a job runs with carries different URLs. They are not
 // interchangeable: the artifact endpoints are this platform, GITHUB_SERVER_URL
 // is where the repositories are. Sending this platform as both puts it in front
-// of every actions/checkout clone, and this map is applied over the job's base
+// of every actions/checkout clone. This map is applied over the job's base
 // environment, so a wrong value here wins.
 func TestServiceEnv_SeparatesThisPlatformFromGitHub(t *testing.T) {
 	a := testApp(t)
@@ -66,7 +66,7 @@ func TestServiceEnv_SeparatesThisPlatformFromGitHub(t *testing.T) {
 	assert.Equal(t, "job-token", env["ACTIONS_RUNTIME_TOKEN"])
 }
 
-// An ordinary deployment hostname is fine for the platform: the isGhes() rule
+// An ordinary deployment hostname is fine for the platform. The isGhes() rule
 // the artifact client enforces is about GITHUB_SERVER_URL, which is github.com.
 func TestServiceEnv_WorksOnAnOrdinaryHostname(t *testing.T) {
 	a := testApp(t)
@@ -91,7 +91,7 @@ func TestServiceEnv_ForkPRGetsNoIDTokenVariables(t *testing.T) {
 	assert.NotContains(t, env, "ACTIONS_ID_TOKEN_REQUEST_TOKEN")
 }
 
-// An unset secret generates a key rather than failing, and says so: sessions
+// An unset secret generates a key rather than failing, and says so. Sessions
 // ending at every restart is a consequence an operator has to be told about.
 func TestSessionKey_GeneratesOneAndSaysSo(t *testing.T) {
 	key, err := sessionKey(&config.Config{}, slog.Default())

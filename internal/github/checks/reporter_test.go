@@ -176,7 +176,7 @@ func TestFormatDuration(t *testing.T) {
 }
 
 func TestTruncateRespectsRuneBoundaries(t *testing.T) {
-	s := strings.Repeat("é", 10) // two bytes each
+	s := strings.Repeat("é", 10)
 	got := truncate(s, 5)
 	assert.Equal(t, 4, len(got))
 	assert.True(t, strings.HasPrefix(s, got))

@@ -18,7 +18,8 @@ func fixedClassifier() *Classifier {
 }
 
 // The output in this case is the real thing from the incident that started the
-// project: a registry blob upload killed by a Cloudflare origin timeout.
+// project. This covers a registry blob upload killed by a Cloudflare origin
+// timeout.
 func TestClassify_CloudflareTimeoutIsInfra(t *testing.T) {
 	c := fixedClassifier()
 	d := c.Classify(Signal{
@@ -187,8 +188,6 @@ func TestClassify_HTTPStatusIsDecisiveWithoutARuleMatch(t *testing.T) {
 	assert.Equal(t, "http-429", rl.Rule)
 	assert.Contains(t, rl.Reason, "the remote")
 
-	// A 4xx that is not 429 is the caller's problem, so it falls through to
-	// the user default rather than being excused as infra.
 	notFound := c.Classify(Signal{Phase: "run", HTTPStatus: 404, ExitCode: 1})
 	assert.Equal(t, model.ClassUser, notFound.Class)
 }
@@ -263,7 +262,7 @@ func TestExcerptCollapsesAndBounds(t *testing.T) {
 	assert.Contains(t, got, "NEEDLE")
 	assert.NotContains(t, got, "\n")
 
-	// A match at the very start must not index before zero.
+	// A match at the start must not index before zero.
 	assert.Equal(t, "hi", excerpt("hi", 0, 2))
 }
 

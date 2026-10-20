@@ -1,10 +1,11 @@
-// Command runner-host keeps a pool of runners on one machine: it generates the
+// Command runner-host keeps a pool of runners on one machine. It generates the
 // machine's identity key, enrols it once, and from then on keeps N runners
-// running, up to date, and on storage that is fresh per runner.
+// running. Up to date, and on storage that is fresh per runner.
 //
 // It is the thing an operator installs. Setting one up is meant to be rare and
-// boring: point it at a control plane, read the fingerprint it prints, approve
-// that fingerprint in the dashboard, and never think about it again.
+// boring. Setting one up point it at a control plane, read the fingerprint it
+// prints, approve that fingerprint in the dashboard. And never think about it
+// again.
 package main
 
 import (
@@ -31,8 +32,7 @@ import (
 var version = "dev"
 
 func main() {
-	// SIGTERM stops the supervisor and deliberately leaves the runners running,
-	// so updating this image never interrupts a build.
+	// SIGTERM stops the supervisor and deliberately leaves the runners running.
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
@@ -138,7 +138,7 @@ func run(ctx context.Context, args []string) error {
 // enrol offers this machine's key and waits until it is approved.
 //
 // It runs before any runner starts so the fingerprint is the first thing in the
-// log, rather than buried under N runners each reporting the same refusal.
+// log. It is not buried under N runners each reporting the same refusal.
 func (c *config) enrol(ctx context.Context, keyPath string, log *slog.Logger) error {
 	key, created, err := enrol.LoadOrCreateKey(keyPath)
 	if err != nil {
@@ -226,7 +226,7 @@ func envOr(key, def string) string {
 }
 
 // envInt and envDuration reject a value that is set but unparseable rather than
-// reverting to the default: a typo an operator cannot see is worse than a stop.
+// reverting to the default. A typo an operator cannot see is worse than a stop.
 func envInt(key string, def int) int {
 	v := os.Getenv(key)
 	if v == "" {

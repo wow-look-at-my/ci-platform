@@ -8,8 +8,7 @@ import { chip, relTime } from "../widgets.js";
 
 export function renderRunners(root: HTMLElement, registerTimer: (id: number) => void): void {
 	replace(root, spinner("Loading fleet"));
-	// The hosts section reloads on its own after an approval, so a poll of the
-	// fleet does not wipe out what the operator just did.
+	// The hosts section reloads on its own after an approval.
 	const hosts = el("section", { class: "panel hosts-panel" });
 	const reloadHosts = () => renderRunnerHosts(hosts, reloadHosts);
 

@@ -37,7 +37,7 @@ func TestNewCredentials_RequiresAURLAndAKey(t *testing.T) {
 	require.ErrorContains(t, err, "host key is required")
 }
 
-// The token is cached until it is close to expiring: re-signing on every call
+// The token is cached until it is close to expiring. Re-signing on every call
 // would put a round trip in front of every log flush.
 func TestToken_IsCachedAndRenewedBeforeItExpires(t *testing.T) {
 	var exchanges int
@@ -60,8 +60,6 @@ func TestToken_IsCachedAndRenewedBeforeItExpires(t *testing.T) {
 	assert.Equal(t, 1, exchanges, "a cached token was re-signed for nothing")
 	assert.Equal(t, []string{"linux"}, c.Labels())
 
-	// A control plane that discarded its signing key answers 401; dropping the
-	// cached token is what makes the next call recover.
 	c.Invalidate()
 	_, err := c.Token(context.Background())
 	require.NoError(t, err)
@@ -69,7 +67,7 @@ func TestToken_IsCachedAndRenewedBeforeItExpires(t *testing.T) {
 }
 
 // A token that expires mid-job would fail the log flush or the completion
-// report, which is the one moment a runner cannot afford to lose access.
+// report. This is the moment a runner cannot afford to lose access.
 func TestToken_RenewsWhenTheCachedOneIsNearlyDone(t *testing.T) {
 	var exchanges int
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
@@ -89,8 +87,8 @@ func TestToken_RenewsWhenTheCachedOneIsNearlyDone(t *testing.T) {
 	assert.Equal(t, 2, exchanges, "a token inside the renewal margin was reused")
 }
 
-// A host waiting to be approved is the normal state of a machine somebody just
-// set up, so it is a distinct error the caller waits out rather than a fault.
+// A host waiting to be approved is the normal state of a machine somebody set
+// up. It is a distinct error the caller waits out rather than a fault.
 func TestToken_ReportsNotApprovedDistinctly(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusForbidden)
@@ -124,7 +122,7 @@ func TestEnrol_SendsASignatureOverItsOwnFingerprint(t *testing.T) {
 	assert.NotEmpty(t, got.Nonce)
 }
 
-// An assignment carries the job's secrets, so a runner talking in the clear
+// An assignment carries the job's secrets. A runner talking in the clear
 // over a real network has to say so rather than leave it to be noticed.
 func TestPlaintextWarning(t *testing.T) {
 	assert.NotEmpty(t, PlaintextWarning("http://192.168.1.84:8080"))

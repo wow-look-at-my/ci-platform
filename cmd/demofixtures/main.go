@@ -4,7 +4,7 @@
 // The point is that the demo cannot drift from the product. It seeds a real
 // store through the real model, serves it with the real internal/api handlers,
 // and records the exact JSON those handlers return. A hand-written fixture file
-// would be a second, unchecked description of the API -- and a demo showing a
+// would be a second, unchecked description of the API. And a demo showing a
 // shape the server does not produce is precisely the kind of quiet lie this
 // platform exists to refuse.
 //
@@ -87,7 +87,7 @@ func run(args []string, out io.Writer) error {
 }
 
 // seeded is a demo dataset on disk, laid out the way the control plane reads
-// it: CIPLATFORM_DATABASE_URL=DIR/ciplatform.db, CIPLATFORM_BLOB_ROOT=DIR/blobs.
+// it.
 type seeded struct {
 	st    *sqlite.Store
 	blobs *disk.Store
@@ -165,8 +165,7 @@ func capture() (map[string]json.RawMessage, error) {
 	srv := api.New(api.Config{
 		Store: s.st, Logs: s.logs, Controller: refusingController{},
 		Blobs: blobOpener{s.blobs},
-		// A fixed clock keeps "3m ago" style output stable, so recapturing an
-		// unchanged seed produces an unchanged file.
+		// A fixed clock keeps "3m ago" style output stable, so recapturing an unchanged seed produces an unchanged file.
 		Now: func() time.Time { return demoseed.Now },
 	})
 	ts := httptest.NewServer(srv.Handler())
@@ -204,10 +203,7 @@ func get(url string) (json.RawMessage, error) {
 	return json.Marshal(v)
 }
 
-// refusingController satisfies the API's collaborator check without pretending
-// the demo can act. Nothing calls it: the demo's own client answers cancel and
-// re-run without a request. It exists so /healthz does not report a missing
-// scheduler in a snapshot where that would be misleading noise.
+// refusingController satisfies the API's collaborator check without pretending the demo can act.
 type refusingController struct{}
 
 func (refusingController) Cancel(context.Context, int64, model.CancelReason) error { return errDemo }

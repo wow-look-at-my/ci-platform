@@ -1,18 +1,14 @@
 // Package jobtoken mints and verifies the per-job bearer token the runner
-// injects as ACTIONS_RUNTIME_TOKEN.
-//
-// The token is a real JWT because the toolkit reads it as one: @actions/artifact
-// base64-decodes ACTIONS_RUNTIME_TOKEN and requires an "scp" claim containing
+// injects as ACTIONS_RUNTIME_TOKEN. The token is a real JWT because the toolkit
+// reads it as one: @actions/artifact base64-decodes ACTIONS_RUNTIME_TOKEN. It
+// requires an "scp" claim containing
 // "Actions.Results:<workflowRunBackendId>:<workflowJobRunBackendId>", splitting
-// on ":" into exactly three parts, before it makes a single request. A token
-// without that claim fails the action client-side with a message that names
-// nothing useful.
-//
-// The two backend IDs are UUIDv5 values derived from the run and job IDs, so
-// the service can map them back without a lookup table and can prove that a
-// request's IDs belong to the token that carried them.
-//
-// The token grants exactly the scopes it names, never repository write access.
+// on ":" into parts, before it makes a single request. A token without that
+// claim fails the action client-side with a message that names nothing useful.
+// Both backend IDs are UUIDv5 values derived from the run and job IDs. The
+// service can map them back without a lookup table and can prove that a
+// request's IDs belong to the token that carried them. The token grants exactly
+// the scopes it names, never repository write access.
 package jobtoken
 
 import (
@@ -66,8 +62,7 @@ var DefaultScopes = []Scope{
 // ActionsResultsScopePrefix is the scope entry @actions/artifact looks for.
 const ActionsResultsScopePrefix = "Actions.Results"
 
-// backendIDNamespace derives stable UUIDv5 backend IDs. It is a constant so
-// the same run always produces the same ID across control-plane restarts.
+// backendIDNamespace derives stable UUIDv5 backend IDs.
 var backendIDNamespace = uuid.MustParse("6b2f4a1e-6c1f-5a0c-9d3b-2f0a7c4e51d8")
 
 // BackendRunID is the workflowRunBackendId for a run.
@@ -75,8 +70,8 @@ func BackendRunID(runID int64) string {
 	return uuid.NewSHA1(backendIDNamespace, []byte("run:"+strconv.FormatInt(runID, 10))).String()
 }
 
-// BackendJobID is the workflowJobRunBackendId for one job attempt. The attempt
-// is part of it: a re-run must not be able to write the previous attempt's
+// BackendJobID is the workflowJobRunBackendId for one job attempt. The
+// attempt is part of it: a re-run must not be able to write the attempt's
 // artifacts.
 func BackendJobID(jobID int64, attempt int) string {
 	return uuid.NewSHA1(backendIDNamespace,
@@ -93,8 +88,7 @@ type Claims struct {
 	// Ref is the job's git ref, carried so cache ref-scoping needs no lookup.
 	Ref    string  `json:"ref,omitempty"`
 	Scopes []Scope `json:"scopes"`
-	// Scp is the Actions-compatible space-separated scope string. The toolkit
-	// reads this and nothing else in this struct.
+	// Scp is the Actions-compatible space-separated scope string. The toolkit reads this and nothing else in this struct.
 	Scp string `json:"scp"`
 
 	jwt.RegisteredClaims
@@ -133,18 +127,16 @@ type Job struct {
 	ExpiresAt time.Time
 }
 
-// Lookup resolves the job a Mint call names. The scheduler owns this data; the
-// token package refuses to guess it.
+// Lookup resolves the job a Mint call names. The scheduler owns this data; the token package refuses to guess it.
 type Lookup func(runID, jobID int64, attempt int) (Job, error)
 
 // Options configures a Signer.
 type Options struct {
-	// Key is the HMAC key; at least 32 bytes.
+	// Key is the HMAC key; many bytes.
 	Key []byte
 	// Issuer is this control plane's URL, recorded as the "iss" claim.
 	Issuer string
-	// Grace extends a token past the job's deadline so an upload in flight when
-	// the job ends still lands.
+	// Grace extends a token past the job's deadline so an upload in flight when the job ends still lands.
 	Grace  time.Duration
 	Lookup Lookup
 	Now    func() time.Time
@@ -159,8 +151,7 @@ type Signer struct {
 	now    func() time.Time
 }
 
-// MinKeyLen is the shortest HMAC key accepted. A shorter key is a
-// configuration error, not something to pad.
+// MinKeyLen is the shortest HMAC key accepted. A shorter key is a configuration error, not something to pad.
 const MinKeyLen = 32
 
 // New validates o and returns a Signer.
@@ -233,8 +224,8 @@ func (s *Signer) MintJob(j Job) (string, error) {
 }
 
 // Mint matches scheduler.Options.MintJobToken. It resolves the job through the
-// configured Lookup; without one there is nothing to put in the token, and
-// that is a wiring error rather than a token with invented contents.
+// configured Lookup. Without one there is nothing to put in the token. That is
+// a wiring error rather than a token with invented contents.
 func (s *Signer) Mint(runID, jobID int64, attempt int) (string, error) {
 	if s.lookup == nil {
 		return "", errors.New("jobtoken: no Lookup configured, so Mint cannot resolve the job's repository and scopes")
@@ -250,8 +241,7 @@ func (s *Signer) Mint(runID, jobID int64, attempt int) (string, error) {
 	return s.MintJob(j)
 }
 
-// ErrUnauthorized is the class of every verification failure. The wrapped
-// error always names the specific reason.
+// ErrUnauthorized is the class of every verification failure. The wrapped error always names the specific reason.
 var ErrUnauthorized = errors.New("jobtoken: unauthorized")
 
 // Verify parses and checks a token, returning the reason on failure.
@@ -368,7 +358,7 @@ func (v *Verifier) Middleware(next http.Handler) http.Handler {
 }
 
 // Check verifies a request without wrapping a handler, for services that need
-// the claims before routing. It returns an empty reason on success.
+// the claims before routing.
 func (v *Verifier) Check(r *http.Request) (claims *Claims, status int, reason string) {
 	return v.check(r)
 }
@@ -400,21 +390,13 @@ const (
 	ParamExpires   = "exp"
 	ParamSignature = "sig"
 	// ParamSignedParams names the query parameters the signature covers.
-	//
-	// The signature deliberately does not cover the whole query: the Azure
-	// Storage SDK appends comp=block, blockid=, and comp=blocklist to the
-	// upload URL after it is handed over, and covering those would make every
-	// block upload fail its own signature. Only the path, the expiry, and the
-	// parameters present at signing time are covered, which is how a real SAS
-	// behaves. Anything a caller must not be able to change belongs in the
-	// path or in a parameter set before signing.
 	ParamSignedParams = "sp"
 )
 
 // SignURL appends an expiry and signature to a URL, for handing to a client
 // that cannot send an Authorization header. actions/cache downloads its
 // archive with an unauthenticated HTTP client, and @actions/artifact fetches
-// its signed download URL the same way, so those URLs must carry their own
+// its signed download URL the same way. Those URLs must carry their own
 // proof.
 func (s *Signer) SignURL(raw string, ttl time.Duration) (string, error) {
 	if ttl <= 0 {
@@ -459,8 +441,7 @@ func (s *Signer) VerifyURL(u *url.URL) error {
 	if s.now().After(time.Unix(exp, 0)) {
 		return fmt.Errorf("%w: url signature expired at %s", ErrUnauthorized, time.Unix(exp, 0).UTC().Format(time.RFC3339))
 	}
-	// Only the covered parameters are fed back in; anything the client
-	// appended afterwards is outside the signature by design.
+	// Only the covered parameters are fed back in.
 	covered := url.Values{ParamExpires: {expRaw}}
 	if names := q.Get(ParamSignedParams); names != "" {
 		covered.Set(ParamSignedParams, names)
