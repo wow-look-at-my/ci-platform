@@ -11,6 +11,8 @@
 # It needs the docker socket, because managing containers is its whole job.
 FROM alpine:3.21 AS build
 ADD --chmod=755 "https://dl.pazer.build/go-toolchain?os=linux&arch=amd64" /usr/local/bin/go-toolchain
+# The binary is the go command when it is named go; go-toolchain has no "go" subcommand of its own.
+RUN ln -s /usr/local/bin/go-toolchain /usr/local/bin/go
 # Docker mounts /dev/shm noexec, so an APE unpacks its loader into /tmp.
 ENV GO_TOOLCHAIN_LINKED_GO=1 APE_LOADERDIR=/tmp
 WORKDIR /src
@@ -18,14 +20,14 @@ WORKDIR /src
 RUN --mount=type=cache,target=/root/go/pkg/mod \
 	--mount=type=bind,source=go.mod,target=go.mod \
 	--mount=type=bind,source=go.sum,target=go.sum \
-	go-toolchain go mod download
+	go mod download
 
 COPY . .
 
 ARG VERSION=dev
 RUN --mount=type=cache,target=/root/go/pkg/mod \
 	--mount=type=cache,target=/root/.cache/go-build \
-	go-toolchain go build -trimpath \
+	go build -trimpath \
 	-ldflags "-s -w -X main.version=${VERSION}" \
 	-o /out/runner-host ./cmd/runner-host
 
