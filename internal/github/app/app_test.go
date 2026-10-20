@@ -235,8 +235,7 @@ func TestInstallationTokenIsConcurrencySafe(t *testing.T) {
 	for _, tok := range toks {
 		assert.NotEmpty(t, tok)
 	}
-	// Racing callers may each mint, but every one must be cached and valid; a
-	// later call must not mint again.
+	// Racing callers may each mint, but every one must be cached and valid; a later call must not mint again.
 	before := calls.Load()
 	_, _, err := a.InstallationToken(context.Background(), 1)
 	require.NoError(t, err)

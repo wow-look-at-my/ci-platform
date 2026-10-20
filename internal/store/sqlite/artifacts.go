@@ -133,9 +133,7 @@ func (s *Store) queryArtifacts(ctx context.Context, op, q string, args ...any) (
 // ArtifactUsage totals a repository's finalized artifact bytes.
 func (s *Store) ArtifactUsage(ctx context.Context, repoID int64) (int64, error) {
 	var total int64
-	err := s.db.QueryRowContext(ctx, `SELECT COALESCE(SUM(a.size_bytes), 0) FROM artifacts a
-JOIN runs r ON r.id = a.run_id
-WHERE r.repo_id = ? AND a.finalized = 1`, repoID).Scan(&total)
+	err := s.db.QueryRowContext(ctx, artifactUsageQuery, repoID).Scan(&total)
 	if err != nil {
 		return 0, mapErr("sqlite: ArtifactUsage", err)
 	}

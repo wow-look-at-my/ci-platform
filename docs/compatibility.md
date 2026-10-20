@@ -1,13 +1,8 @@
 # GitHub Actions compatibility matrix
 
-Three states, and only three. **Supported** means implemented and tested.
-**Unsupported** means the run *fails* with `unsupported: <path> <feature>`, at
-parse time, naming the YAML path and line. There is no fourth state where a key
-you wrote is quietly ignored.
+States, and only three. **Supported** means implemented and tested. **Unsupported** means the run *fails* with `unsupported: <path> <feature>`, at parse time, naming the YAML path and line. There is no fourth state where a key you wrote is quietly ignored.
 
-The key allow-lists are derived from GitHub's own workflow schema
-(`workflow-v1.0.json` in `actions/runner`) rather than from memory, so a key
-that exists in Actions and not in this table is a bug in this table.
+The key allow-lists are derived from GitHub's own workflow schema (`workflow-v1.0.json` in `actions/runner`) rather than from memory. A key that exists in Actions and not in this table is a bug in this table.
 
 ## Workflow level
 
@@ -43,11 +38,7 @@ that exists in Actions and not in this table is a bug in this table.
 | `environment` | **Unsupported** |
 | `uses` (reusable workflow call), `with`, `secrets` | **Unsupported** |
 
-`permissions` accepts the full scope set from the schema — `actions`,
-`artifact-metadata`, `attestations`, `checks`, `contents`, `deployments`,
-`discussions`, `id-token`, `issues`, `models`, `packages`, `pages`,
-`pull-requests`, `repository-projects`, `security-events`, `statuses`,
-`vulnerability-alerts` — at `read`, `write`, or `none`.
+`permissions` accepts the full scope set from the schema. This is `actions`, `artifact-metadata`, `attestations`, `checks`, `contents`, `deployments`, `discussions`, `id-token`, `issues`, `models`, `packages`, `pages`, `pull-requests`, `repository-projects`, `security-events`, `statuses`, `vulnerability-alerts` — at `read`, `write`, or `none`.
 
 ## Step level
 
@@ -69,32 +60,19 @@ that exists in Actions and not in this table is a bug in this table.
 | Composite actions, `using: composite`, nested `uses:` | Supported |
 | `docker://image` and `using: docker` | **Unsupported** |
 
-An action ref that cannot be resolved is a **config** failure naming the ref —
-never a retry, because retrying cannot fix a ref that does not exist.
+An action ref that cannot be resolved is a **config** failure naming the ref — never a retry. This is because retrying cannot fix a ref that does not exist.
 
 ## Expressions
 
-Supported: all contexts (`github`, `env`, `vars`, `secrets`, `job`, `jobs`,
-`steps`, `runner`, `needs`, `strategy`, `matrix`, `inputs`); the full operator
-set with GitHub's own loose-equality and truthiness rules, including
-case-insensitive string comparison and `&&`/`||` returning operands rather than
-booleans; object filters (`a.*.b`); and the functions `contains`, `startsWith`,
-`endsWith`, `format`, `join`, `toJSON`, `fromJSON`, `hashFiles`, `success`,
-`failure`, `always`, `cancelled`.
+Supported: all contexts (`github`, `env`, `vars`, `secrets`, `job`, `jobs`, `steps`, `runner`, `needs`, `strategy`, `matrix`, `inputs`). This also covers the full operator set with GitHub's own loose-equality and truthiness rules. That operator includes case-insensitive string comparison and `&&`/`||` returning operands rather than booleans. This also covers object filters (`a.*.b`). This also covers the functions `contains`, `startsWith`, `endsWith`, `format`, `join`, `toJSON`, `fromJSON`, `hashFiles`, `success`, `failure`, `always`, `cancelled`.
 
-An unknown named-value or function is a **config error**, never a silent null.
+An unknown named-value or function is a **config error**, not a silent null.
 
-The evaluator is validated against 244 cases ported from two independent
-implementations (`nektos/act` and `rhysd/actionlint`). Where those disagree,
-GitHub's own runner settles it.
+The evaluator is validated against multiple cases ported from multiple independent implementations (`nektos/act` and `rhysd/actionlint`). Where those disagree, GitHub's own runner settles it.
 
 ## Workflow commands and files
 
-Supported: `::error::`, `::warning::`, `::notice::` (with `file`/`line`/`col`/
-`title`, mapped to check-run annotations on the PR diff), `::group::`/
-`::endgroup::`, `::add-mask::`, the `::stop-commands::<token>` pause protocol,
-and `$GITHUB_OUTPUT`, `$GITHUB_ENV`, `$GITHUB_PATH`, `$GITHUB_STEP_SUMMARY`,
-`$GITHUB_STATE` including the heredoc form.
+Supported: `::error::`, `::warning::`, `::notice::` (with `file`/`line`/`col`/ `title`, mapped to check-run annotations on the PR diff), `::group::`/ `::endgroup::`, `::add-mask::`, the `::stop-commands::<token>` pause protocol, and `$GITHUB_OUTPUT`, `$GITHUB_ENV`, `$GITHUB_PATH`, `$GITHUB_STEP_SUMMARY`, `$GITHUB_STATE` including the heredoc form.
 
 `::set-output::` and `::save-state::` work and emit a deprecation warning.
 
@@ -121,34 +99,18 @@ retry:
   jitter: true
 ```
 
-Absent, the default applies: infra failures retry three times with exponential
-backoff, user failures never retry, and config errors never retry because
-retrying cannot help.
+Absent, the default applies: infra failures retry a few times with exponential backoff, user failures never retry, and config errors never retry. This is because retrying cannot help.
 
 ## This platform can run its own CI
 
-Our own `.github/workflows/ci.yml` uses nothing this platform does not
-implement. It stopped needing service containers when the store moved to SQLite:
-the tests bring their own database, so no job declares a `services:` block.
+Our own `.github/workflows/ci.yml` uses nothing this platform does not implement. It stopped needing service containers when the store moved to SQLite: the tests bring their own database, so no job declares a `services:` block.
 
-`test/conformance` keeps it that way — it parses our workflow and fails if any
-job uses an unimplemented key, so the day someone adds one is the day CI says
-so, rather than the day somebody notices we do not eat our own cooking.
+`test/conformance` keeps it that way — it parses our workflow and fails if any job uses an unimplemented key. The day someone adds one is the day CI says so, rather than the day somebody notices we do not eat our own cooking.
 
-Service containers themselves are still unsupported, and still Phase 2; a
-workflow that declares one is refused by name.
+Service containers themselves are still unsupported, and still Phase 2. Name refuses a workflow that declares one.
 
 ## Known behavioural differences
 
-Beyond the unsupported list, the deliberate differences — the `infra_failure`
-conclusion, the markdown step table, coalesced check-run updates, one fresh
-Docker-in-Docker sandbox per job, and the constraints the official artifact
-client imposes on any non-github.com server — are each written up in
-[docs/deviations.md](deviations.md).
+Beyond the unsupported list, the deliberate differences. The `infra_failure` conclusion, the markdown step table, coalesced check-run updates, one fresh Docker-in-Docker sandbox per job. The constraints the official artifact client imposes on any non-github.com server — are each written up in [docs/deviations.md](deviations.md).
 
-One worth stating here because it looks like a contradiction: on the **legacy
-commit-status API** a skipped job's own context reports `success`, because that
-API has only `error`/`failure`/`pending`/`success` and GitHub itself treats a
-skipped required check as satisfied. The **aggregate** never does this: a run
-whose jobs were all skipped concludes `skipped`, and a mix of success and
-skipped concludes `neutral`. Zero units of work never conclude success.
+One worth stating here because it looks like a contradiction: on the **legacy commit-status API** a skipped job's own context reports `success`. This is because that API has only `error`/`failure`/`pending`/`success` and GitHub itself treats a skipped required check as satisfied. The **aggregate** never does this: a run whose jobs were all skipped concludes `skipped`, and a mix of success and skipped concludes `neutral`. Zero units of work never conclude success.

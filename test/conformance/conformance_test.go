@@ -1,15 +1,15 @@
 // Package conformance checks this platform's reading of a workflow against
 // GitHub Actions.
 //
-// What it can do here: parse a corpus of real workflow files and assert that
-// every one is either fully supported or explicitly refused, and that the
+// What it can do here. It parse a corpus of real workflow files. It assert
+// that every one is either fully supported or explicitly refused, and that the
 // resulting job names match GHA byte-for-byte. What it cannot do here is run
-// the same workflow on GitHub and diff the outcomes, because that needs a
-// GitHub repository and a billable runner. That half is a fixture format: a
-// recorded GHA outcome goes in testdata/gha/, and the suite diffs against it.
-// Files with no recording are reported as UNVERIFIED rather than counted as
-// passing, because a conformance suite that scores unrun cases as green is the
-// deceptive-green failure this platform exists to avoid.
+// the same workflow on GitHub and diff the outcomes. This is because that
+// needs a GitHub repository and a billable runner. That half is a fixture
+// format: a recorded GHA outcome goes in testdata/gha/, and the suite diffs
+// against it. Files with no recording are reported as UNVERIFIED rather than
+// counted as passing. This is because a conformance suite that scores unrun
+// cases as green is the deceptive-green failure this platform exists to avoid.
 package conformance
 
 import (
@@ -35,8 +35,7 @@ type Outcome struct {
 	// Supported is false when the run would be refused with "unsupported: X".
 	Supported   bool     `json:"supported"`
 	Unsupported []string `json:"unsupported,omitempty"`
-	// JobNames are the check-run names, which existing branch protection
-	// matches on. A change here breaks somebody's merge queue.
+	// JobNames are the check-run names, which existing branch protection matches on.
 	JobNames []string `json:"job_names,omitempty"`
 	// ParseError is set when the file could not be read at all.
 	ParseError string `json:"parse_error,omitempty"`
@@ -157,7 +156,8 @@ func TestEveryCorpusWorkflowIsSupportedOrExplicitlyRefused(t *testing.T) {
 // It stopped needing service containers when the store moved to SQLite: the
 // tests now bring their own database, so no job declares a `services:` block.
 // Adding any key this platform does not implement to our own workflow fails
-// here, which is the difference between eating our own cooking and claiming to.
+// here. This platform also does not implement to which is the difference
+// between eating our own cooking and claiming to.
 func TestThisRepositoryOwnWorkflowIsFullySupported(t *testing.T) {
 	src, err := os.ReadFile("../../.github/workflows/ci.yml")
 	require.NoError(t, err)
@@ -170,24 +170,10 @@ func TestThisRepositoryOwnWorkflowIsFullySupported(t *testing.T) {
 	assert.Contains(t, got.JobNames, "e2e")
 }
 
-// The parts of our own CI that do not use Phase 2 features plan correctly, so
-// the gap is service containers specifically and not something broader.
+// The parts of our own CI that do not use the features of a later phase plan
+// correctly. The gap is service containers specifically and not something broader.
 func TestOurOwnTestJobPlansCorrectly(t *testing.T) {
-	got := analyse("ci.yml", []byte(`name: CI
-on:
-  push:
-permissions:
-  id-token: write
-  contents: write
-  actions: read
-  checks: read
-jobs:
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: wow-look-at-my/go-toolchain@v1
-`))
+	got := analyse("ci.yml", []byte(fx("conformance_176.yml")))
 	require.Empty(t, got.ParseError)
 	require.True(t, got.Supported, "%v", got.Unsupported)
 	assert.Equal(t, []string{"test"}, got.JobNames)
@@ -204,58 +190,23 @@ func TestJobNamesMatchGitHub(t *testing.T) {
 	}{
 		{
 			name: "unmatrixed job uses its key",
-			src: `on: push
-jobs:
-  build:
-    runs-on: x
-    steps: [{run: y}]
-`,
+			src:  fx("conformance_207.yml"),
 			want: []string{"build"},
 		},
 		{
 			name: "matrix legs carry their values in declaration order",
-			src: `on: push
-jobs:
-  test:
-    runs-on: x
-    strategy:
-      matrix:
-        os: [linux, macos]
-        go: ["1.24"]
-    steps: [{run: y}]
-`,
+			src:  fx("conformance_217.yml"),
 			want: []string{"test (linux, 1.24)", "test (macos, 1.24)"},
 		},
 		{
-			// The shape the operator called out: an include-only key
-			// contributes a segment, in file order.
+			// The shape the operator called out: an include-only key contributes a segment, in file order.
 			name: "include-only keys contribute a segment",
-			src: `on: push
-jobs:
-  publish:
-    runs-on: x
-    strategy:
-      matrix:
-        image: [claude-host/agent-host]
-        include:
-          - image: claude-host/agent-host
-            dockerfile: Dockerfile
-    steps: [{run: y}]
-`,
+			src:  fx("conformance_232.yml"),
 			want: []string{"publish (claude-host/agent-host)"},
 		},
 		{
 			name: "an explicit name is used as-is with no suffix appended",
-			src: `on: push
-jobs:
-  build:
-    name: Build the thing
-    runs-on: x
-    strategy:
-      matrix:
-        os: [linux, macos]
-    steps: [{run: y}]
-`,
+			src:  fx("conformance_248.yml"),
 			want: []string{"Build the thing", "Build the thing"},
 		},
 	}

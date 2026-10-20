@@ -62,9 +62,9 @@ func (c *controlPlane) operatorPost(t *testing.T, path string, body any) (int, [
 	return resp.StatusCode, buf.Bytes()
 }
 
-// The runner story end to end, against the shipped binary: a machine generates
-// a key, enrols, is refused, is approved by an operator, and only then can take
-// work. Every step here is one an operator actually performs.
+// The runner story end to end, against the shipped binary. A machine
+// generates a key, enrols, is refused, is approved by an operator, and only
+// then can take work. Every step here is one an operator performs.
 func TestRunnerHostIsInertUntilAnOperatorApprovesIt(t *testing.T) {
 	t.Parallel()
 	cp := start(t, map[string]string{".github/workflows/ci.yml": ciWorkflow})
@@ -80,8 +80,7 @@ func TestRunnerHostIsInertUntilAnOperatorApprovesIt(t *testing.T) {
 		return at.Unix(), nonce, enrol.Sign(key, purpose, fingerprint, at, nonce)
 	}
 
-	// 1. Enrol. Nothing secret crosses the wire: only the public half and a
-	//    signature proving this machine holds the other one.
+	// 1. Enrol.
 	ts, nonce, sig := signed(enrol.PurposeEnrol)
 	code, body := cp.post(t, protocol.PathEnrol, protocol.EnrolRequest{
 		APIVersion: protocol.APIVersion, PublicKey: enrol.EncodePublicKey(pub),
@@ -129,8 +128,7 @@ func TestRunnerHostIsInertUntilAnOperatorApprovesIt(t *testing.T) {
 	require.Equal(t, http.StatusOK, code, string(body))
 	assert.Contains(t, string(body), `"approved_by":"PazerOP"`, "approval records who granted it")
 
-	// 5. Now the same signature exchange works, and the token it returns opens
-	//    the runner surface.
+	// 5. Now the same signature exchange works, and the token it returns opens the runner surface.
 	ts, nonce, sig = signed(enrol.PurposeSession)
 	code, body = cp.post(t, protocol.PathSession, protocol.SessionRequest{
 		APIVersion: protocol.APIVersion, Fingerprint: fingerprint, RunnerID: "runner-1",
@@ -160,7 +158,7 @@ func TestRunnerHostIsInertUntilAnOperatorApprovesIt(t *testing.T) {
 }
 
 // A stranger who reaches the control plane can enrol a key -- that route cannot
-// require a credential -- and it has to be worth nothing to them.
+// require a credential. It has to be worth nothing to them.
 func TestEnrolFromAnybodyGrantsNothing(t *testing.T) {
 	t.Parallel()
 	cp := start(t, map[string]string{".github/workflows/ci.yml": ciWorkflow})

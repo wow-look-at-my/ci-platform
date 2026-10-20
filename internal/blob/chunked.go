@@ -11,14 +11,8 @@ import (
 	"sync"
 )
 
-// ChunkedUpload assembles the ranged PUT/PATCH chunks that actions/upload-artifact
+// ChunkedUpload assembles the ranged PUT/PATCH chunks actions/upload-artifact
 // and actions/cache send into one blob.
-//
-// It writes through PutAt when the driver supports it and stages each chunk as
-// its own blob otherwise; Staged reports which happened so the caller can log
-// it. Either way Commit refuses to produce an object unless the ranges it was
-// given cover [0, size) exactly once: a gap or an overlap is a corrupt upload,
-// not something to paper over.
 type ChunkedUpload struct {
 	store Store
 	key   string
@@ -45,12 +39,8 @@ func NewChunkedUpload(s Store, key string) (*ChunkedUpload, error) {
 	return &ChunkedUpload{store: s, key: key}, nil
 }
 
-// LimitBytes caps the bytes this upload will accept, counted as they land.
-// Zero, the default, is no cap.
-//
-// A cap checked only against a client-declared size is advisory: the size in
-// the request and the bytes in the body are separate claims, and only one of
-// them fills the disk.
+// LimitBytes caps the bytes this upload will accept, counted as they land;
+// zero (default) is no cap.
 func (u *ChunkedUpload) LimitBytes(max int64) {
 	u.mu.Lock()
 	defer u.mu.Unlock()
@@ -65,10 +55,8 @@ func (u *ChunkedUpload) Staged() bool {
 	return u.staged
 }
 
-// partKey names a staged chunk. Parts live in their own namespace keyed by the
-// hash of the destination: staging under the destination key itself would make
-// the final object's path a directory, and the assembled write would then have
-// nowhere to land.
+// partKey names a staged chunk, in its own namespace keyed by a hash of the
+// destination key.
 func (u *ChunkedUpload) partKey(off int64) string {
 	sum := sha256.Sum256([]byte(u.key))
 	return fmt.Sprintf("_parts/%s/%020d", hex.EncodeToString(sum[:]), off)
@@ -84,8 +72,8 @@ func (u *ChunkedUpload) WriteRange(ctx context.Context, off int64, r io.Reader) 
 	if u.done {
 		return fmt.Errorf("blob: upload %s already committed", u.key)
 	}
-	// One byte past the budget is enough to prove the limit was exceeded, and
-	// stops a driver from storing the rest of an unbounded body first.
+	// One byte past the budget is enough to prove the limit was exceeded.
+	// Stops a driver from storing the rest of an unbounded body first.
 	if u.max > 0 {
 		r = io.LimitReader(r, max(u.max-u.written, 0)+1)
 	}
@@ -99,8 +87,7 @@ func (u *ChunkedUpload) WriteRange(ctx context.Context, off int64, r io.Reader) 
 		if !errors.Is(err, ErrUnsupported) {
 			return fmt.Errorf("blob: write chunk at %d of %s: %w", off, u.key, err)
 		}
-		// The driver cannot write at an offset. Every chunk, including this
-		// one, is staged as its own blob and concatenated by Commit.
+		// The driver cannot write at an offset; every chunk is staged as its own blob and concatenated by Commit.
 		u.staged = true
 	}
 
@@ -150,7 +137,6 @@ func (u *ChunkedUpload) coverage() (int64, error) {
 }
 
 // Commit finishes the upload and returns the assembled size and hex sha256.
-// An expected size of -1 skips the size check.
 func (u *ChunkedUpload) Commit(ctx context.Context, expectedSize int64) (int64, string, error) {
 	u.mu.Lock()
 	defer u.mu.Unlock()
@@ -233,19 +219,14 @@ func (u *ChunkedUpload) Abort(ctx context.Context) error {
 	return errors.Join(errs...)
 }
 
-// deleteParts removes staged chunks after a successful assembly. A part that
-// will not delete is a storage leak, so it is reported through the returned
-// error of Commit's caller only when it is the sole failure; here the object
-// already exists, so the error is attached to the upload's own record.
+// deleteParts removes staged chunks after a successful assembly; a part that will not delete is a storage leak.
 func (u *ChunkedUpload) deleteParts(ctx context.Context, keys []string) {
 	for _, k := range keys {
 		_ = u.store.Delete(ctx, k)
 	}
 }
 
-// Concat streams the named objects back to back, opening each only when the
-// reader reaches it, so assembling an artifact never buffers it in memory. A
-// missing object is an error, never a silently short read.
+// Concat streams the named objects back to back, opening each only when the reader reaches it.
 func Concat(ctx context.Context, s Store, keys []string) io.ReadCloser {
 	return &partsReader{ctx: ctx, store: s, keys: keys}
 }

@@ -29,12 +29,17 @@ func workflow(jobs ...*model.JobIR) *model.Workflow {
 	return w
 }
 
-func build(t *testing.T, w *model.Workflow, canned map[string]any) *Plan {
+// build plans w with a github context plus any extra contexts.
+func build(t *testing.T, w *model.Workflow, extra map[string]any) *Plan {
 	t.Helper()
+	contexts := map[string]any{"github": map[string]any{"ref": "refs/heads/main"}}
+	for k, v := range extra {
+		contexts[k] = v
+	}
 	p, err := Build(w, Input{
 		Run:      &model.Run{ID: 1},
-		Contexts: map[string]any{"github": map[string]any{"ref": "refs/heads/main"}},
-		NewEval:  newFakeFactory(canned),
+		Contexts: contexts,
+		NewEval:  realFactory,
 	})
 	require.Nil(t, err)
 
@@ -150,18 +155,18 @@ func TestCycleIsRejected(t *testing.T) {
 		job("a", func(j *model.JobIR) { j.Needs = []string{"b"} }),
 		job("b", func(j *model.JobIR) { j.Needs = []string{"a"} }),
 	)
-	_, err := Build(w, Input{Run: &model.Run{}, NewEval: newFakeFactory(nil)})
+	_, err := Build(w, Input{Run: &model.Run{}, NewEval: realFactory})
 	require.False(t, err == nil || !strings.Contains(err.Error(), "cycle"))
 
 }
 
 func TestSelfNeedAndUnknownNeedAreRejected(t *testing.T) {
 	_, err := Build(workflow(job("a", func(j *model.JobIR) { j.Needs = []string{"a"} })),
-		Input{Run: &model.Run{}, NewEval: newFakeFactory(nil)})
+		Input{Run: &model.Run{}, NewEval: realFactory})
 	require.False(t, err == nil || !strings.Contains(err.Error(), "needs itself"))
 
 	_, err = Build(workflow(job("a", func(j *model.JobIR) { j.Needs = []string{"ghost"} })),
-		Input{Run: &model.Run{}, NewEval: newFakeFactory(nil)})
+		Input{Run: &model.Run{}, NewEval: realFactory})
 	require.False(t, err == nil || !strings.Contains(err.Error(), "does not define"))
 
 }
@@ -169,7 +174,7 @@ func TestSelfNeedAndUnknownNeedAreRejected(t *testing.T) {
 func TestJobOrderMustCoverEveryJob(t *testing.T) {
 	w := workflow(job("a"), job("b"))
 	w.JobOrder = []string{"a"}
-	_, err := Build(w, Input{Run: &model.Run{}, NewEval: newFakeFactory(nil)})
+	_, err := Build(w, Input{Run: &model.Run{}, NewEval: realFactory})
 	require.False(t, err == nil || !strings.Contains(err.Error(), "job order"))
 
 }
@@ -189,7 +194,7 @@ func TestRetryPolicyResolution(t *testing.T) {
 func TestZeroAttemptRetryPolicyIsRejected(t *testing.T) {
 	bad := model.RetryPolicy{Attempts: 0}
 	_, err := Build(workflow(job("a", func(j *model.JobIR) { j.Retry = &bad })),
-		Input{Run: &model.Run{}, NewEval: newFakeFactory(nil)})
+		Input{Run: &model.Run{}, NewEval: realFactory})
 	require.False(t, err == nil || !strings.Contains(err.Error(), "attempts"))
 
 }
@@ -219,7 +224,7 @@ func TestMaxParallelAndConcurrencyAreEvaluated(t *testing.T) {
 			Group:            model.NewExpr("deploy-${{ github.ref }}"),
 			CancelInProgress: model.NewExpr("true"),
 		}
-	})), map[string]any{"vars.parallel": 2})
+	})), map[string]any{"vars": map[string]any{"parallel": 2}})
 	require.Equal(t, 2, p.Jobs[0].MaxParallel)
 
 	require.False(t, p.Jobs[0].ConcurrencyGroup != "deploy-refs/heads/main" || !p.Jobs[0].CancelInProgress)
@@ -239,7 +244,7 @@ func TestWorkflowConcurrencyIsResolved(t *testing.T) {
 
 func TestRunsOnMustSelectSomething(t *testing.T) {
 	w := workflow(job("a", func(j *model.JobIR) { j.RunsOn = model.RunsOn{} }))
-	_, err := Build(w, Input{Run: &model.Run{}, NewEval: newFakeFactory(nil)})
+	_, err := Build(w, Input{Run: &model.Run{}, NewEval: realFactory})
 	require.False(t, err == nil || !strings.Contains(err.Error(), "runs-on"))
 
 }
@@ -265,7 +270,7 @@ func TestContinueOnErrorTimeoutAndEnvironment(t *testing.T) {
 
 func TestBadBooleanIsAnErrorNotADefault(t *testing.T) {
 	w := workflow(job("a", func(j *model.JobIR) { j.ContinueOnError = model.NewExpr("ture") }))
-	_, err := Build(w, Input{Run: &model.Run{}, NewEval: newFakeFactory(nil)})
+	_, err := Build(w, Input{Run: &model.Run{}, NewEval: realFactory})
 	require.False(t, err == nil || !strings.Contains(err.Error(), "true or false"))
 
 }
@@ -276,8 +281,8 @@ func TestBuildRejectsMissingInputs(t *testing.T) {
 		w    *model.Workflow
 		in   Input
 	}{
-		{"no workflow", nil, Input{Run: &model.Run{}, NewEval: newFakeFactory(nil)}},
-		{"no run", workflow(), Input{NewEval: newFakeFactory(nil)}},
+		{"no workflow", nil, Input{Run: &model.Run{}, NewEval: realFactory}},
+		{"no run", workflow(), Input{NewEval: realFactory}},
 		{"no evaluator", workflow(), Input{Run: &model.Run{}}},
 	} {
 		_, err := Build(tc.w, tc.in)
@@ -294,7 +299,7 @@ func TestFullyExcludedMatrixIsAnError(t *testing.T) {
 			Exclude:    []map[string]any{{"os": "ubuntu"}},
 		}}
 	}))
-	_, err := Build(w, Input{Run: &model.Run{}, NewEval: newFakeFactory(nil)})
+	_, err := Build(w, Input{Run: &model.Run{}, NewEval: realFactory})
 	require.False(t, err == nil || !strings.Contains(err.Error(), "zero combinations"))
 
 }

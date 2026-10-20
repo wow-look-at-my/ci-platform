@@ -14,8 +14,6 @@ import (
 // defaultLogPage is how many lines a paged read returns without a limit.
 const defaultLogPage = 2000
 
-// maxLogPage bounds one read so a job with a million lines cannot be pulled in
-// one request.
 const maxLogPage = 20000
 
 // LogPageDTO is one page of log lines. NextSeq is where the next page starts;
@@ -29,7 +27,6 @@ type LogPageDTO struct {
 	Lines   []LogLineDTO `json:"lines"`
 }
 
-// logSource returns the wired log source, or writes a 503 naming the gap.
 func (s *Server) logSource(w http.ResponseWriter) (LogSource, bool) {
 	if s.cfg.Logs == nil {
 		writeErr(w, http.StatusServiceUnavailable, "no_log_source",
@@ -101,16 +98,14 @@ func (s *Server) rawJobLogs(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	// The whole log is read in pages so one enormous job cannot be materialised
-	// in memory in one call.
+	// The whole log is read in pages so one enormous job cannot be materialised in memory in one call.
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%q", fmt.Sprintf("job-%d-attempt-%d.log", job.ID, attempt)))
 	var from int64
 	for {
 		lines, err := src.Read(r.Context(), job.ID, attempt, from, maxLogPage)
 		if err != nil {
-			// Headers are already out, so the only honest signal left is to
-			// mark the body as truncated rather than end it silently.
+			// Headers are already out, so mark the body truncated rather than end it silently.
 			fmt.Fprintf(w, "\n[log read failed after seq %d: %v]\n", from, err)
 			return
 		}

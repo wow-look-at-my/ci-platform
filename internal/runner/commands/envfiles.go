@@ -6,9 +6,7 @@ import (
 	"strings"
 )
 
-// EnvFiles are the five files a step may write to communicate with the runner.
-// They are created fresh per step and read back after it exits, so one step
-// cannot see another's unflushed writes.
+// EnvFiles are the files a step may write to communicate with the runner.
 type EnvFiles struct {
 	Output      string
 	Env         string
@@ -17,9 +15,8 @@ type EnvFiles struct {
 	State       string
 }
 
-// NewEnvFiles names the five files for one step under dir. key must be unique
-// per step (attempt included) so a retry never reads the previous attempt's
-// values.
+// NewEnvFiles names the files for one step under dir. key must be unique per
+// step (attempt included) so a retry never reads the attempt's values.
 func NewEnvFiles(dir, key string) EnvFiles {
 	return EnvFiles{
 		Output:      path.Join(dir, "output_"+key),
@@ -41,7 +38,7 @@ func (f EnvFiles) EnvMap() map[string]string {
 	}
 }
 
-// All lists the five paths, in creation order.
+// All lists the paths, in creation order.
 func (f EnvFiles) All() []string {
 	return []string{f.Output, f.Env, f.Path, f.StepSummary, f.State}
 }
@@ -67,11 +64,11 @@ func (kv KeyValues) Get(k string) (string, bool) {
 //	line two
 //	EOF
 //
-// Which form a line uses is decided by whether "=" or "<<" comes first, so a
-// value containing "<<" and a delimiter containing "=" both behave. Neither key
-// nor value is trimmed.
+// Which form a line uses is decided by whether "=" or "<<" comes first. A value
+// containing "<<" and a delimiter containing "=" both behave. Neither key nor
+// value is trimmed.
 //
-// A malformed file is an error, never a partial silent read: a step that wrote
+// A malformed file is an error, never a partial silent read. A step that wrote
 // half an output has a bug its author needs to see.
 func ParseKeyValues(data string) (KeyValues, error) {
 	out := KeyValues{Values: map[string]string{}}
@@ -117,9 +114,7 @@ func readHeredoc(lines []string, start int, key, delim string) (string, int, err
 			return strings.Join(body, "\n"), i, nil
 		}
 		if strings.Contains(lines[i], delim) {
-			// @actions/core refuses to write a value containing its own
-			// delimiter; accepting it here would let a value close the block
-			// early and smuggle in extra keys.
+			// @actions/core refuses to write a value containing its own delimiter.
 			return "", 0, fmt.Errorf("env file: key %q has delimiter %q inside its value", key, delim)
 		}
 		body = append(body, lines[i])

@@ -174,9 +174,7 @@ func (s *Service) getSignedURL(w http.ResponseWriter, r *http.Request, claims *j
 	writeTwirpJSON(w, GetSignedArtifactURLResponse{SignedURL: signed})
 }
 
-// DownloadURL returns a self-authenticating URL for an artifact's bytes. The
-// client fetches it with an HTTP client that sends no Authorization header, so
-// the proof has to be in the URL.
+// DownloadURL returns a self-authenticating URL for an artifact's bytes, since the fetch sends no Authorization header.
 func (s *Service) DownloadURL(artifactID int64) (string, error) {
 	return s.signer.SignURL(fmt.Sprintf("%s%s%d", s.baseURL, PathDownload, artifactID), s.urlTTL)
 }
@@ -228,15 +226,12 @@ func (s *Service) uploadHandler() http.Handler {
 			return azureshim.Target{Key: storageKey(id), Ref: strconv.FormatInt(id, 10)}, nil
 		},
 		OnCommit: func(ctx context.Context, t azureshim.Target, size int64, digest, _ string) error {
-			// The bytes are stored; FinalizeArtifact records them. Nothing is
-			// marked finalized here, so a crash between upload and finalize
-			// leaves an unfinalized artifact rather than a phantom good one.
+			// The bytes are stored; FinalizeArtifact records them, so a crash before that leaves it unfinalized, not phantom-good.
 			return nil
 		},
 	})
 	if err != nil {
-		// Unreachable: every field azureshim validates is set above. Panicking
-		// beats returning a handler that 500s on every upload.
+		// Unreachable: every field azureshim validates is set above; panicking beats a handler that 500s on every upload.
 		panic("artifacts: upload handler misconfigured: " + err.Error())
 	}
 	return h
@@ -284,8 +279,7 @@ func (s *Service) handleDownload(w http.ResponseWriter, r *http.Request) {
 	}
 	defer rc.Close()
 
-	// The client sniffs Content-Type and Content-Disposition to decide whether
-	// to unzip; an artifact is always a zip unless it was uploaded raw.
+	// The client sniffs Content-Type and Content-Disposition to decide whether to unzip; artifacts are zips unless raw.
 	w.Header().Set("Content-Type", "application/zip")
 	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%q", a.Name+".zip"))
 	if a.SizeBytes > 0 {
@@ -351,9 +345,9 @@ func (b *byteReaderAt) ReadAt(p []byte, off int64) (int, error) {
 	return n, nil
 }
 
-// ExpireArtifacts deletes every artifact past its TTL and records why each one
-// went. An artifact that vanished without a recorded reason is the failure this
-// method exists to prevent.
+// ExpireArtifacts deletes every artifact past its TTL and records why each
+// went. An artifact that vanished without a recorded reason is the failure
+// this method exists to prevent.
 func (s *Service) ExpireArtifacts(ctx context.Context) (int, error) {
 	now := s.now()
 	expired, err := s.store.DeleteExpiredArtifacts(ctx, now)
@@ -377,8 +371,8 @@ func (s *Service) ExpireArtifacts(ctx context.Context) (int, error) {
 }
 
 // record writes an audit event. A failure to record is itself reported through
-// the returned error of nothing, so it is folded into the event trail's own
-// kind rather than dropped: the caller has already succeeded at the real work.
+// the returned error of nothing. It is folded into the event trail's own kind
+// rather than dropped: the caller has already succeeded at the real work.
 func (s *Service) record(ctx context.Context, a *model.Artifact, kind, message string, detail map[string]any) {
 	if detail == nil {
 		detail = map[string]any{}

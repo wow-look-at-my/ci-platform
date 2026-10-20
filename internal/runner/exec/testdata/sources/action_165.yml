@@ -1,0 +1,4 @@
+name: n
+runs:
+  using: node20
+  post: p.js

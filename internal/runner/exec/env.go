@@ -10,8 +10,7 @@ import (
 	"github.com/wow-look-at-my/ci-platform/internal/runner/commands"
 )
 
-// DefaultPath is what PATH is rebuilt from when a step has added to
-// $GITHUB_PATH. Set Config.BasePath when the sandbox image differs.
+// DefaultPath is what PATH is rebuilt from after a step appends to $GITHUB_PATH; set Config.BasePath if the image differs.
 const DefaultPath = "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 
 // baseEnv is the environment every step sees. Secrets are deliberately absent:
@@ -38,8 +37,7 @@ func (e *Executor) baseEnv() map[string]string {
 		"RUNNER_OS":               osName(e.cfg.RunnerOS),
 		"RUNNER_ARCH":             archName(e.cfg.RunnerArch),
 	}
-	// The control plane owns the artifact, cache, and OIDC URLs and mints the
-	// token, so it sends the environment those clients discover them through.
+	// The control plane owns the artifact, cache, and OIDC URLs and token; it sends them via this environment.
 	for k, v := range a.ServiceEnv {
 		env[k] = v
 	}
@@ -50,8 +48,7 @@ func (e *Executor) baseEnv() map[string]string {
 		env["ACTIONS_RESULTS_URL"] = e.cfg.ResultsURL
 	}
 	if e.cfg.IDTokenRequestURL != "" {
-		// The OIDC client appends "&audience=", so the URL must already carry
-		// a query string.
+		// The OIDC client appends "&audience=", so the URL must already carry a query string.
 		url := e.cfg.IDTokenRequestURL
 		if !strings.Contains(url, "?") {
 			url += "?"
@@ -92,7 +89,7 @@ func archName(goarch string) string {
 	}
 }
 
-// stepEnv merges the layers a step sees, lowest precedence first: platform
+// stepEnv merges the layers a step sees, lowest precedence first. Platform
 // base, workflow env, job env (including what earlier steps wrote to
 // $GITHUB_ENV), the enclosing action's env, then the step's own env.
 func (e *Executor) stepEnv(scopeEnv, stepOwn map[string]string) map[string]string {

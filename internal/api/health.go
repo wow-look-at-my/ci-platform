@@ -65,7 +65,7 @@ func rollup(subs []Subsystem) SubsystemState {
 }
 
 // healthz reports the truth: the body names every degraded subsystem, and a
-// subsystem that is fully down makes this endpoint 503.
+// subsystem that is fully down makes a later endpoint.
 func (s *Server) healthz(w http.ResponseWriter, r *http.Request) {
 	subs := s.subsystems(r.Context())
 	body := HealthDTO{Status: rollup(subs), StoreDurable: s.cfg.Store.Durable(), Subsystems: subs, At: s.now()}
@@ -76,12 +76,8 @@ func (s *Server) healthz(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, code, body)
 }
 
-// updaterHealth is a STATUS-CODE-ONLY contract: the orchestrator reads the code
-// and ignores the body. It must stay 2xx while a subsystem is degraded, because
-// answering non-2xx here is what makes the orchestrator roll back a running
-// release -- which would replace a degraded-but-serving control plane with a
-// redeploy that fixes nothing. Degradation is reported in /healthz's body; this
-// endpoint answers only "this process is up and serving HTTP".
+// updaterHealth is a STATUS-CODE-ONLY contract: the orchestrator reads the
+// code and ignores the body.
 func (s *Server) updaterHealth(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	w.WriteHeader(http.StatusOK)

@@ -148,8 +148,7 @@ func TestSSERejectsUnparseableLastEventID(t *testing.T) {
 
 func TestSSESendsHeartbeatsOnAnIdleStream(t *testing.T) {
 	h := newHarness(t)
-	// A live channel nobody writes to: the stream stays open with nothing to
-	// send, which is exactly when a proxy would close it.
+	// A live channel nobody writes to: the stream stays open with nothing to send.
 	h.logs.live = make(chan model.LogLine)
 	defer close(h.logs.live)
 

@@ -11,8 +11,7 @@ import (
 	"github.com/wow-look-at-my/ci-platform/internal/store"
 )
 
-// errUnused marks a store method these tests never exercise. Returning an error
-// rather than a zero value means a test that starts using one finds out.
+// errUnused marks a store method these tests never exercise.
 var errUnused = errors.New("fakeStore: method not implemented for scheduler tests")
 
 // fakeStore is an in-package stand-in for store.Store. internal/store/mem does
@@ -28,8 +27,7 @@ type fakeStore struct {
 	secrets map[string][]byte
 
 	nextJobID int64
-	// reap is what the next ReapExpiredLeases call returns; the real store
-	// decides this from lease timestamps.
+	// reap is what the next ReapExpiredLeases call returns; the real store decides this from lease timestamps.
 	reap []*model.Job
 	// failEnqueue makes Enqueue fail, to prove errors are not swallowed.
 	failEnqueue bool
@@ -185,7 +183,7 @@ func (f *fakeStore) ListSteps(_ context.Context, jobID int64, attempt int) ([]*m
 // --- Queue ---
 
 // DropFromQueue voids a job's queue entry, which is how a new attempt clears
-// the previous one before enqueuing with its own backoff.
+// the one before enqueuing with its own backoff.
 func (f *fakeStore) DropFromQueue(_ context.Context, jobID int64) error {
 	out := f.queue[:0]
 	for _, q := range f.queue {
@@ -255,7 +253,7 @@ func (f *fakeStore) ReleaseLease(_ context.Context, _ string, jobID int64, _ mod
 }
 
 // ReapExpiredLeases increments RequeueCount, as both real stores do: the store
-// owns that counter, and a fake that skipped it would let the scheduler
+// owns that counter. A fake that skipped it would let the scheduler
 // double-count a single lost runner without any test noticing.
 func (f *fakeStore) ReapExpiredLeases(_ context.Context, _ time.Time) ([]*model.Job, error) {
 	out := f.reap

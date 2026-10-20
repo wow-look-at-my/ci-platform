@@ -131,8 +131,7 @@ type Update struct {
 	// Attempt and MaxAttempts render "Attempt 2 of 3".
 	Attempt     int
 	MaxAttempts int
-	// Class and ClassReason surface the failure classification and the sentence
-	// behind it.
+	// Class and ClassReason surface the failure classification and the sentence behind it.
 	Class       model.FailureClass
 	ClassReason string
 	// Cancel is required whenever Conclusion is cancelled.
@@ -143,8 +142,7 @@ type Update struct {
 	Summary string
 }
 
-// Terminal reports whether this update completes the check run. A terminal
-// update is never coalesced away.
+// Terminal reports whether this update completes the check run. A terminal update is never coalesced away.
 func (u Update) Terminal() bool { return u.Status == model.StatusCompleted }
 
 // Validate rejects an update that cannot be written, naming the missing field.

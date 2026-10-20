@@ -18,8 +18,8 @@ var testNow = time.Date(2026, 3, 1, 12, 0, 0, 0, time.UTC)
 
 func ptime(t time.Time) *time.Time { return &t }
 
-// fixture builds a store with one repo, three runs, and a three-job DAG on the
-// first run: build -> test -> deploy, where test failed for infra reasons.
+// fixture builds a store with one repo, runs, and a three-job DAG on the first
+// run. Build -> test -> deploy, where test failed for infra reasons.
 func fixture() *fakeStore {
 	f := newFakeStore()
 	f.repos = []*model.Repo{{ID: 7, Owner: "wow-look-at-my", Name: "ci-platform", DefaultBranch: "master"}}
@@ -107,8 +107,8 @@ func fixture() *fakeStore {
 		{ID: 6, RepoID: 7, Key: "stale", Kind: "evict", Reason: "quota", At: base.Add(4 * time.Minute)},
 	}
 
-	// The store lists live entries directly; the evicted "stale" key is simply
-	// absent rather than something the reader reconciles against the events.
+	// The store lists live entries directly; the evicted "stale" key is absent
+	// rather than something the reader reconciles against the events.
 	f.cacheEntries = []*model.CacheEntry{
 		{ID: 1, RepoID: 7, Key: "go-mod", Version: "v1", SizeBytes: 2048,
 			CreatedAt: base, LastAccessed: base.Add(2 * time.Minute), Finalized: true},
@@ -444,9 +444,7 @@ func TestQueueAndHistory(t *testing.T) {
 	for _, k := range []string{"depth", "depth_by_label", "oldest_waiting", "starved_labels", "runners_by_label", "idle_by_label"} {
 		assert.Contains(t, raw, k)
 	}
-	// Seconds, like every other duration this API reports. A time.Duration
-	// marshals to nanoseconds, and the UI reading that as seconds turned a
-	// 90-second wait into 2,569 years of it.
+	// Seconds, like every other duration this API reports.
 	assert.InDelta(t, 90.0, raw["oldest_waiting"], 0.001)
 
 	w = h.do(t, "GET", "/api/v1/queue/history?since=1h", "")
@@ -513,8 +511,7 @@ func TestRepoCache(t *testing.T) {
 	assert.Equal(t, 1, got.Stats.Evictions)
 	assert.InDelta(t, 2.0/3.0, got.Stats.HitRate, 0.0001)
 
-	// Entries come from the store, so an evicted key is simply gone rather
-	// than something the reader has to reconcile against the event log.
+	// Entries come from the store.
 	require.Len(t, got.Entries, 1, "the evicted key must not appear as live")
 	assert.Equal(t, "go-mod", got.Entries[0].Key)
 

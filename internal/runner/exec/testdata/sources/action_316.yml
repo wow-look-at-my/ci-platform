@@ -1,0 +1,10 @@
+
+name: inner
+inputs:
+  value:
+    required: true
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      run: echo ${{ inputs.value }}

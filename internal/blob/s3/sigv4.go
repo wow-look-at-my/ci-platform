@@ -13,18 +13,16 @@ import (
 	"time"
 )
 
-// SigV4 is hand-rolled rather than taken from the AWS SDK: the SDK pulls in
-// ~30 modules to sign four verbs, and this platform's dependency budget is
+// SigV4 is hand-rolled rather than taken from the AWS SDK. The SDK pulls in
+// multiple modules to sign verbs, and this platform's dependency budget is
 // spent elsewhere.
 
 const (
 	algorithm  = "AWS4-HMAC-SHA256"
 	terminator = "aws4_request"
-	// EmptyPayloadHash is sha256 of the empty string, the payload hash for any
-	// request with no body.
+	// EmptyPayloadHash is sha256 of the empty string, the payload hash for a request with no body.
 	EmptyPayloadHash = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
-	// UnsignedPayload tells S3 the body is not covered by the signature, which
-	// is what a presigned URL and a streaming PUT both use.
+	// UnsignedPayload tells S3 the body is not covered, used by a presigned URL or streaming PUT.
 	UnsignedPayload = "UNSIGNED-PAYLOAD"
 
 	amzDateFormat = "20060102T150405Z"
@@ -114,8 +112,7 @@ func canonicalHeaders(r *http.Request, extra map[string]string) (string, string)
 		lk := strings.ToLower(k)
 		switch lk {
 		case "authorization", "user-agent", "content-length", "connection", "expect", "transfer-encoding":
-			// Not signed: hop-by-hop, set by the transport, or the signature
-			// itself. content-length is omitted because Go rewrites it.
+			// Not signed: hop-by-hop, set by the transport, or content-length, which Go rewrites.
 			continue
 		}
 		joined := make([]string, len(vs))

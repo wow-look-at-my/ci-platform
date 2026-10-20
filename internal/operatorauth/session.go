@@ -16,11 +16,9 @@ import (
 type Method string
 
 const (
-	// MethodGitHub is a session from "Sign in with GitHub". It carries the
-	// account that signed in, so a cancel can name a person.
+	// MethodGitHub is a session from "Sign in with GitHub"; it carries the account, so a cancel names a person.
 	MethodGitHub Method = "github"
-	// MethodToken is a session from the shared operator credential. It carries
-	// no account, because the credential names nobody.
+	// MethodToken is a session from the shared operator credential; it carries no account.
 	MethodToken Method = "token"
 )
 
@@ -40,24 +38,11 @@ func (i Identity) Actor() string {
 	return "operator"
 }
 
-// signer mints and verifies session cookies.
-//
-// The cookie is a signed statement, not a lookup key: with one instance and one
-// SQLite file, a session table would add a write to every request and a
-// migration to every schema change, and buy nothing that a short TTL and a
-// rotated signing key do not already give.
-//
-// The consequence, stated because it is a real one: a GitHub session cannot be
-// revoked before it expires except by rotating the signing key, which ends
-// every session at once. Removing somebody from the admin list stops them
-// signing in again, and the middleware re-checks that list on every request, so
-// that particular case is covered.
+// signer mints and verifies session cookies: a signed statement, not a lookup
+// key.
 type signer struct {
 	key signedvalue.Key
-	// tokenKey signs sessions minted from the shared operator credential, and
-	// is derived from that credential. Rotating the credential changes this key,
-	// so the sessions it handed out stop verifying -- which is what somebody
-	// rotating a leaked credential is expecting to happen.
+	// tokenKey is derived from the operator credential, so rotating the credential stops its sessions verifying.
 	tokenKey signedvalue.Key
 	ttl      time.Duration
 	now      func() time.Time
@@ -90,7 +75,7 @@ func (s *signer) mint(login string, method Method) (string, Identity) {
 // parse verifies the signature before it reads anything out of the payload, so
 // no field of a forged cookie is ever acted on.
 //
-// Which key signed it is not known until the payload is read, and the payload
+// Which key signed it is not known until the payload is read. The payload
 // must not be read until a signature verifies, so both are tried. Neither
 // answers differently on a wrong guess, so nothing is learned from the order.
 func (s *signer) parse(raw string) (Identity, error) {

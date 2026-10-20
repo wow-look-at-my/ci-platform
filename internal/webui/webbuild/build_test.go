@@ -102,8 +102,7 @@ func TestContentHashIsShortStableAndInputSensitive(t *testing.T) {
 }
 
 func TestDefaultSrcDirIsWebSrc(t *testing.T) {
-	// Run from a directory with no web-src so the default is exercised and the
-	// error names it.
+	// Run from a directory with no web-src so the default is exercised and the error names it.
 	wd, err := os.Getwd()
 	require.NoError(t, err)
 	require.NoError(t, os.Chdir(t.TempDir()))

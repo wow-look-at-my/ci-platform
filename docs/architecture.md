@@ -1,8 +1,6 @@
 # Architecture
 
-Three binaries, all shipped as containers. The control plane and the runner
-agent are the platform; `runner-host` is the supervisor an operator installs on
-a machine, and the only one there that anything else has to keep updated.
+Binaries, all shipped as containers. The control plane and the runner agent are the platform. `runner-host` is the supervisor an operator installs on a machine, and the only one there that anything else has to keep updated.
 
 ```
 GitHub ──webhook──▶ control plane (cmd/ciplatform)
@@ -32,80 +30,38 @@ GitHub ──webhook──▶ control plane (cmd/ciplatform)
 
 ## The layering rule
 
-`internal/model` is the vocabulary. Everything imports it; it imports nothing of
-ours. `internal/store` is the persistence contract, `internal/protocol` the
-runner wire contract. Those three are the frozen middle that lets the rest be
-worked on independently.
+`internal/model` is the vocabulary. Everything imports it. It imports nothing of ours. `internal/store` is the persistence contract, `internal/protocol` the runner wire contract. Those three are the frozen middle that lets the rest be worked on independently.
 
-The parser targets `model.Workflow` — an IR, deliberately not a GitHub Actions
-AST. Nothing downstream of the parser knows what YAML looks like, which is what
-makes a second frontend possible without touching the scheduler or the executor.
-See `docs/format-trajectory.md`.
+The parser targets `model.Workflow` — an IR, deliberately not a GitHub Actions AST. Nothing downstream of the parser knows what YAML looks like, which is what makes a second frontend possible without touching the scheduler or the executor. See `docs/format-trajectory.md`.
 
 ## Request paths
 
-**A push arrives.** `github/webhook` verifies the HMAC and dispatches. The
-control plane fetches the repo's workflow files at the head SHA, parses each to
-IR, and rejects the run with `config_error` if anything is unsupported — never
-silently ignoring a key. `plan.Build` expands matrices and resolves the DAG.
-`scheduler.StartRun` creates one job per node and enqueues the ready ones.
-`github/checks` creates a check run per job, named exactly as GHA would name it.
+**A push arrives.** `github/webhook` verifies the HMAC and dispatches. The control plane fetches the repo's workflow files at the head SHA, parses each to IR, and rejects the run with `config_error`. This happens if anything is unsupported — never silently ignoring a key. `plan.Build` expands matrices and resolves the DAG. `scheduler.StartRun` creates one job per node and enqueues the ready ones.
 
-**A runner picks up work.** The agent long-polls `/runner/v1/acquire`.
-`store.Dequeue` claims a job atomically (`FOR UPDATE SKIP LOCKED`) and takes a
-lease. The assignment is keyed `run_id/job_id/attempt`; the agent refuses a key
-it has already started, so a redelivery cannot double-execute.
+`github/checks` creates a check run per job, named exactly as GHA will name it.
 
-**A job runs.** One fresh DinD container, its own `dockerd`, a workspace volume.
-Setup is timed by phase. Steps stream logs back in batches; every failure goes
-through `internal/classify` and the decision is written into the log.
+**A runner picks up work.** The agent long-polls `/runner/v1/acquire`. `store.Dequeue` claims a job atomically (`FOR UPDATE SKIP LOCKED`) and takes a lease. The assignment is keyed `run_id/job_id/attempt`. The agent refuses a key it has already started. A redelivery cannot double-execute.
 
-**Something goes wrong.** If the class is `infra` and the retry policy permits,
-the scheduler requeues with backoff and the attempt number is visible in the UI
-and the check run. If the runner disappears, its lease expires, `ReapExpiredLeases`
-requeues the job with actor `runner_lost`, and the job is neither failed nor
-lost. If anything cancels, a `model.CancelReason` with an actor and a human
-sentence is recorded and surfaced.
+**A job runs.** One fresh DinD container, its own `dockerd`, a workspace volume. Phase times Setup. Steps stream logs back in batches. Every failure goes through `internal/classify` and the decision is written into the log.
+
+**Something goes incorrect.** If the class is `infra` and the retry policy permits, the scheduler requeues with backoff. The try number is visible in the UI and the check run. If the runner disappears, its lease expires, `ReapExpiredLeases` requeues the job with actor `runner_lost`, and the job is neither failed nor lost. If anything cancels, a `model.CancelReason` with an actor and a human sentence is recorded and surfaced.
 
 ## Why the control plane never lies
 
-Three mechanisms, each of which is a type rather than a convention:
+Mechanisms, each of which is a type rather than a convention:
 
-- `model.CancelReason` cannot be constructed without an actor and a sentence,
-  and `Validate` rejects one that lacks either.
-- `model.Aggregate` is the only reducer from many conclusions to one. It returns
-  neutral for zero units of work and refuses to launder an all-skipped set into
-  a success.
-- `classify.Decision` carries the rule that matched and the text it matched, so
-  "this was infrastructure" is a claim with evidence attached rather than an
-  assertion.
+- `model.CancelReason` cannot be constructed without an actor and a sentence, and `Validate` rejects one that lacks either.
+- `model.Aggregate` is the only reducer from many conclusions to one. It returns neutral for zero units of work and refuses to launder an all-skipped set into a success.
+- `classify.Decision` carries the rule that matched and the text it matched, so "this was infrastructure" is a claim with evidence attached rather than an assertion.
 
 ## Storage
 
-One SQLite file holds run, job, and step metadata plus the durable queue. The
-schema is a single file applied to an empty database and fingerprinted; a
-database built from a different one is a hard stop, not a silent reapply. Logs,
-artifacts, and cache objects go to a blob store — `internal/blob/disk` for
-single-node, `internal/blob/s3` for anything larger. Cache eviction is always
-logged with what was removed. See [storage.md](storage.md) for the choices that
-are load-bearing, and the single-node limit.
+One SQLite file holds run, job, and step metadata plus the durable queue. The schema is a single file applied to an empty database and fingerprinted. A database built from a different one is a hard stop, not a silent reapply. Logs, artifacts, and cache objects go to a blob store — `internal/blob/disk` for single-node, `internal/blob/s3` for anything larger. Cache eviction is always logged with what was removed. See [storage.md](storage.md) for the choices that are load-bearing, and the single-node limit.
 
-`internal/store/mem` exists for tests and reports `Durable() false`, which the
-control plane logs loudly at startup and surfaces in `/healthz`.
+`internal/store/mem` exists for tests and reports `Durable() false`, which the control plane logs loudly at startup and surfaces in `/healthz`.
 
 ## Security boundary
 
-The job container is the isolation boundary. It gets no host docker socket and
-no control-plane credentials beyond a per-job token scoped to that job's
-artifacts, cache, logs, and OIDC. Installation tokens never reach a job.
-Secrets are injected per job, masked by value in every log line before it leaves
-the runner process, and never written into the workspace. Fork PRs get no
-secrets and no OIDC, and need explicit approval — the same posture as GHA.
+The job container is the isolation boundary. It gets no host docker socket and no control-plane credentials beyond a per-job token scoped to that job's artifacts, cache, logs, and OIDC. Installation tokens never reach a job. Value in every log line injects secrets before it leaves the runner process, and never written into the workspace. Fork PRs get no secrets and no OIDC, and need explicit approval — the same posture as GHA.
 
-That boundary runs both ways: because a job must be able to reach the control
-plane, the operator API and the UI sit behind `internal/operatorauth` rather
-than relying on network position — a GitHub sign-in for a person, a bearer
-token for a script. And because the App can be published, a webhook is gated on
-an account the operator named (`internal/installpolicy`) before any of this is
-reached. Route by route, and what this does not defend against:
-[security.md](security.md).
+That boundary runs both ways: because a job must be able to reach the control plane. The operator API and the UI sit behind `internal/operatorauth` rather than relying on network position — a GitHub sign-in for a person. This also covers a bearer token for a script. And because the App can be published, a webhook is gated on an account the operator named (`internal/installpolicy`) before any of this is reached. Route by route, and what this does not defend against: [security.md](security.md).

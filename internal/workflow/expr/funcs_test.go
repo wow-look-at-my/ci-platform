@@ -223,8 +223,7 @@ func nan() float64      { return math.NaN() }
 func inf(s int) float64 { return math.Inf(s) }
 
 func TestValidateSyntaxOnly(t *testing.T) {
-	// Validate checks syntax without resolving names, so an unknown context is
-	// fine here but a malformed body is not.
+	// Validate checks syntax without resolving names, so an unknown context is fine here but a malformed body is not.
 	require.NoError(t, Validate("plain text"))
 	require.NoError(t, Validate("a ${{ nosuchcontext.x }} b"))
 	require.NoError(t, Validate("${{ format('{0}', 1) }}${{ 2 }}"))
@@ -286,8 +285,7 @@ func TestNormalizeUnusualTypes(t *testing.T) {
 	require.Equal(t, "pointed at", mustEval(t, e, "ptr"))
 	require.Nil(t, mustEval(t, e, "nilp"))
 	require.Equal(t, 4.0, mustEval(t, e, "arr[0]"))
-	// Anything with no expression-language equivalent becomes its printed form
-	// rather than silently vanishing.
+	// Anything with no expression-language equivalent becomes its printed form rather than silently vanishing.
 	require.IsType(t, "", mustEval(t, e, "chan"))
 	require.IsType(t, "", mustEval(t, e, "badky"))
 }
@@ -302,7 +300,7 @@ func TestToJSONShape(t *testing.T) {
 	e := New(Context{"m": map[string]any{"b": 1, "a": []any{true, nil}}})
 	got, err := e.Eval("toJSON(m)")
 	require.NoError(t, err)
-	require.Equal(t, "{\n  \"a\": [\n    true,\n    null\n  ],\n  \"b\": 1\n}", got)
+	require.Equal(t, fx("funcs_303.json"), got)
 
 	// NaN and Infinity have no JSON spelling and are written as null.
 	got, err = e.Eval("toJSON(NaN)")
@@ -323,8 +321,7 @@ func TestHashFilesUnreadableFile(t *testing.T) {
 	require.ErrorContains(t, err, "could not read")
 }
 
-// brokenFS lists one file and then refuses to open it, which is what a
-// permissions problem looks like from hashFiles' side.
+// brokenFS lists one file and then refuses to open it.
 type brokenFS struct{}
 
 func (brokenFS) Open(name string) (fs.File, error) {

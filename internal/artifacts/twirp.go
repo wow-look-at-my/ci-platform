@@ -8,10 +8,7 @@ import (
 	"strings"
 )
 
-// The Results API is Twirp with JSON encoding. @actions/artifact posts to
-// {ACTIONS_RESULTS_URL}/twirp/{service}/{method} with Content-Type
-// application/json and reads {"code","msg"} out of any non-2xx body, so an
-// error rendered any other way reaches the operator as a bare status code.
+// The Results API is Twirp with JSON: non-2xx bodies must be {"code","msg"}, or errors show as a bare status.
 
 // ServicePath is the Twirp service name the artifact client calls.
 const ServicePath = "github.actions.results.api.v1.ArtifactService"
@@ -31,8 +28,6 @@ const (
 )
 
 // twirpStatus maps a Twirp code to the HTTP status the spec pairs it with.
-// The client retries 429/500/502/503/504 and fails fast on everything else, so
-// the mapping decides whether a client waits or gives up.
 func twirpStatus(code string) int {
 	switch code {
 	case CodeInvalidArgument:
@@ -71,26 +66,18 @@ func writeTwirpJSON(w http.ResponseWriter, v any) {
 	_ = json.NewEncoder(w).Encode(v)
 }
 
-// Request and response bodies. protobuf-ts serialises with
-// useProtoFieldName:true, so the client sends snake_case; its reader accepts
-// both spellings, so responses use snake_case too. int64 fields are JSON
-// strings, per the protobuf JSON mapping, and google.protobuf.StringValue
-// wrappers serialise as a bare string rather than {"value":...}.
-
 // CreateArtifactRequest opens an artifact and asks for somewhere to put it.
 type CreateArtifactRequest struct {
 	WorkflowRunBackendID    string `json:"workflow_run_backend_id"`
 	WorkflowJobRunBackendID string `json:"workflow_job_run_backend_id"`
 	Name                    string `json:"name"`
-	// ExpiresAt is an RFC3339 timestamp derived from the action's
-	// retention-days input; the service clamps it.
+	// ExpiresAt is an RFC3339 timestamp from the action's retention-days input; the service clamps it.
 	ExpiresAt string `json:"expires_at,omitempty"`
 	Version   int    `json:"version,omitempty"`
 	MimeType  string `json:"mime_type,omitempty"`
 }
 
-// CreateArtifactResponse hands back the upload URL. The client uploads to it
-// with the Azure Block Blob SDK, so it must be served by the shim in azure.go.
+// CreateArtifactResponse hands back the upload URL; the Azure Block Blob SDK client uploads to it.
 type CreateArtifactResponse struct {
 	OK              bool   `json:"ok"`
 	SignedUploadURL string `json:"signed_upload_url"`
@@ -144,8 +131,7 @@ type GetSignedArtifactURLRequest struct {
 	Name                    string `json:"name"`
 }
 
-// GetSignedArtifactURLResponse carries the download URL. The client fetches it
-// with an unauthenticated HTTP client, so the URL carries its own signature.
+// GetSignedArtifactURLResponse carries the download URL; it fetches unauthenticated, signed in the URL.
 type GetSignedArtifactURLResponse struct {
 	SignedURL string `json:"signed_url"`
 }
@@ -157,14 +143,12 @@ type DeleteArtifactRequest struct {
 	Name                    string `json:"name"`
 }
 
-// DeleteArtifactResponse reports what was removed.
+// DeleteArtifactResponse reports what.
 type DeleteArtifactResponse struct {
 	OK         bool   `json:"ok"`
 	ArtifactID string `json:"artifact_id"`
 }
 
-// decodeTwirp reads a JSON request body, tolerating the camelCase spelling as
-// well: protobuf-ts accepts either on the way in, and so must this.
 func decodeTwirp(r *http.Request, v any) error {
 	dec := json.NewDecoder(r.Body)
 	raw := map[string]json.RawMessage{}
@@ -201,12 +185,9 @@ func toSnake(s string) string {
 	return b.String()
 }
 
-// Int64String is a protobuf int64 on the wire: a JSON string. It also accepts
-// a bare number, which the JSON mapping permits and a hand-written client may
-// send.
+// Int64String is a protobuf int64 on the wire: a JSON string, or a bare number as some clients send.
 type Int64String string
 
-// UnmarshalJSON accepts "123" and 123.
 func (v *Int64String) UnmarshalJSON(b []byte) error {
 	s := strings.Trim(strings.TrimSpace(string(b)), `"`)
 	if s == "null" {

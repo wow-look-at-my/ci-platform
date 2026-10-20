@@ -9,6 +9,7 @@ import (
 
 	"github.com/wow-look-at-my/ci-platform/internal/model"
 	"github.com/wow-look-at-my/ci-platform/internal/store"
+	"github.com/wow-look-at-my/go-containers/set"
 )
 
 // Event kinds written by the queue, identical to the SQLite store's.
@@ -25,12 +26,12 @@ func labelsSatisfied(have, want []string) bool {
 	if len(want) == 0 {
 		return true
 	}
-	set := make(map[string]struct{}, len(have))
+	offered := set.New[string]()
 	for _, l := range have {
-		set[l] = struct{}{}
+		offered.Add(l)
 	}
 	for _, l := range want {
-		if _, ok := set[l]; !ok {
+		if !offered.Contains(l) {
 			return false
 		}
 	}
@@ -62,9 +63,7 @@ func (s *Store) Enqueue(_ context.Context, q store.QueuedJob) error {
 		return fmt.Errorf("mem: Enqueue: job %d belongs to run %d, not %d", q.JobID, j.RunID, q.RunID)
 	}
 	// The caller states the attempt because it is half of the dispatch
-	// idempotency key. Disagreeing with the job row means the caller and the
-	// store have different ideas about which attempt this is, which would let
-	// the same attempt dispatch twice; refuse rather than pick.
+	// idempotency key.
 	if q.Attempt != 0 && q.Attempt != j.Attempt {
 		return fmt.Errorf("mem: Enqueue: job %d is on attempt %d, caller enqueued attempt %d",
 			q.JobID, j.Attempt, q.Attempt)
@@ -96,8 +95,8 @@ func (s *Store) Enqueue(_ context.Context, q store.QueuedJob) error {
 // Dequeue claims the highest-priority eligible job for a runner. Eligibility is
 // queued state, not_before reached, and every required label present in the
 // runner's set; ordering is priority descending then queued_at ascending. The
-// store lock makes the claim atomic, so 50 runners racing on 20 jobs hand out
-// each job exactly once.
+// store lock makes the claim atomic, so runners racing on multiple jobs hand
+// out each job exactly once.
 func (s *Store) Dequeue(_ context.Context, runnerID string, labels []string, ttl time.Duration) (*model.Job, error) {
 	if runnerID == "" {
 		return nil, fmt.Errorf("mem: Dequeue: empty runner id")
@@ -138,9 +137,7 @@ func (s *Store) Dequeue(_ context.Context, runnerID string, labels []string, ttl
 	row.runnerID = runnerID
 	row.leaseExpiresAt = expires
 
-	// The dispatch record is keyed on (run, job, attempt) and created at most
-	// once. A redelivery after a lease loss bumps the count; it never becomes a
-	// second dispatch.
+	// The dispatch record is keyed on (run, job, attempt) and created at most once.
 	dk := dispatchKey{row.runID, row.jobID, row.attempt}
 	d, existed := s.dispatches[dk]
 	if !existed {
@@ -255,7 +252,7 @@ func (s *Store) DropFromQueue(_ context.Context, jobID int64) error {
 
 // ReapExpiredLeases requeues every job whose lease expired and returns them.
 // This is what turns "the runner disappeared" into a requeue rather than a lost
-// or failed job: the status goes back to queued, never to failed, and the
+// or failed job. The status goes back to queued, never to failed, and the
 // requeue is explained in the event log.
 func (s *Store) ReapExpiredLeases(_ context.Context, now time.Time) ([]*model.Job, error) {
 	now = now.UTC()
@@ -273,10 +270,7 @@ func (s *Store) ReapExpiredLeases(_ context.Context, now time.Time) ([]*model.Jo
 		lost := row.runnerID
 		s.requeueLocked(row)
 		if j, ok := s.jobs[row.jobID]; ok {
-			// The stored job is unleased, but the returned copy keeps the
-			// runner it lost so the caller can name it. Without this the
-			// requeue can only say "the runner", which is the report the
-			// operator cannot act on.
+			// The stored job is unleased, but the returned copy keeps the runner it lost so the caller can name it.
 			reaped := cloneJob(j)
 			reaped.RunnerID = lost
 			out = append(out, reaped)
@@ -307,7 +301,7 @@ func (s *Store) ReapExpiredLeases(_ context.Context, now time.Time) ([]*model.Jo
 // QueueStats is the queue page's data and the starvation alarm.
 //
 // "Online" is idle or busy. A drained runner is deliberately not counted: it
-// finishes what it has and takes nothing new, so counting it would hide a
+// finishes what it has and takes nothing new. Counting it would hide a
 // starving label behind a runner that will never pick the work up.
 func (s *Store) QueueStats(_ context.Context, now time.Time) (*store.QueueStats, error) {
 	now = now.UTC()

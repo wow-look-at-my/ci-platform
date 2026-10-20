@@ -94,8 +94,7 @@ func TestKeyRotation(t *testing.T) {
 	after, err := svc.Issue(fullSubject(), "aud")
 	require.NoError(t, err)
 
-	// Both keys stay in JWKS, so the token minted before rotation still
-	// verifies. Dropping the old key immediately would break tokens in flight.
+	// Both keys stay in JWKS, so the token minted before rotation still verifies.
 	jwks := kr.JWKS()
 	require.Len(t, jwks.Keys, 2)
 	kids := []string{jwks.Keys[0].Kid, jwks.Keys[1].Kid}

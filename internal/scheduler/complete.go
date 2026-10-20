@@ -12,7 +12,7 @@ import (
 )
 
 // Result is the outcome of one job attempt, as reported by a runner or as
-// determined by the scheduler itself on a timeout or a cancellation.
+// determined by the scheduler. Itself on a timeout or a cancellation.
 type Result struct {
 	Conclusion model.Conclusion
 	Class      model.FailureClass
@@ -21,8 +21,7 @@ type Result struct {
 	// Explanation is the job's headline failure message.
 	Explanation string
 	Outputs     map[string]string
-	// Cancel is required whenever Conclusion is cancelled, and carried on any
-	// other conclusion the platform imposed (a timeout, a lost runner).
+	// Cancel is required whenever Conclusion is cancelled, and carried on any other conclusion the platform imposed.
 	Cancel            *model.CancelReason
 	ClassificationLog []string
 }
@@ -88,8 +87,8 @@ func (s *Scheduler) plannedFor(j *model.Job) (*plan.PlannedJob, error) {
 }
 
 // finishAttempt is the only path that ends a job attempt, so every rule that
-// must hold for every ending -- a validated cancel reason, a recorded event, a
-// retry decision made once -- holds here or nowhere.
+// must hold for every ending. A validated cancel reason, a recorded event, a
+// retry decision made once. The retry decision holds here or nowhere.
 func (s *Scheduler) finishAttempt(ctx context.Context, pj *plan.PlannedJob, j *model.Job, res Result, now time.Time, allowRetry bool) error {
 	if err := res.validate(); err != nil {
 		return fmt.Errorf("scheduler: job %d (%s): %w", j.ID, j.Name, err)
@@ -179,10 +178,7 @@ func (s *Scheduler) requeueForRetry(ctx context.Context, pj *plan.PlannedJob, j 
 		return err
 	}
 	s.forgetStepTimeouts(j.ID)
-	// Void the old entry first. Enqueue will not disturb a live lease, so
-	// without this the previous attempt's leased row survives: the backoff
-	// below is discarded and the stale row is later reaped as a lost runner
-	// that never existed.
+	// Void the entry first.
 	if err := s.st.DropFromQueue(ctx, j.ID); err != nil {
 		return err
 	}

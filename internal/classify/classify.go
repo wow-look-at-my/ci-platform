@@ -1,12 +1,9 @@
 // Package classify decides whether a failure was the user's, the
 // infrastructure's, or the workflow author's.
 //
-// This is the platform's core claim: a red build means your code is broken. If
-// the classifier gets this wrong in the permissive direction it hands back the
-// exact GitHub Actions experience the platform was built to replace, where a
-// Cloudflare 524 during a registry push is indistinguishable from a failing
-// test. So every decision is recorded with the evidence that produced it, and
-// the decisions are surfaced, not just logged.
+// This is the platform's core claim: a red build means your code is broken.
+// So every decision is recorded with the evidence that produced it, and the
+// decisions are surfaced, not logged.
 package classify
 
 import (
@@ -29,15 +26,12 @@ type Decision struct {
 	Reason string `json:"reason"`
 	// Evidence is the matched excerpt, truncated and masked.
 	Evidence string `json:"evidence,omitempty"`
-	// Confident is false when the classifier fell back to a default rather than
-	// matching a rule. A non-confident infra call is never made: the default is
-	// always user, because wrongly retrying a user failure wastes an operator's
-	// time while wrongly failing an infra error destroys trust in red builds.
+	// Confident is false on a fallback, not a matched rule; a non-confident call is always user, never infra.
 	Confident bool      `json:"confident"`
 	At        time.Time `json:"at"`
 }
 
-// String renders the decision as the one line that goes in the job log.
+// String renders the decision as the line that goes in the job log.
 func (d Decision) String() string {
 	s := fmt.Sprintf("classified %s via rule %q: %s", d.Class, d.Rule, d.Reason)
 	if d.Evidence != "" {
@@ -53,12 +47,9 @@ type Signal struct {
 	ExitCode int
 	// Output is the tail of the step's combined output.
 	Output string
-	// Err is a Go error from the platform's own machinery, e.g. a docker API
-	// call or an HTTP request to the control plane.
+	// Err is a Go error from the platform's own machinery: a docker API call or a control-plane request.
 	Err error
-	// Phase is where the failure happened: "setup", "checkout", "action-fetch",
-	// "run", "upload", "teardown". Failures outside "run" are much more likely
-	// to be ours than the user's.
+	// Phase is where the failure happened; outside "run" it is much more likely ours than the user's.
 	Phase string
 	// HTTPStatus is set when the failure was an HTTP response.
 	HTTPStatus int
@@ -81,10 +72,7 @@ type rule struct {
 }
 
 // infraRules are the known-transient failures the platform recognizes out of
-// the box. Each is drawn from a failure that actually happens in practice, not
-// from imagination: registry 5xx and Cloudflare's 524, image pull timeouts, DNS
-// resolution failures, TLS handshake timeouts, an unreachable docker daemon,
-// and 5xx from apt/npm mirrors and proxies.
+// the box.
 var infraRules = []rule{
 	{
 		name:    "cloudflare-524",
@@ -193,8 +181,7 @@ var configRules = []rule{
 
 // Classifier applies the rule set. The zero value is ready to use.
 type Classifier struct {
-	// Extra rules are appended after the built-ins, letting an operator teach
-	// the platform about a failure mode specific to their environment.
+	// Extra rules are appended after the built-ins, for a failure mode specific to one environment.
 	Extra []Rule
 	// Now is injectable for tests.
 	Now func() time.Time
@@ -351,7 +338,7 @@ func hostOr(host, fallback string) string {
 }
 
 // excerpt quotes the matched text with a little surrounding context, collapsed
-// to one line and bounded so a matched megabyte of output cannot end up in a
+// to one line. It bounded so a matched megabyte of output cannot end up in a
 // check run summary.
 func excerpt(s string, start, end int) string {
 	const pad = 40

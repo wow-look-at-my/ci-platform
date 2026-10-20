@@ -1,4 +1,4 @@
-// Package agent is the runner agent: it registers with the control plane,
+// Package agent is the runner agent. It registers with the control plane,
 // claims one job at a time, builds a sandbox for it, executes its steps, and
 // reports the result.
 package agent
@@ -34,9 +34,7 @@ type ControlPlane interface {
 	Release(ctx context.Context, req protocol.ReleaseRequest) error
 }
 
-// Error is a failed control-plane call. It carries its own classification: the
-// control plane being unreachable is the platform's failure, never the
-// workflow's, and no caller has to re-derive that.
+// Error is a failed control-plane call; it carries its own classification, since that failure is always the platform's.
 type Error struct {
 	Path     string
 	Status   int
@@ -61,9 +59,7 @@ func (e *Error) Class() model.FailureClass { return e.Decision.Class }
 type ClientConfig struct {
 	// BaseURL is the control plane root, e.g. https://ci.example.com.
 	BaseURL string
-	// Tokens supplies the bearer token for each call. A runner holds a key
-	// rather than a password, so the token it sends is short-lived and is
-	// re-signed as needed.
+	// Tokens supplies the bearer token for each call; a runner holds a key, so tokens are short-lived and re-signed.
 	Tokens TokenSource
 	HTTP   *http.Client
 	// MaxAttempts bounds retries per call. Zero means the default.
@@ -167,9 +163,8 @@ func (c *Client) Release(ctx context.Context, req protocol.ReleaseRequest) error
 	return c.post(ctx, protocol.PathRelease, req, nil)
 }
 
-// post sends one request, retrying network failures, 5xx, 429, and an expired
-// session with exponential backoff. Any other 4xx is not retried: the control
-// plane rejected the request and repeating it cannot help.
+// Any other 4xx is not retried: the control plane rejected the request and
+// repeating it cannot help.
 func (c *Client) post(ctx context.Context, path string, body, out any) error {
 	payload, err := json.Marshal(body)
 	if err != nil {
@@ -192,9 +187,7 @@ func (c *Client) post(ctx context.Context, path string, body, out any) error {
 		case err == nil:
 			lastStatus = status
 			lastErr = fmt.Errorf("HTTP %d: %s", status, strings.TrimSpace(string(respBody)))
-			// A 401 is retried because once() has just dropped the token that
-			// earned it, so the next attempt carries a freshly signed one. Any
-			// other 4xx is the control plane rejecting the request itself.
+			// Any other 4xx is the control plane rejecting the request itself.
 			if status/100 != 5 && status != http.StatusTooManyRequests && status != http.StatusUnauthorized {
 				return &Error{Path: path, Status: status, Attempts: attempt, Err: lastErr,
 					Decision: c.classifyErr(path, status, lastErr)}
@@ -241,9 +234,7 @@ func (c *Client) once(ctx context.Context, path string, payload []byte) (int, []
 	if err != nil {
 		return resp.StatusCode, nil, err
 	}
-	// A rejected token is the expected outcome of a control-plane restart,
-	// which discards the key it signed tokens with. Dropping the cached one
-	// turns that into one retry rather than a runner that never recovers.
+	// A rejected token is expected after a control-plane restart; dropping the cached one costs one retry, not a stall.
 	if resp.StatusCode == http.StatusUnauthorized {
 		c.cfg.Tokens.Invalidate()
 	}

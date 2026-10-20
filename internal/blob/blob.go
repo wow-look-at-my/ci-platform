@@ -19,21 +19,15 @@ import (
 )
 
 var (
-	// ErrNotFound is returned by Get, GetRange, Stat, and Delete for a key that
-	// does not exist.
+	// ErrNotFound is returned by Get, GetRange, Stat, and Delete for a key that does not exist.
 	ErrNotFound = errors.New("blob: not found")
-	// ErrUnsupported is returned by a driver that cannot perform an optional
-	// operation. The caller must handle it, never treat it as success.
+	// ErrUnsupported is returned for an optional operation a driver cannot do; never treat it as success.
 	ErrUnsupported = errors.New("blob: operation not supported by this driver")
-	// ErrBadKey is returned for a key that is empty, absolute, contains NUL, or
-	// contains a ".." element.
+	// ErrBadKey is returned for a key that is empty, absolute, contains NUL, or has a ".." element.
 	ErrBadKey = errors.New("blob: invalid key")
 )
 
-// Info is what a driver knows about a stored object without reading it. There
-// is deliberately no digest field: neither driver tracks the sha256 of an
-// object it did not hash itself, and an S3 ETag is an MD5, so reporting one
-// here would be a lie. Use DigestOf when the digest must be known.
+// Info has no digest field: an S3 ETag is an MD5, not a sha256, so reporting one would be a lie. Use DigestOf.
 type Info struct {
 	Key     string
 	Size    int64
@@ -44,16 +38,14 @@ type Info struct {
 // reports success for work it did not do.
 type Store interface {
 	Put(ctx context.Context, key string, r io.Reader) (size int64, digest string, err error)
-	// PutAt writes a byte range, for chunked/resumable uploads. Drivers that
-	// cannot write at an offset return ErrUnsupported.
+	// PutAt writes a byte range, for chunked/resumable uploads; unsupported drivers return ErrUnsupported.
 	PutAt(ctx context.Context, key string, offset int64, r io.Reader) (int64, error)
 	Get(ctx context.Context, key string) (io.ReadCloser, error)
 	// GetRange reads length bytes from off; a negative length reads to the end.
 	GetRange(ctx context.Context, key string, off, length int64) (io.ReadCloser, error)
 	Stat(ctx context.Context, key string) (Info, error)
 	Delete(ctx context.Context, key string) error
-	// SignedURL is optional; drivers that cannot sign return ErrUnsupported and
-	// the caller proxies the bytes instead.
+	// SignedURL is optional; on ErrUnsupported the caller proxies the bytes instead.
 	SignedURL(ctx context.Context, key string, ttl time.Duration) (string, error)
 }
 
@@ -63,8 +55,7 @@ const ContentPrefix = "sha256/"
 // ContentKey builds the immutable key for a hex sha256 digest.
 func ContentKey(hexDigest string) string { return ContentPrefix + hexDigest }
 
-// maxKeyLen bounds a key so a disk driver cannot be handed a path the
-// filesystem will reject halfway through a write.
+// maxKeyLen bounds a key so a disk driver is never handed a path the filesystem would reject mid-write.
 const maxKeyLen = 1024
 
 // ValidateKey rejects every key that could escape a driver's root or name a

@@ -1,6 +1,7 @@
 package operatorauth
 
 import (
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -15,7 +16,7 @@ type fakeGitHub struct {
 	srv *httptest.Server
 	// login is who the code resolves to.
 	login string
-	// tokenStatus and tokenBody override the exchange response.
+	// tokenBody and tokenBody override the exchange response.
 	tokenBody   string
 	gotRedirect string
 }
@@ -40,7 +41,7 @@ func newFakeGitHub(t *testing.T, login string) *fakeGitHub {
 			return
 		}
 		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(`{"login":"` + f.login + `"}`))
+		require.NoError(t, json.NewEncoder(w).Encode(map[string]string{"login": f.login}))
 	})
 	f.srv = httptest.NewServer(mux)
 	t.Cleanup(f.srv.Close)
@@ -81,8 +82,7 @@ func TestGitHubLogin_SendsTheBrowserToGitHubWithState(t *testing.T) {
 	state, to := start(t, a)
 	assert.Equal(t, stateCookie, state.Name)
 	assert.True(t, state.HttpOnly)
-	// Strict would not come back on the navigation from github.com, so every
-	// sign-in would fail on a state mismatch.
+	// Strict would not come back on the navigation from github.com, so every sign-in would fail on a state mismatch.
 	assert.Equal(t, http.SameSiteLaxMode, state.SameSite)
 	assert.NotEmpty(t, state.Value)
 
@@ -195,8 +195,6 @@ func TestGitHubCallback_ClearsTheStateCookie(t *testing.T) {
 	assert.True(t, cleared)
 }
 
-// GitHub reports a refused exchange as 200 with an error field, so a handler
-// that trusts the status code signs in a session with no token behind it.
 func TestGitHubCallback_TreatsAnErrorBodyAsAFailure(t *testing.T) {
 	f := newFakeGitHub(t, "PazerOP")
 	f.tokenBody = `{"error":"bad_verification_code","error_description":"The code passed is incorrect or expired."}`

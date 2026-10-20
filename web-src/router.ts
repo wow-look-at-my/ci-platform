@@ -1,6 +1,4 @@
-// Hash routing. Deep-linkable, and the log-line anchor rides in the same hash
-// as a second segment: #/jobs/12?attempt=2#L840 is not expressible, so line
-// anchors are a query parameter of the route instead: #/jobs/12?line=840.
+// Hash routing.
 
 export interface Route {
 	path: string;

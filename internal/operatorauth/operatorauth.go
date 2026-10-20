@@ -1,21 +1,13 @@
 // Package operatorauth gates the operator surface -- the REST API, the SSE
-// tails, and the raw log and artifact downloads -- and decides who is allowed
+// tails, and the raw log and artifact downloads. And decides who is allowed
 // through it.
 //
-// It exists because every job container can route to the control plane: a job
+// It exists because every job container can route to the control plane. A job
 // needs CIPLATFORM_PUBLIC_URL to upload artifacts, restore cache, and fetch an
 // ID token. An unauthenticated /api/v1 on that same listener is therefore
-// reachable from inside any workflow, including a fork PR's, which makes every
+// reachable from inside any workflow, including a fork PR's. This makes every
 // other repository's logs and artifacts readable and every run cancellable by
 // anything that can run a step.
-//
-// There are two ways to prove you are an operator, because there are two kinds
-// of caller. A person signs in with GitHub and gets a session naming their
-// account, checked against the admin list. A script sends the shared operator
-// credential as a bearer header, and is recorded as "operator" because a shared
-// credential names nobody.
-//
-// see docs/security.md
 package operatorauth
 
 import (
@@ -32,13 +24,10 @@ import (
 	"github.com/wow-look-at-my/ci-platform/internal/ghaccounts"
 )
 
-// CookieName holds the session in a browser. It is HttpOnly, so the UI never
-// reads it from script.
+// CookieName holds the session in a browser; it is HttpOnly, so the UI cannot read it from script.
 const CookieName = "ci_operator"
 
-// MinTokenLen is the shortest operator credential accepted. It is a bearer
-// secret with no lockout in front of it, so its entropy is the only thing
-// standing between an attacker and the API.
+// MinTokenLen is the shortest operator credential accepted; with no lockout in front of it, entropy is the only defense.
 const MinTokenLen = 16
 
 // PathLogin, PathLogout and PathStatus are the unauthenticated endpoints the UI
@@ -53,9 +42,7 @@ const (
 type Options struct {
 	// Token is the shared operator credential, for scripts. Required.
 	Token string
-	// Admins are the GitHub accounts allowed to sign in. Required: a gate whose
-	// admin list is empty is either open to everybody or open to nobody, and
-	// guessing which is not this package's decision to make.
+	// Admins are the GitHub accounts allowed to sign in; required, since an empty list must not default either way.
 	Admins *ghaccounts.Set
 	// OAuth is the GitHub App's own OAuth client. Required.
 	OAuth OAuthOptions
@@ -63,9 +50,7 @@ type Options struct {
 	SessionKey []byte
 	// SessionTTL bounds how long a session lasts. Default 12h.
 	SessionTTL time.Duration
-	// Secure marks cookies Secure. Set from the public URL's scheme: a Secure
-	// cookie is never sent over plain http, so forcing it on an http deployment
-	// silently logs every operator out on the next request.
+	// Secure marks cookies Secure; set from the public URL's scheme, since a Secure cookie requires https to be sent.
 	Secure     bool
 	Logger     *slog.Logger
 	HTTPClient *http.Client
@@ -85,7 +70,7 @@ type Auth struct {
 }
 
 // New builds the gate. A missing credential, admin list, OAuth client or
-// session key is an error rather than an open door: a gate that lets everybody
+// session key is an error rather than an open door. A gate that lets everybody
 // through is worse than no gate, because the deployment looks protected.
 func New(opts Options) (*Auth, error) {
 	if opts.Token == "" {
@@ -146,14 +131,12 @@ func New(opts Options) (*Auth, error) {
 	return a, nil
 }
 
-// Handler serves the sign-in, sign-out, and status endpoints. These are the
-// only operator-surface routes that answer without a credential.
+// Handler serves sign-in, sign-out, and status: the only operator-surface routes reachable without a credential.
 func (a *Auth) Handler() http.Handler { return a.mux }
 
 type contextKey struct{}
 
-// IdentityFrom returns who a request is acting as. The second result is false
-// on an unauthenticated request, which the middleware never forwards.
+// IdentityFrom returns who a request is acting as; false means unauthenticated, which the middleware does not forward.
 func IdentityFrom(ctx context.Context) (Identity, bool) {
 	id, ok := ctx.Value(contextKey{}).(Identity)
 	return id, ok
@@ -163,9 +146,9 @@ func IdentityFrom(ctx context.Context) (Identity, bool) {
 // nor a valid session, and attaches the caller's identity to the ones it
 // forwards.
 //
-// Both credential forms are accepted because both are needed: scripts and curl
-// send the header, while the UI's EventSource log tail and its download links
-// cannot set headers at all and can only authenticate with a cookie.
+// Both credential forms are accepted because both are needed. It scripts and
+// curl send the header, while the UI's EventSource log tail. Its download
+// links cannot set headers at all and can only authenticate with a cookie.
 func (a *Auth) Middleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		id, ok := a.identify(r)
@@ -182,8 +165,7 @@ func (a *Auth) Middleware(next http.Handler) http.Handler {
 	})
 }
 
-// Authenticated reports whether a request carries a credential. Exported so a
-// handler that serves both a public and a privileged view can ask.
+// Authenticated reports whether a request carries a credential, for a handler serving both public and privileged views.
 func (a *Auth) Authenticated(r *http.Request) bool {
 	_, ok := a.identify(r)
 	return ok
@@ -229,11 +211,7 @@ func (a *Auth) setSession(w http.ResponseWriter, value string) {
 		Path:     "/",
 		HttpOnly: true,
 		Secure:   a.secure,
-		// Lax, not Strict: the browser arrives back from github.com after a
-		// sign-in, and a Strict cookie is not sent on a cross-site navigation,
-		// so the dashboard would render signed-out immediately after signing
-		// in. Lax still withholds the cookie from every cross-site POST, which
-		// is what the API's mutations are.
+		// Lax, not Strict: a Strict cookie would not survive the redirect back from github.com after sign-in.
 		SameSite: http.SameSiteLaxMode,
 		MaxAge:   int(a.sessions.ttl / time.Second),
 	})
@@ -241,7 +219,8 @@ func (a *Auth) setSession(w http.ResponseWriter, value string) {
 
 // login exchanges the shared operator credential for a session. It stays
 // because a script, a curl one-liner, and a browser on a machine that cannot
-// reach github.com all need a way in that does not involve an OAuth round trip.
+// reach github.com all need a way. In that does not involve an OAuth round
+// trip.
 func (a *Auth) login(w http.ResponseWriter, r *http.Request) {
 	var body struct {
 		Token string `json:"token"`
@@ -283,9 +262,6 @@ func (a *Auth) logout(w http.ResponseWriter, _ *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{"authenticated": false})
 }
 
-// status lets the UI show a sign-in button without first provoking a 401 on a
-// data endpoint. It answers 200 either way: whether somebody is signed in is
-// not a secret, and a 401 here would be indistinguishable from a broken server.
 func (a *Auth) status(w http.ResponseWriter, r *http.Request) {
 	id, ok := a.identify(r)
 	body := map[string]any{

@@ -114,8 +114,7 @@ func TestIDTokenEndpointMatchesToolkitClient(t *testing.T) {
 	runtimeToken, err := signer.Mint(42, 7, 1)
 	require.NoError(t, err)
 
-	// getIDToken appends "&audience=", so the injected URL must already have a
-	// query string. Build the request exactly as the client does.
+	// getIDToken appends "&audience=", so the injected URL must already have a query string.
 	requestURL := oidc.RequestURL(srv.URL)
 	require.Contains(t, requestURL, "?", "ACTIONS_ID_TOKEN_REQUEST_URL must carry a query string")
 	full := requestURL + "&audience=" + url.QueryEscape("https://buildhost.pazer.io")

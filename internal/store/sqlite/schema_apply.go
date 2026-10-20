@@ -12,15 +12,6 @@ import (
 	"time"
 )
 
-// schemaSQL is the whole schema, current truth in one file.
-//
-// There is deliberately no numbered migration chain. Nothing is deployed yet,
-// so a forward-only sequence with a version table would be machinery for a
-// situation that does not exist -- and it would make the schema something you
-// reconstruct by replaying files instead of something you read. The first
-// deployed instance is what earns a migration chain; until then, changing this
-// file and recreating the database is the whole procedure.
-//
 //go:embed schema.sql
 var schemaSQL string
 
@@ -34,8 +25,8 @@ func schemaFingerprint() string {
 // checks that it is the schema this build expects.
 //
 // A mismatch is a hard stop, not a repair attempt: the database in front of us
-// was built by a different version of this file, and guessing at the difference
-// is how a schema and its code drift apart silently.
+// was built by a different version of this file. Guessing at the difference is
+// how a schema and its code drift apart silently.
 func (s *Store) Migrate(ctx context.Context) error {
 	const createMeta = `
 CREATE TABLE IF NOT EXISTS schema_meta (
@@ -63,8 +54,7 @@ CREATE TABLE IF NOT EXISTS schema_meta (
 		return fmt.Errorf("sqlite: read schema_meta: %w", err)
 	}
 
-	// Empty database: apply the schema and record what was applied, in one
-	// transaction, so a half-created schema can never be recorded as complete.
+	// Empty database: apply the schema and record what was applied, in one transaction.
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("sqlite: begin schema: %w", err)

@@ -1,0 +1,15 @@
+
+name: Greet
+description: greets
+inputs:
+  who-to-greet:
+    description: whom
+    default: World
+  token:
+    description: t
+    required: true
+runs:
+  using: node20
+  main: dist/index.js
+  pre: dist/pre.js
+  post: dist/post.js

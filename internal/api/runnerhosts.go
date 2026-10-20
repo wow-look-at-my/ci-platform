@@ -68,16 +68,13 @@ func (s *Server) listRunnerHosts(w http.ResponseWriter, r *http.Request) {
 
 // runnerHostAction is the body of an approve or revoke.
 type runnerHostAction struct {
-	// Note is the operator's own words: which machine this is, or why it was
-	// revoked.
+	// Note is the operator's own words: which machine this is, or why it was revoked.
 	Note string `json:"note"`
 	// Labels, when set, replaces what this host's runners may claim.
 	Labels []string `json:"labels"`
 }
 
-// approveRunnerHost lets a machine take jobs. This is the one action in the
-// platform that hands out execution on the runner fleet, so it records the
-// account that took it.
+// approveRunnerHost lets a machine take jobs.
 func (s *Server) approveRunnerHost(w http.ResponseWriter, r *http.Request) {
 	s.setRunnerHostState(w, r, model.RunnerHostApproved)
 }
@@ -116,8 +113,8 @@ func (s *Server) setRunnerHostState(w http.ResponseWriter, r *http.Request, stat
 		}
 	}
 
-	// Approving a host is the kind of thing somebody asks about a year later,
-	// so it goes in the event log rather than only in a row that records the
+	// Approving a host is the kind of thing somebody asks about a year later.
+	// It goes in the event log rather than only in a row that records the
 	// current state.
 	if err := s.cfg.Store.RecordEvent(r.Context(), store.Event{
 		At:      s.now(),

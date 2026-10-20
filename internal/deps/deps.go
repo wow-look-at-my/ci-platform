@@ -1,8 +1,8 @@
 // Package deps pins the module's third-party dependency set in one place.
 //
 // It exists so that every package can be developed against an already-resolved
-// go.mod: without it, the first package to import a new module rewrites go.sum,
-// and parallel work on separate packages fights over the same two files.
+// go.mod. Without it, the first package to import a new module rewrites go.sum,
+// and parallel work on separate packages fights over the same files.
 package deps
 
 import (
@@ -21,8 +21,7 @@ import (
 	// Cron parsing for schedule: triggers.
 	_ "github.com/robfig/cron/v3"
 
-	// Bundling the TypeScript UI at build time, so no Node toolchain is needed
-	// in CI or in the image.
+	// Bundling the TypeScript UI at build time, so no Node toolchain is needed in CI or in the image.
 	_ "github.com/evanw/esbuild/pkg/api"
 
 	// Assertions, which go-toolchain's fixer rewrites tests into anyway.

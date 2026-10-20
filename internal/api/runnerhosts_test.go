@@ -53,8 +53,8 @@ func TestListRunnerHosts_CountsWhatIsWaiting(t *testing.T) {
 	assert.Equal(t, []string{"self-hosted", "linux"}, out.Hosts[0].Labels)
 }
 
-// Approving a host is the one action that hands out execution on the fleet, so
-// it records who did it rather than an anonymous state change.
+// Approving a host is the action that hands out execution on the fleet, so it
+// records who did it rather than an anonymous state change.
 func TestApproveRunnerHost_RecordsTheOperator(t *testing.T) {
 	h := newHarness(t)
 	h.st.hosts = []*model.RunnerHost{hostFixture(model.RunnerHostPending)}

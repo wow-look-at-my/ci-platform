@@ -11,7 +11,7 @@ import (
 // the YAML key order. Alphabetical fallback would rename every leg and stop
 // matching the branch protection rule keyed on the name.
 func TestMatrixOrderCarriesIncludeOnlyKeysInYAMLOrder(t *testing.T) {
-	src := "on: push\njobs:\n  publish:\n    runs-on: x\n    strategy:\n      matrix:\n" +
+	src := fx("matrixorder_14.yml") +
 		"        image: [claude-host/agent-host]\n" +
 		"        include:\n" +
 		"          - image: claude-host/agent-host\n            dockerfile: Dockerfile\n" +

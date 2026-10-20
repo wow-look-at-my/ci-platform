@@ -1,0 +1,11 @@
+on: push
+jobs:
+  publish:
+    runs-on: x
+    strategy:
+      matrix:
+        image: [claude-host/agent-host]
+        include:
+          - image: claude-host/agent-host
+            dockerfile: Dockerfile
+    steps: [{run: y}]

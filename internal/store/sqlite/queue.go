@@ -22,7 +22,7 @@ const (
 
 // Enqueue makes a job eligible for dispatch. It is idempotent on job id: a job
 // that is already queued or already leased keeps its row, its queue position,
-// and its lease. Two schedulers racing to enqueue the same job produce one row.
+// and its lease. Schedulers racing to enqueue the same job produce one row.
 func (s *Store) Enqueue(ctx context.Context, q store.QueuedJob) error {
 	if q.JobID == 0 {
 		return fmt.Errorf("sqlite: Enqueue: queued job has no job id")
@@ -53,10 +53,8 @@ func (s *Store) Enqueue(ctx context.Context, q store.QueuedJob) error {
 		if q.RunID != 0 && q.RunID != runID {
 			return fmt.Errorf("sqlite: Enqueue: job %d belongs to run %d, not %d", q.JobID, runID, q.RunID)
 		}
-		// The caller states the attempt because it is half of the dispatch
-		// idempotency key. Disagreeing with the job row means the caller and
-		// the store have different ideas about which attempt this is, which
-		// would let the same attempt dispatch twice; refuse rather than pick.
+		// The caller states the attempt: it is half the dispatch idempotency key. Disagreement risks the
+		// same attempt dispatching twice, so this refuses rather than picks.
 		if q.Attempt != 0 {
 			if q.Attempt != attempt {
 				return fmt.Errorf("sqlite: Enqueue: job %d is on attempt %d, caller enqueued attempt %d",
@@ -103,9 +101,7 @@ func (s *Store) DropFromQueue(ctx context.Context, jobID int64) error {
 	return nil
 }
 
-// labelsSatisfied is the eligibility clause: every label the job requires must
-// be present in the runner's set. json_each walks the job's labels, and the
-// NOT EXISTS fails the row on the first one the runner lacks.
+// labelsSatisfied requires every label the job needs be in the runner's set; NOT EXISTS fails on the first missing one.
 const labelsSatisfied = `
 NOT EXISTS (
     SELECT 1 FROM json_each(job_queue.labels) AS need
@@ -117,9 +113,9 @@ NOT EXISTS (
 //
 // Eligibility: state 'queued', not_before reached, and every label the job
 // requires present in the runner's label set. Ordering is priority descending
-// then queued_at ascending. Selecting the candidate and taking its lease happen
-// in one transaction on the store's single connection, so two runners polling
-// at once cannot be handed the same job.
+// then queued_at ascending. Selecting the candidate. It taking its lease happen
+// in one transaction on the store's single connection, so runners polling at
+// once cannot be handed the same job.
 func (s *Store) Dequeue(ctx context.Context, runnerID string, labels []string, ttl time.Duration) (*model.Job, error) {
 	if runnerID == "" {
 		return nil, fmt.Errorf("sqlite: Dequeue: empty runner id")
@@ -165,7 +161,6 @@ WHERE job_id = ? AND state = 'queued'`
 			return mapErr("sqlite: Dequeue", err)
 		}
 		if claimed == 0 {
-			// The row stopped being queued between the pick and the claim.
 			// Reporting "nothing to do" is honest: this poll got no job.
 			return store.ErrNotFound
 		}

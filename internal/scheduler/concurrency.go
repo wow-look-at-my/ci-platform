@@ -11,10 +11,10 @@ import (
 
 // admitToConcurrencyGroup enforces at most one live job per group.
 //
-// With cancel-in-progress the newcomer supersedes whatever holds the group, and
-// the older job is cancelled with the concurrency_group actor and a sentence
-// naming what displaced it. Without it, the newcomer waits, visibly, in the
-// waiting status rather than silently sitting in the queue.
+// With cancel-in-progress the newcomer supersedes whatever holds the group. The
+// older job is cancelled with the concurrency_group actor and a sentence naming
+// what displaced it. Without it, the newcomer waits, visibly, in the waiting
+// status rather than silently sitting in the queue.
 func (s *Scheduler) admitToConcurrencyGroup(ctx context.Context, j *model.Job, pj *plan.PlannedJob, groupTaken map[string]bool, now time.Time) (bool, error) {
 	group := j.ConcurrencyGroup
 	if group == "" {
@@ -27,9 +27,7 @@ func (s *Scheduler) admitToConcurrencyGroup(ctx context.Context, j *model.Job, p
 	if err != nil {
 		return false, err
 	}
-	// Only a job that has actually been admitted holds the group. A sibling
-	// still waiting for the scheduler's decision holds nothing, and treating
-	// it as a holder would have two jobs cancel or block each other.
+	// Only a job that has been admitted holds the group.
 	var holders []*model.Job
 	for _, other := range live {
 		if other.ID == j.ID || other.Status == model.StatusCompleted {

@@ -27,15 +27,13 @@ import (
 	gh "github.com/wow-look-at-my/ci-platform/internal/github"
 )
 
-// jwtTTL is the App JWT lifetime. GitHub rejects anything over 10 minutes.
+// jwtTTL is the App JWT lifetime. GitHub rejects anything over several minutes.
 const jwtTTL = 9 * time.Minute
 
-// clockSkew backdates iat so a control-plane clock a minute fast still mints
-// tokens GitHub accepts.
+// clockSkew backdates iat so a control-plane clock a minute fast still mints tokens GitHub accepts.
 const clockSkew = 60 * time.Second
 
-// refreshWindow is how much remaining life makes a cached installation token
-// too stale to hand out.
+// refreshWindow is how much remaining life makes a cached installation token too stale to hand out.
 const refreshWindow = 5 * time.Minute
 
 // Config is the App's startup configuration. Exactly one of PrivateKeyPEM and
@@ -148,8 +146,7 @@ func (a *App) jwtAt(t time.Time) (string, error) {
 	return s, nil
 }
 
-// TokenScope narrows an installation token. Jobs never receive one of these;
-// the platform mints them for its own calls, as narrowly as it can.
+// TokenScope narrows an installation token; jobs never receive one, only the platform's own calls.
 type TokenScope struct {
 	RepositoryIDs []int64
 	Repositories  []string
@@ -196,7 +193,7 @@ type accessTokenResponse struct {
 }
 
 // InstallationToken returns a cached, unscoped installation token, refreshing
-// it once under five minutes of life remain.
+// it once a bounded number of minutes of life remain.
 func (a *App) InstallationToken(ctx context.Context, installationID int64) (string, time.Time, error) {
 	return a.ScopedInstallationToken(ctx, installationID, TokenScope{})
 }
@@ -280,8 +277,7 @@ type Installation struct {
 	SuspendedAt         *time.Time        `json:"suspended_at,omitempty"`
 }
 
-// Suspended reports whether GitHub has suspended this installation, which means
-// every call made with its token will fail.
+// Suspended reports whether GitHub has suspended this installation; every call with its token then fails.
 func (i Installation) Suspended() bool { return i.SuspendedAt != nil }
 
 // Repository is one repo an installation covers.

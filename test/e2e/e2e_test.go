@@ -14,7 +14,7 @@ import (
 )
 
 // The App is published, so anybody can install it. An install by an account
-// the operator did not name must schedule nothing: this is the whole safety
+// the operator did not name must schedule nothing. This is the whole safety
 // property of publishing, checked against the real binary rather than a unit.
 func TestPushFromAnAccountThatIsNotServedCreatesNothing(t *testing.T) {
 	t.Parallel()
@@ -23,8 +23,7 @@ func TestPushFromAnAccountThatIsNotServedCreatesNothing(t *testing.T) {
 	cp.pushFrom(t, "a-total-stranger", "refs/heads/main",
 		"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", []string{"main.go"})
 
-	// A run would appear within a second or so; give it longer than that before
-	// concluding nothing happened.
+	// A run would appear within a second or so; give it longer than that before concluding nothing happened.
 	time.Sleep(2 * time.Second)
 	assert.Empty(t, cp.allRuns(t), "a stranger's push scheduled work on the runners")
 	assert.Contains(t, cp.out.String(), "refused a webhook delivery",
@@ -56,28 +55,18 @@ func TestPushToAFilteredBranchCreatesNoRun(t *testing.T) {
 
 	cp.push(t, "refs/heads/feature/x", "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", []string{"main.go"})
 
-	// Give the control plane a moment to do the thing we are asserting it does
-	// not do.
+	// Give the control plane a moment to do the thing we are asserting it does not do.
 	time.Sleep(2 * time.Second)
 	assert.Empty(t, cp.runs(t), "a workflow filtered to main must not run on a feature branch")
 }
 
-// An unsupported feature fails the run with a reason rather than being skipped:
-// a workflow silently absent from a commit's checks looks exactly like one that
+// An unsupported feature fails the run with a reason rather than being skipped.
+// A workflow silently absent from a commit's checks looks exactly like one that
 // passed.
 func TestUnsupportedWorkflowFailsTheRunRatherThanVanishing(t *testing.T) {
 	t.Parallel()
 	cp := start(t, map[string]string{
-		".github/workflows/svc.yml": `name: Services
-on: push
-jobs:
-  build:
-    runs-on: ubuntu-latest
-    container:
-      image: node:20
-    steps:
-      - run: node --version
-`,
+		".github/workflows/svc.yml": fx("e2e_69.yml"),
 	})
 
 	cp.push(t, "refs/heads/main", "cccccccccccccccccccccccccccccccccccccccc", []string{"main.go"})
@@ -92,7 +81,7 @@ jobs:
 func TestUnparseableWorkflowFailsTheRun(t *testing.T) {
 	t.Parallel()
 	cp := start(t, map[string]string{
-		".github/workflows/broken.yml": "name: Broken\non: push\njobs:\n  a:\n    runs-on: x\n    steps:\n      - run: y\n        uses: actions/checkout@v4\n",
+		".github/workflows/broken.yml": fx("e2e_93.yml"),
 	})
 
 	cp.push(t, "refs/heads/main", "dddddddddddddddddddddddddddddddddddddddd", nil)
@@ -176,7 +165,7 @@ func TestRunnerEndpointRequiresAToken(t *testing.T) {
 }
 
 // Every job container can reach this listener -- it has to, to upload an
-// artifact -- so an ungated operator API would let any workflow, a fork PR's
+// artifact -- so an ungated operator API would let any workflow. A fork PR's
 // included, read every repository's logs and cancel every run. The credential
 // is the boundary; these are the requests a job could make.
 func TestOperatorAPIRefusesAnUncredentialedCaller(t *testing.T) {
@@ -207,8 +196,7 @@ func TestOperatorAPIRefusesAnUncredentialedCaller(t *testing.T) {
 	}
 
 	// Signing in with the credential yields a cookie that opens the same API,
-	// which is how the UI's log tail and download links authenticate: an
-	// EventSource cannot set a header.
+	// which is how the UI's log tail and download links authenticate.
 	resp, err := http.Post(cp.URL+"/auth/login", "application/json",
 		bytes.NewReader([]byte(`{"token":"`+operatorToken+`"}`)))
 	require.NoError(t, err)

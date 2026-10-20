@@ -11,21 +11,16 @@ import (
 	"github.com/wow-look-at-my/ci-platform/internal/signedvalue"
 )
 
-// Session is what a runner holds after proving it owns an approved key. It is
-// short-lived: an approval that cannot be withdrawn until a token expires is
-// not really a revocation, so the window is minutes, not days.
+// Session is what a runner holds after proving it owns an approved key.
 type Session struct {
 	// Fingerprint names the approved host.
 	Fingerprint string
-	// RunnerID names which of that host's runners this is, so a host running
-	// several does not have to share one identity.
+	// RunnerID names which of that host's runners this is, so a host running several does not have to share one identity.
 	RunnerID string
 	Expires  time.Time
 }
 
-// DefaultSessionTTL is how long a runner session token is good for. A runner
-// renews well before this, and a revoked host stops being able to renew
-// immediately, so this is the longest a revoked host keeps working.
+// DefaultSessionTTL is how long a runner session token is good for.
 const DefaultSessionTTL = 10 * time.Minute
 
 // Sessions mints and verifies runner session tokens, and remembers the nonces
@@ -112,8 +107,6 @@ func (s *Sessions) CheckFreshness(fingerprint string, at time.Time, nonce string
 }
 
 // evictLocked drops nonces older than the window they were checked against.
-// Once a nonce's timestamp can no longer pass CheckFreshness, remembering it
-// proves nothing.
 func (s *Sessions) evictLocked(now time.Time) {
 	for k, at := range s.seen {
 		if now.Sub(at) > 2*MaxClockSkew {

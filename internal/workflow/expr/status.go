@@ -3,18 +3,19 @@ package expr
 import (
 	"fmt"
 	"strings"
+
+	"github.com/wow-look-at-my/ci-platform/internal/model"
 )
 
-// StatusFunctions are the four functions whose presence in an `if:` changes
-// what the condition means when a dependency has failed.
+// StatusFunctions are the functions whose presence in an `if:` changes what the condition means when a dependency has failed.
 var StatusFunctions = []string{"success", "failure", "cancelled", "always"}
 
 // ReferencesStatusFunction reports whether an if: condition calls one of the
 // status functions.
 //
 // The scheduler needs this because GitHub compiles a condition naming none of
-// them to `success() && (<cond>)`, so a plain `if: github.ref == 'x'` does not
-// run after a failed dependency. Answering it by scanning the raw text would be
+// them to `success() && (<cond>)`. A plain `if: github.ref == 'x'` does not run
+// after a failed dependency. Answering it by scanning the raw text would be
 // fooled by a string literal such as `if: contains(msg, 'success()')`, which is
 // why this walks the parsed AST.
 func ReferencesStatusFunction(raw string) (bool, error) {
@@ -36,7 +37,7 @@ func ReferencesStatusFunction(raw string) (bool, error) {
 		if i < 0 {
 			return false, nil
 		}
-		body, after, ok := splitExpr(rest[i+3:])
+		body, after, ok := model.SplitExprBody(rest[i+3:])
 		if !ok {
 			return false, fmt.Errorf("unterminated expression: %q", rest[i:])
 		}

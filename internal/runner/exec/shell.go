@@ -7,8 +7,7 @@ import (
 
 // shellSpec is how one shell turns a script file into a command line.
 type shellSpec struct {
-	command string
-	// argFormat contains {0}, replaced by the script path.
+	command   string
 	argFormat string
 	ext       string
 }
@@ -20,8 +19,7 @@ var builtinShells = map[string]shellSpec{
 	"bash":   {command: "bash", argFormat: "--noprofile --norc -e -o pipefail {0}", ext: ".sh"},
 	"sh":     {command: "sh", argFormat: "-e {0}", ext: ".sh"},
 	"python": {command: "python", argFormat: "{0}", ext: ".py"},
-	// node is not a GitHub Actions built-in shell; it is ours, so a workflow
-	// can run a JS snippet without wrapping it in an action.
+	// node is not a GitHub Actions built-in shell.
 	"node": {command: "node", argFormat: "{0}", ext: ".js"},
 }
 
@@ -37,10 +35,6 @@ var unsupportedShells = map[string]string{
 // shellCommand builds the argv for a step's script and the path the script
 // must be written to. The extension is chosen here, so the file written and
 // the file named in argv can never disagree.
-//
-// A custom `shell:` is COMMAND [..ARGS] where ARGS must contain {0}; that is
-// the Actions runner's rule, and without it there is no way to know where the
-// script path goes.
 func shellCommand(shell, scriptBase string) (argv []string, scriptPath string, err error) {
 	shell = strings.TrimSpace(shell)
 	if shell == "" {

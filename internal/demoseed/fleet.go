@@ -1,6 +1,6 @@
 package demoseed
 
-// The fleet and the cache: a starved label with nobody to take its work, and a cache with a restore-key hit and an eviction that says why.
+// The fleet and the cache. A starved label with nobody to take its work, and a cache with a restore-key hit and an eviction that says why.
 
 import (
 	"context"
@@ -10,8 +10,8 @@ import (
 	"github.com/wow-look-at-my/ci-platform/internal/store"
 )
 
-// seedFleet gives the queue page something to be honest about: a label with
-// queued work and no runner that can take it, which is incident 4's alarm.
+// seedFleet gives the queue page something to be honest about. A label with
+// queued work and no runner that can take it, which is a later incident's alarm.
 func seedFleet(ctx context.Context, st store.Store) error {
 	runners := []*model.Runner{
 		{
@@ -90,7 +90,7 @@ func seedFleet(ctx context.Context, st store.Store) error {
 
 // seedRunnerHosts shows the approval flow in the state that matters: one
 // machine waiting for somebody to look at its fingerprint. A demo with only
-// approved hosts would hide the one thing an operator has to do.
+// approved hosts would hide the thing an operator has to do.
 func seedRunnerHosts(ctx context.Context, st store.Store) error {
 	hosts := []struct {
 		host    *model.RunnerHost
@@ -122,8 +122,7 @@ func seedRunnerHosts(ctx context.Context, st store.Store) error {
 			return err
 		}
 		if !h.approve {
-			// A host nobody has approved has never been seen, because being
-			// seen is something only an approved host gets to do.
+			// A host nobody has approved has never been seen, because being seen is something only an approved host gets to do.
 			continue
 		}
 		if _, err := st.SetRunnerHostState(ctx, h.host.Fingerprint,

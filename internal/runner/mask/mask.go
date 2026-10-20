@@ -1,7 +1,7 @@
-// Package mask redacts secret values from log text before it leaves the runner
-// process. Every rendering a build is likely to produce is registered, not just
-// the literal value: a secret echoed through base64 or a URL query string is
-// still the secret.
+// Package mask redacts secret values from log text before it leaves the
+// runner process. Every rendering a build is likely to produce is registered,
+// not the literal value. A secret echoed through base64 or a URL query string
+// is still the secret.
 package mask
 
 import (
@@ -10,33 +10,30 @@ import (
 	"sort"
 	"strings"
 	"sync"
+
+	"github.com/wow-look-at-my/go-containers/set"
 )
 
 // Placeholder is what a redacted value is replaced with.
 const Placeholder = "***"
 
-// MinLength skips values too short to redact usefully. Masking a 1-character
-// secret would black out most of a build log while hiding nothing.
+// MinLength skips values too short to redact usefully; a 1-char secret would black out logs, hiding nothing.
 const MinLength = 3
 
-// Masker holds the registered secret values and their renderings.
-//
-// It is safe for concurrent use: log lines are masked on the emitting
-// goroutine while ::add-mask:: registrations arrive from output parsing.
+// Masker holds the registered secret values and renderings; safe for concurrent use.
 type Masker struct {
 	mu       sync.RWMutex
-	values   map[string]struct{}
+	values   set.Set[string]
 	replacer *strings.Replacer
 }
 
 // New returns an empty masker.
 func New() *Masker {
-	return &Masker{values: make(map[string]struct{})}
+	return &Masker{values: set.New[string]()}
 }
 
 // Add registers a secret value and every rendering of it that could appear in
-// output. A multi-line secret is also registered line by line, because a build
-// that prints it through a tool may emit only one of its lines.
+// output. A multi-line secret is also registered line by line.
 func (m *Masker) Add(secret string) {
 	if len(secret) < MinLength {
 		return
@@ -47,7 +44,7 @@ func (m *Masker) Add(secret string) {
 		if len(v) < MinLength {
 			continue
 		}
-		m.values[v] = struct{}{}
+		m.values.Add(v)
 	}
 	m.replacer = nil
 }
@@ -76,13 +73,13 @@ func (m *Masker) Mask(s string) string {
 func (m *Masker) Count() int {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
-	return len(m.values)
+	return m.values.Len()
 }
 
 func (m *Masker) build() *strings.Replacer {
 	m.mu.RLock()
 	r := m.replacer
-	n := len(m.values)
+	n := m.values.Len()
 	m.mu.RUnlock()
 	if r != nil || n == 0 {
 		return r
@@ -93,12 +90,11 @@ func (m *Masker) build() *strings.Replacer {
 	if m.replacer != nil {
 		return m.replacer
 	}
-	vals := make([]string, 0, len(m.values))
-	for v := range m.values {
+	vals := make([]string, 0, m.values.Len())
+	for v := range m.values.All() {
 		vals = append(vals, v)
 	}
-	// Longest first: strings.Replacer prefers the earliest-listed pattern at a
-	// given position, so a value that is a prefix of another must not win.
+	// Longest first: strings.Replacer prefers the earliest-listed pattern, so a prefix value must not win.
 	sort.Slice(vals, func(i, j int) bool {
 		if len(vals[i]) != len(vals[j]) {
 			return len(vals[i]) > len(vals[j])
@@ -113,8 +109,8 @@ func (m *Masker) build() *strings.Replacer {
 	return m.replacer
 }
 
-// renderings returns the forms of a secret that can appear in output: the raw
-// value, its individual lines, base64 in all four alphabets, and the two URL
+// renderings returns the forms of a secret that can appear in output. The raw
+// value, its individual lines, base64 in all alphabets, and both URL
 // escapings.
 func renderings(secret string) []string {
 	seeds := []string{secret}
@@ -131,15 +127,15 @@ func renderings(secret string) []string {
 	}
 
 	out := make([]string, 0, len(seeds)*6)
-	seen := make(map[string]struct{}, len(seeds)*6)
+	seen := set.New[string]()
 	add := func(v string) {
 		if v == "" {
 			return
 		}
-		if _, ok := seen[v]; ok {
+		if seen.Contains(v) {
 			return
 		}
-		seen[v] = struct{}{}
+		seen.Add(v)
 		out = append(out, v)
 	}
 	for _, s := range seeds {

@@ -8,6 +8,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"github.com/wow-look-at-my/ci-platform/internal/model"
+	"github.com/wow-look-at-my/go-containers/set"
 )
 
 func load(t *testing.T, name string) *model.Workflow {
@@ -37,11 +38,11 @@ func TestValidCorpusParses(t *testing.T) {
 			require.Equal(t, f, w.Path)
 			require.NotEmpty(t, w.Name)
 			require.Len(t, w.JobOrder, len(w.Jobs), "JobOrder must name every job exactly once")
-			seen := map[string]bool{}
+			seen := set.New[string]()
 			for _, key := range w.JobOrder {
 				require.NotNil(t, w.Jobs[key], "JobOrder names %q but Jobs does not have it", key)
-				require.False(t, seen[key], "JobOrder repeats %q", key)
-				seen[key] = true
+				require.False(t, seen.Contains(key), "JobOrder repeats %q", key)
+				seen.Add(key)
 				require.Equal(t, key, w.Jobs[key].Key)
 				for i, s := range w.Jobs[key].Steps {
 					require.Equal(t, i+1, s.Number)
@@ -86,8 +87,7 @@ func TestMatrix(t *testing.T) {
 
 	m := s.Matrix
 	// Dimensions in file order, then include-only keys in first-appearance
-	// order: both contribute name segments, and the order is what the display
-	// name (and so the branch protection rule keyed on it) depends on.
+	// order: both contribute name segments.
 	require.Equal(t, []string{"os", "go", "arch", "coverage", "experimental"}, m.Order,
 		"key order must follow the file, include-only keys last")
 	require.Equal(t, []any{"ubuntu-latest", "macos-latest", "windows-latest"}, m.Dimensions["os"])
@@ -211,8 +211,7 @@ func TestRetryPolicy(t *testing.T) {
 	want.Attempts = 2
 	require.Equal(t, want, *partial)
 
-	// A step with no `retry:` at all leaves it nil, so the caller applies
-	// model.DefaultRetryPolicy() rather than the parser inventing one.
+	// A step with no `retry:` at all leaves it nil.
 	require.Nil(t, load(t, "valid/matrix.yml").Jobs["build"].Steps[0].Retry)
 }
 

@@ -1,0 +1,9 @@
+on: push
+jobs:
+  test:
+    runs-on: x
+    strategy:
+      matrix:
+        os: [linux, macos]
+        go: ["1.24"]
+    steps: [{run: y}]

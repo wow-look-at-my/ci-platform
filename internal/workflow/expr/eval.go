@@ -116,9 +116,9 @@ func lookupFold(m map[string]any, name string) (any, bool) {
 // every rule. It never errors: a missing key, an out-of-range index and a
 // wrong-kind operand are all null.
 //
-// The one exception is a wildcard against a non-collection, which yields an
-// EMPTY array rather than null, so `'str'.*` and `github.missing.*` are both
-// safe to keep indexing into.
+// The exception is a wildcard against a non-collection. This yields an EMPTY
+// array rather than null, so `'str'.*` and `github.missing.*` are both safe
+// to keep indexing into.
 func indexValue(obj, idx any, wildcard bool) any {
 	obj = normalize(obj)
 	switch x := obj.(type) {
@@ -152,8 +152,8 @@ func indexValue(obj, idx any, wildcard bool) any {
 }
 
 // indexFiltered applies the index to every ELEMENT of a filtered array, which
-// is why `commits.*.message[0]` is not the first message: the [0] is applied to
-// each message, and a string has no element 0.
+// is why `commits.*.message[0]` is not the first message. The [0] is applied to
+// each message. A string has no the first element.
 func indexFiltered(f filtered, idx any, wildcard bool) any {
 	out := filtered{}
 	for _, item := range f {
@@ -203,7 +203,6 @@ func objectIndex(m map[string]any, idx any) any {
 	return nil
 }
 
-// arrayIndex floors a non-integer index, so arr[1.1] is arr[1].
 func arrayIndex(arr []any, idx any) any {
 	n := toNumber(idx)
 	if math.IsNaN(n) || n < 0 || n > math.MaxInt32 {

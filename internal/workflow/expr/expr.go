@@ -1,10 +1,7 @@
 // Package expr implements the GitHub Actions expression language: a lexer, a
 // precedence-climbing parser, and an evaluator over a set of named contexts.
 //
-// Two behaviours here are load-bearing and easy to get wrong. Comparisons are
-// LOOSE (null, false, 0 and "" all compare equal, strings compare
-// case-insensitively) and `&&`/`||` return one of their OPERANDS rather than a
-// boolean, so `github.head_ref || github.ref_name` yields a string.
+// Behaviours here are load-bearing and easy to get wrong.
 package expr
 
 import (
@@ -15,10 +12,7 @@ import (
 	"github.com/wow-look-at-my/ci-platform/internal/model"
 )
 
-// Context holds the named-value contexts: "github", "env", "vars", "secrets",
-// "job", "jobs", "steps", "runner", "needs", "strategy", "matrix", "inputs".
-// A name absent from the map is an error, never null: a workflow referring to a
-// context that does not exist here is a config error.
+// Context holds the named-value contexts: "github", "env", "vars", "secrets", "job", "jobs", "steps", "runner", "needs", "strategy", "matrix".
 type Context map[string]any
 
 // Status governs success()/failure()/always()/cancelled().
@@ -51,9 +45,7 @@ func (e *Evaluator) WithStatus(s Status) *Evaluator {
 }
 
 // WithFS returns a copy that can evaluate hashFiles(). root is the workspace
-// directory within fsys that patterns are matched relative to; "" means the
-// root of fsys itself. Without this, hashFiles() is an error rather than a
-// fabricated digest.
+// directory within fsys that patterns are matched relative to.
 func (e *Evaluator) WithFS(fsys fs.FS, root string) *Evaluator {
 	c := *e
 	c.fsys = fsys
@@ -82,7 +74,7 @@ func (e *Evaluator) EvalString(raw string) (string, error) {
 			return b.String(), nil
 		}
 		b.WriteString(rest[:i])
-		body, after, ok := splitExpr(rest[i+3:])
+		body, after, ok := model.SplitExprBody(rest[i+3:])
 		if !ok {
 			return "", fmt.Errorf("unterminated expression: %q", rest[i:])
 		}
@@ -103,7 +95,7 @@ func (e *Evaluator) EvalBool(raw string) (bool, error) {
 		return false, nil
 	}
 	if strings.HasPrefix(src, "${{") {
-		body, after, ok := splitExpr(src[3:])
+		body, after, ok := model.SplitExprBody(src[3:])
 		if ok && strings.TrimSpace(after) == "" {
 			src = body
 		}
@@ -118,30 +110,6 @@ func (e *Evaluator) EvalBool(raw string) (bool, error) {
 // EvalExpr is EvalString over an IR expression.
 func (e *Evaluator) EvalExpr(x model.Expr) (string, error) { return e.EvalString(x.Raw) }
 
-// splitExpr finds the "}}" that closes an expression body, ignoring braces
-// inside single-quoted strings so that format('}}') survives. s starts just
-// after the opening "${{".
-func splitExpr(s string) (body, rest string, ok bool) {
-	inStr := false
-	for i := 0; i < len(s); i++ {
-		switch s[i] {
-		case '\'':
-			// '' inside a string is an escaped quote, and skipping the second
-			// one here keeps inStr correct.
-			if inStr && i+1 < len(s) && s[i+1] == '\'' {
-				i++
-				continue
-			}
-			inStr = !inStr
-		case '}':
-			if !inStr && i+1 < len(s) && s[i+1] == '}' {
-				return s[:i], s[i+2:], true
-			}
-		}
-	}
-	return "", "", false
-}
-
 // Validate reports a syntax error in any ${{ }} body of a template, without
 // evaluating it. The parser uses this so a malformed expression is a config
 // error at parse time rather than a surprise mid-run.
@@ -152,7 +120,7 @@ func Validate(raw string) error {
 		if i < 0 {
 			return nil
 		}
-		body, after, ok := splitExpr(rest[i+3:])
+		body, after, ok := model.SplitExprBody(rest[i+3:])
 		if !ok {
 			return fmt.Errorf("unterminated expression: %q", rest[i:])
 		}
@@ -170,7 +138,7 @@ func ValidateCondition(raw string) error {
 		return nil
 	}
 	if strings.HasPrefix(src, "${{") {
-		body, after, ok := splitExpr(src[3:])
+		body, after, ok := model.SplitExprBody(src[3:])
 		if !ok {
 			return fmt.Errorf("unterminated expression: %q", src)
 		}

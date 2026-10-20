@@ -14,8 +14,7 @@ import (
 // cancelRequest is the body of both cancel endpoints.
 type cancelRequest struct {
 	Reason string `json:"reason"`
-	// Actor overrides the request-derived principal, for a CLI that knows who
-	// it is acting for.
+	// Actor overrides the request-derived principal, for a CLI that knows who it is acting for.
 	Actor string `json:"actor,omitempty"`
 }
 
@@ -69,7 +68,6 @@ func (s *Server) decodeCancel(w http.ResponseWriter, r *http.Request) (model.Can
 	return cr, true
 }
 
-// controller returns the wired controller, or writes a 503 naming the gap.
 func (s *Server) controller(w http.ResponseWriter) (Controller, bool) {
 	if s.cfg.Controller == nil {
 		writeErr(w, http.StatusServiceUnavailable, "no_controller",

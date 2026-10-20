@@ -11,8 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// nodeCandidates are where a Node binary is expected. The TypeScript tests are
-// bundled to plain JS first, so the runtime needs no TS support of its own.
+// nodeCandidates are where a Node binary is expected.
 var nodeCandidates = []string{"/opt/node22/bin/node", "node"}
 
 func findNode() string {

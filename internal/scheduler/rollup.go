@@ -22,9 +22,7 @@ type Rollup struct {
 
 // Notification kinds.
 const (
-	// NotifyDefaultBranchNotSuccess fires when a run on the repository's
-	// default branch ends as anything other than success. A merged, green PR
-	// whose publish never ran is the incident this exists for.
+	// NotifyDefaultBranchNotSuccess fires when a default-branch run ends as anything other than success.
 	NotifyDefaultBranchNotSuccess = "default_branch_run_not_success"
 )
 
@@ -85,8 +83,7 @@ func rollupOf(runID int64, jobs []*model.Job) Rollup {
 			r.ByClass[j.Class]++
 		}
 	}
-	// Aggregate is the only reducer. An empty set is neutral, never success:
-	// zero jobs cannot have passed anything.
+	// Aggregate is the only reducer; an empty set is neutral, never success.
 	r.Conclusion = model.Aggregate(conclusions)
 	r.Summary = summarize(r)
 	return r

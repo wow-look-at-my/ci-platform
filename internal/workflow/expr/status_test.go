@@ -24,8 +24,7 @@ func TestReferencesStatusFunction(t *testing.T) {
 		{"github.ref == 'refs/heads/main'", false},
 		{"${{ github.ref == 'refs/heads/main' }}", false},
 		{"", false},
-		// A status-function name inside a string literal is not a call, and is
-		// exactly what a raw-text scan would get wrong.
+		// A status-function name inside a string literal is not a call, and is exactly what a raw-text scan would get wrong.
 		{"contains(github.event.head_commit.message, 'success()')", false},
 		{"'always()' == github.ref", false},
 	}

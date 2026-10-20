@@ -113,9 +113,8 @@ func (l *lexer) lexIdent() token {
 			l.i++
 			continue
 		}
-		// A hyphen belongs to the identifier only when more identifier
-		// follows: property names like `my-step` are legal, a trailing one is
-		// not part of the name.
+		// A hyphen belongs to the identifier only when more identifier follows:
+		// property names like `my-step` are legal.
 		if c == '-' && l.i+1 < len(l.src) && isIdentPart(l.src[l.i+1]) {
 			l.i += 2
 			continue

@@ -1,0 +1,5 @@
+  a:
+    runs-on: x
+    needs: [b]
+    steps:
+      - run: y

@@ -13,6 +13,7 @@ import (
 
 	"github.com/wow-look-at-my/ci-platform/internal/model"
 	"github.com/wow-look-at-my/ci-platform/internal/store"
+	"github.com/wow-look-at-my/go-containers/set"
 )
 
 func testEnqueueIdempotent(t *testing.T, f *fixture) {
@@ -44,7 +45,7 @@ func testEnqueueIdempotent(t *testing.T, f *fixture) {
 }
 
 // Attempt is half of the dispatch idempotency key, so a caller that states an
-// attempt the job row disagrees with has to be refused: picking one silently
+// attempt the job row disagrees with has to be refused. Picking one silently
 // would let the same attempt dispatch twice with side effects.
 func testEnqueueAttemptMismatch(t *testing.T, f *fixture) {
 	repo := f.repo(125, "acme", "widget")
@@ -74,7 +75,7 @@ func testEnqueueAttemptMismatch(t *testing.T, f *fixture) {
 
 // A never-read entry must sort by its creation time, not by a zero
 // last_accessed. Otherwise a just-committed entry is the oldest thing in the
-// repo and evicts itself on the very commit that created it.
+// repo and evicts itself on the commit that created it.
 func testFreshCacheEntryIsNotEvictedFirst(t *testing.T, f *fixture) {
 	repo := f.repo(126, "acme", "widget")
 	base := nowUTC()
@@ -108,10 +109,10 @@ func testConcurrentDequeue(t *testing.T, f *fixture) {
 	repo := f.repo(130, "acme", "widget")
 	run := f.run(repo.ID)
 	queuedAt := nowUTC()
-	want := map[int64]bool{}
+	want := set.New[int64]()
 	for i := 0; i < jobs; i++ {
 		j := f.job(run.ID, fmt.Sprintf("job-%d", i), []string{"linux"})
-		want[j.ID] = true
+		want.Add(j.ID)
 		require.NoError(t, f.s.Enqueue(f.ctx, store.QueuedJob{
 			JobID: j.ID, RunID: run.ID, Labels: []string{"linux"}, QueuedAt: queuedAt,
 		}))
@@ -166,7 +167,7 @@ func testConcurrentDequeue(t *testing.T, f *fixture) {
 	require.Len(t, got, jobs, "every job was dequeued")
 	for id, n := range got {
 		require.Equal(t, 1, n, "job %d was dequeued %d times; exactly once is the contract", id, n)
-		require.True(t, want[id], "dequeued a job that was never enqueued: %d", id)
+		require.True(t, want.Contains(id), "dequeued a job that was never enqueued: %d", id)
 	}
 
 	stats, err := f.s.QueueStats(f.ctx, nowUTC())
@@ -206,8 +207,7 @@ func testLabelMatching(t *testing.T, f *fixture) {
 	require.NoError(t, err)
 	require.Equal(t, strict.ID, got3.ID)
 
-	// An unlabelled job is eligible for any runner: both earlier dequeues were
-	// either it or the loose job.
+	// An unlabelled job is eligible for any runner: both earlier dequeues were either it or the loose job.
 	require.ElementsMatch(t, []int64{loose.ID, free.ID}, []int64{got.ID, got2.ID})
 }
 
@@ -227,8 +227,7 @@ func testNotBefore(t *testing.T, f *fixture) {
 		JobID: ready.ID, RunID: run.ID, Labels: []string{"linux"}, QueuedAt: at,
 	}))
 
-	// The backed-off job sorts first on both priority and queued_at, so if
-	// not_before were ignored it would be the one handed out.
+	// The backed-off job sorts first on both priority and queued_at.
 	got, err := f.s.Dequeue(f.ctx, "runner-a", []string{"linux"}, time.Minute)
 	require.NoError(t, err)
 	require.Equal(t, ready.ID, got.ID, "a backed-off retry is not dispatched early")
@@ -303,8 +302,7 @@ func testLeaseExpiryRequeues(t *testing.T, f *fixture) {
 		"the reaped copy must name the runner it lost, or the requeue cannot say who vanished")
 	require.Nil(t, reaped[0].LeaseExpiresAt)
 
-	// The STORED row is unleased and names nobody; only the returned copy keeps
-	// the lost runner, so nothing downstream mistakes the job for still-leased.
+	// The STORED row is unleased and names nobody.
 	stored, err := f.s.GetJob(f.ctx, job.ID)
 	require.NoError(t, err)
 	require.Equal(t, model.StatusQueued, stored.Status)

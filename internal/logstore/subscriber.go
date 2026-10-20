@@ -7,9 +7,7 @@ import (
 	"github.com/wow-look-at-my/ci-platform/internal/model"
 )
 
-// subscriber is one live watcher. It owns a bounded ring: the writer never
-// blocks on a slow reader, and a reader that overflows the ring is cut off
-// with an explicit line rather than quietly starved.
+// subscriber owns a bounded ring: the writer never blocks on a slow reader; an overflowing reader is cut off.
 type subscriber struct {
 	out chan model.LogLine
 
@@ -28,8 +26,7 @@ func newSubscriber(capacity int, backlog []model.LogLine) *subscriber {
 		cap:  capacity,
 		wake: make(chan struct{}, 1),
 	}
-	// The backlog is allowed to exceed the ring: it is a bounded, known
-	// quantity the caller explicitly asked for.
+	// The backlog is allowed to exceed the ring: it is a bounded quantity the caller explicitly asked for.
 	s.buf = append(s.buf, backlog...)
 	return s
 }

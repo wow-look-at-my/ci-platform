@@ -13,9 +13,6 @@ import (
 // LogSink batches log lines to the control plane. A POST per line would swamp
 // it on a chatty build, so lines accumulate until the buffer is full or the
 // flush interval passes.
-//
-// Every line is masked here, on the way in: nothing unmasked is ever held in
-// the buffer, so a crash mid-flush cannot leak a secret either.
 type LogSink struct {
 	client   ControlPlane
 	runnerID string
@@ -35,8 +32,7 @@ type LogSink struct {
 	stop   chan struct{}
 	closed bool
 	wg     sync.WaitGroup
-	// OnError is called when a batch cannot be delivered, so a failure to ship
-	// logs is visible rather than silently dropped.
+	// OnError is called when a batch cannot be delivered, so a shipping failure is visible, not dropped.
 	OnError func(error)
 }
 

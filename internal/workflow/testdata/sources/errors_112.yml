@@ -1,0 +1,4 @@
+runs-on: x
+continue-on-error: ${{ 1 == }}
+steps:
+  - run: y

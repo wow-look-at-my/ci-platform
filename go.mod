@@ -1,6 +1,6 @@
 module github.com/wow-look-at-my/ci-platform
 
-go 1.25.0
+go 1.26
 
 require (
 	github.com/evanw/esbuild v0.28.1
@@ -8,6 +8,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/stretchr/testify v1.11.1
+	github.com/wow-look-at-my/go-containers v0.0.0
 	gopkg.in/yaml.v3 v3.0.1
 	modernc.org/sqlite v1.56.0
 )

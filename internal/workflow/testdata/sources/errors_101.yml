@@ -1,0 +1,5 @@
+runs-on: x
+permissions:
+  everything: read
+steps:
+  - run: y

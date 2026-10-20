@@ -1,0 +1,11 @@
+
+name: outer
+inputs:
+  passed:
+    default: from-outer
+runs:
+  using: composite
+  steps:
+    - uses: o/inner@v1
+      with:
+        value: ${{ inputs.passed }}

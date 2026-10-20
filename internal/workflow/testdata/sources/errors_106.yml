@@ -1,0 +1,7 @@
+runs-on: x
+services:
+  db:
+    image: postgres
+    entrypoint: /bin/sh
+steps:
+  - run: y

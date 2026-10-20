@@ -59,8 +59,6 @@ func TestExcludeIsAPartialMatch(t *testing.T) {
 	assertStrings(t, legSuffixes(legs), []string{"(ubuntu, 1.22)", "(ubuntu, 1.23)", "(macos, 1.23)"})
 }
 
-// GitHub errors on an exclude key that names no dimension rather than
-// excluding nothing (MatrixExclude in the runner source).
 func TestExcludeUnknownKeyIsAnError(t *testing.T) {
 	m := &model.Matrix{
 		Dimensions: map[string][]any{"os": {"ubuntu"}},
@@ -72,11 +70,11 @@ func TestExcludeUnknownKeyIsAnError(t *testing.T) {
 
 }
 
-// The include semantics GitHub documents, using GitHub's own example, which is
-// the single most commonly-hit corner of matrix expansion.
+// The include semantics GitHub documents, using GitHub's own example, which
+// is the most commonly-hit corner of matrix expansion.
 //
 // The values an include merges into a cross product combination land in the
-// matrix context but NOT in the display name: the runner builds the name from
+// matrix context but NOT in the display name. The runner builds the name from
 // the cross product vector before merging the extra values in.
 func TestIncludeMergesOrAppendsLikeGitHub(t *testing.T) {
 	m := &model.Matrix{
@@ -122,8 +120,7 @@ func TestIncludeNeverOverwritesAnOriginalDimension(t *testing.T) {
 	m := &model.Matrix{
 		Dimensions: map[string][]any{"os": {"ubuntu", "windows"}},
 		Order:      []string{"os"},
-		// os=macos matches no combination, so it becomes its own leg rather
-		// than rewriting ubuntu or windows.
+		// os=macos matches no combination, so it becomes its own leg rather than rewriting one.
 		Include: []map[string]any{{"os": "macos", "extra": "yes"}},
 	}
 	legs, err := ExpandMatrix(m, nil)
@@ -133,7 +130,7 @@ func TestIncludeNeverOverwritesAnOriginalDimension(t *testing.T) {
 }
 
 // An include-only matrix, which is where the operator's example comes from.
-// Matrix.Order carries the source key order for include-only keys; without it
+// Matrix.Order carries the source key order for include-only keys. Without it
 // the suffix would be alphabetical and the check run name would not match.
 func TestIncludeOnlyMatrix(t *testing.T) {
 	m := &model.Matrix{
@@ -167,8 +164,7 @@ func TestExcludeThenIncludeOrdering(t *testing.T) {
 		Dimensions: map[string][]any{"os": {"ubuntu", "windows"}},
 		Order:      []string{"os"},
 		Exclude:    []map[string]any{{"os": "windows"}},
-		// windows was excluded, so this include has nothing to merge into and
-		// is appended as its own leg.
+		// windows was excluded, so this include has nothing to merge into and is appended as its own leg.
 		Include: []map[string]any{{"os": "windows", "note": "readded"}},
 	}
 	legs, err := ExpandMatrix(m, nil)
@@ -192,8 +188,9 @@ func TestAppendedLegIsNotACandidateForLaterIncludes(t *testing.T) {
 	assertStrings(t, legSuffixes(legs), []string{"(apple)", "(banana)", "(banana, cat)"})
 }
 
-// GitHub traverses a matrix value and emits every scalar leaf as its own name
-// segment, so an object or list value does not render as JSON in the name.
+// GitHub traverses a matrix value. GitHub emits every scalar leaf as its own
+// name segment, so an object or list value does not render as JSON in the
+// name.
 func TestMatrixValueRendering(t *testing.T) {
 	m := &model.Matrix{
 		Dimensions: map[string][]any{
@@ -211,8 +208,7 @@ func TestMatrixValueRendering(t *testing.T) {
 		"(1, true, 1, x, y)",
 		"(2.5, true, 1, x, y)",
 	})
-	// The leg identity keeps the whole value, so two legs differing only
-	// inside an object are still distinguishable.
+	// The leg identity keeps the whole value, so legs differing only inside an object are distinguishable.
 	require.Equal(t, `n=1,b=true,obj={"a":1,"b":""},arr=["x","y"]`, legs[0].Key())
 
 }
@@ -251,12 +247,9 @@ func TestNumericValuesCompareAcrossTypes(t *testing.T) {
 }
 
 func TestMatrixFromJSONExpression(t *testing.T) {
-	ev := newFakeFactory(map[string]any{
-		"fromJSON(needs.setup.outputs.matrix)": map[string]any{
-			"os":      []any{"ubuntu", "windows"},
-			"exclude": []any{map[string]any{"os": "windows"}},
-		},
-	})(map[string]any{}, Status{Success: true})
+	ev := realEval(map[string]any{"needs": map[string]any{"setup": map[string]any{"outputs": map[string]any{
+		"matrix": `{"os": ["ubuntu", "windows"], "exclude": [{"os": "windows"}]}`,
+	}}}})
 	m := &model.Matrix{FromExpr: model.NewExpr("${{ fromJSON(needs.setup.outputs.matrix) }}")}
 	legs, err := ExpandMatrix(m, ev)
 	require.Nil(t, err)
@@ -265,14 +258,14 @@ func TestMatrixFromJSONExpression(t *testing.T) {
 }
 
 func TestMatrixFromJSONMustBeAnObject(t *testing.T) {
-	ev := newFakeFactory(map[string]any{"fromJSON(x)": []any{1, 2}})(map[string]any{}, Status{})
-	_, err := ExpandMatrix(&model.Matrix{FromExpr: model.NewExpr("${{ fromJSON(x) }}")}, ev)
+	ev := realEval(map[string]any{"vars": map[string]any{"x": "[1, 2]"}})
+	_, err := ExpandMatrix(&model.Matrix{FromExpr: model.NewExpr("${{ fromJSON(vars.x) }}")}, ev)
 	require.False(t, err == nil || !strings.Contains(err.Error(), "not an object"))
 
 }
 
 func TestDimensionValueExpressionSplicesAList(t *testing.T) {
-	ev := newFakeFactory(map[string]any{"fromJSON(vars.oses)": []any{"a", "b"}})(map[string]any{}, Status{})
+	ev := realEval(map[string]any{"vars": map[string]any{"oses": `["a", "b"]`}})
 	m := &model.Matrix{
 		Dimensions: map[string][]any{"os": {"${{ fromJSON(vars.oses) }}", "c"}},
 		Order:      []string{"os"},

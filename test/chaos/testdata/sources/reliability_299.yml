@@ -1,0 +1,8 @@
+name: CI
+on: push
+jobs:
+  build:
+    runs-on: [linux]
+    if: github.ref == 'refs/heads/never'
+    steps:
+      - run: make build

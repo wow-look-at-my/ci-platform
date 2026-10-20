@@ -1,0 +1,4 @@
+runs-on: x
+permissions: everything
+steps:
+  - run: y

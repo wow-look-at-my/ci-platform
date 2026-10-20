@@ -27,8 +27,7 @@ type CheckRun struct {
 	Output      CheckOutput    `json:"output"`
 	Actions     []CheckAction  `json:"actions"`
 	Raw         map[string]any `json:"-"`
-	// Updates counts how many API calls touched this check run, which is how a
-	// test asserts that updates were coalesced rather than sent per step.
+	// Updates counts how many API calls touched this check run.
 	Updates int `json:"-"`
 }
 
@@ -57,8 +56,8 @@ type CommitStatus struct {
 }
 
 // GitHub is a fake GitHub API. It records everything the platform reported so a
-// test can assert on the status path end to end, and it can be made to fail so
-// the platform's own retry behaviour is exercised.
+// test can assert on the status path end to end. It can be made to fail so the
+// platform's own retry behaviour is exercised.
 type GitHub struct {
 	srv *httptest.Server
 
@@ -168,7 +167,7 @@ func (g *GitHub) serve(w http.ResponseWriter, r *http.Request) {
 		g.mu.Unlock()
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(code)
-		fmt.Fprintf(w, `{"message":"injected failure %d"}`, code)
+		_ = json.NewEncoder(w).Encode(map[string]string{"message": fmt.Sprintf("injected failure %d", code)})
 		return
 	}
 	g.mu.Unlock()

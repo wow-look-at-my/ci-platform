@@ -14,6 +14,7 @@ import (
 	"github.com/wow-look-at-my/ci-platform/internal/model"
 	"github.com/wow-look-at-my/ci-platform/internal/protocol"
 	"github.com/wow-look-at-my/ci-platform/internal/runner/mask"
+	"github.com/wow-look-at-my/go-containers/set"
 )
 
 type harness struct {
@@ -51,7 +52,7 @@ func newHarness(t *testing.T, steps []protocol.StepSpec, tweak func(*Config)) *h
 		Log:          h.log,
 		Reporter:     h.rep,
 		Masker:       h.msk,
-		NewEvaluator: newFakeEvaluatorFactory(nil),
+		NewEvaluator: realEvaluator,
 		WorkspaceDir: "/workspace",
 		TempDir:      "/tmp/_temp",
 	}
@@ -207,10 +208,10 @@ func TestStepsAfterFailureAreSkipped(t *testing.T) {
 		{Number: 3, Name: "always", Run: "echo cleanup", IfExpr: "always()"},
 	}
 	h := newHarness(t, steps, nil)
-	ran := map[string]bool{}
+	ran := set.New[string]()
 	h.sb.handle = func(sb *fakeSandbox, req RunRequest) (RunResult, error) {
 		script := sb.script(req.Argv[len(req.Argv)-1])
-		ran[script] = true
+		ran.Add(script)
 		if script == "false" {
 			return RunResult{ExitCode: 1}, nil
 		}
@@ -221,8 +222,8 @@ func TestStepsAfterFailureAreSkipped(t *testing.T) {
 	assert.Equal(t, model.ConclusionFailure, res.Conclusion)
 	assert.Equal(t, model.ConclusionSkipped, res.Steps[1].Conclusion)
 	assert.Equal(t, model.ConclusionSuccess, res.Steps[2].Conclusion)
-	assert.False(t, ran["echo no"])
-	assert.True(t, ran["echo cleanup"])
+	assert.False(t, ran.Contains("echo no"))
+	assert.True(t, ran.Contains("echo cleanup"))
 	assert.True(t, h.log.contains("an earlier step failed"))
 }
 
@@ -235,9 +236,7 @@ func TestIfExpressionFalseSkips(t *testing.T) {
 }
 
 func TestIfExpressionErrorIsConfigFailure(t *testing.T) {
-	h := newHarness(t, []protocol.StepSpec{{Number: 1, Run: "echo x", IfExpr: "bogus()"}}, func(c *Config) {
-		c.NewEvaluator = newFakeEvaluatorFactory(map[string]bool{"bogus()": true})
-	})
+	h := newHarness(t, []protocol.StepSpec{{Number: 1, Run: "echo x", IfExpr: "bogus()"}}, nil)
 	res := h.ex.Run(context.Background())
 	assert.Equal(t, model.ConclusionConfigError, res.Conclusion)
 	assert.Equal(t, model.ClassConfig, res.Class)
@@ -341,11 +340,9 @@ func TestSecretsNeverReachTheLog(t *testing.T) {
 	h.msk.AddAll(h.asg.Secrets)
 
 	h.sb.handle = func(sb *fakeSandbox, req RunRequest) (RunResult, error) {
-		fmt.Fprintln(req.Stdout, "key is sup3r-s3cret-value")
-		fmt.Fprintln(req.Stdout, "b64 is c3VwM3ItczNjcmV0LXZhbHVl")
+		fmt.Fprint(req.Stdout, "key is sup3r-s3cret-value\nb64 is c3VwM3ItczNjcmV0LXZhbHVl\n")
 		fmt.Fprintln(req.Stderr, "url is sup3r-s3cret-value")
-		fmt.Fprintln(req.Stdout, "::add-mask::dynamic-secret-1")
-		fmt.Fprintln(req.Stdout, "later dynamic-secret-1 appears")
+		fmt.Fprint(req.Stdout, "::add-mask::dynamic-secret-1\nlater dynamic-secret-1 appears\n")
 		return RunResult{}, nil
 	}
 
@@ -360,10 +357,7 @@ func TestSecretsNeverReachTheLog(t *testing.T) {
 func TestWorkflowCommandsProduceAnnotationsAndGroups(t *testing.T) {
 	h := newHarness(t, []protocol.StepSpec{{Number: 1, Run: "x"}}, nil)
 	h.sb.handle = func(sb *fakeSandbox, req RunRequest) (RunResult, error) {
-		fmt.Fprintln(req.Stdout, "::group::Compile")
-		fmt.Fprintln(req.Stdout, "compiling")
-		fmt.Fprintln(req.Stdout, "::error file=main.go,line=4,title=vet::undefined: x")
-		fmt.Fprintln(req.Stdout, "::endgroup::")
+		fmt.Fprint(req.Stdout, "::group::Compile\ncompiling\n::error file=main.go,line=4,title=vet::undefined: x\n::endgroup::\n")
 		return RunResult{}, nil
 	}
 
@@ -398,8 +392,7 @@ func TestStepTimeout(t *testing.T) {
 		// Simulate the sandbox observing its context deadline.
 		return RunResult{ExitCode: 124}, nil
 	}
-	// A one-minute timeout is not waited out; the executor's own deadline
-	// bookkeeping is what is under test, via a context already past due.
+	// A one-minute timeout is not waited out.
 	ctx, cancel := context.WithTimeout(context.Background(), time.Nanosecond)
 	defer cancel()
 	time.Sleep(time.Millisecond)

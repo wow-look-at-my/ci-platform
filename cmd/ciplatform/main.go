@@ -3,7 +3,7 @@
 //
 // Everything it needs is required. There is no placeholder mode, no
 // "configure it later" path, and nothing that starts up degraded and reports
-// success anyway; a missing dependency fails here, naming what is missing.
+// success anyway. A missing dependency fails here, naming what is missing.
 package main
 
 import (
@@ -24,6 +24,10 @@ import (
 var version = "dev"
 
 func main() {
+	if len(os.Args) == 2 && os.Args[1] == "-version" {
+		fmt.Println(version)
+		return
+	}
 	log := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelInfo}))
 	slog.SetDefault(log)
 
@@ -36,8 +40,7 @@ func main() {
 func run(log *slog.Logger) error {
 	cfg, err := config.Load()
 	if err != nil {
-		// Configuration problems are reported all at once, so an operator
-		// fixes them in one pass rather than one restart per variable.
+		// Configuration problems are reported all at once.
 		return err
 	}
 	log.Info("starting", "version", version, "public_url", cfg.PublicURL.String(), "listen", cfg.Listen)
@@ -55,8 +58,6 @@ func run(log *slog.Logger) error {
 		Addr:              cfg.Listen,
 		Handler:           app.Handler(),
 		ReadHeaderTimeout: 15 * time.Second,
-		// No write timeout: the SSE log tail and the runner long-poll both hold
-		// a response open far longer than any sane fixed limit.
 	}
 
 	errc := make(chan error, 1)

@@ -14,31 +14,24 @@ import (
 	"time"
 )
 
-// The three routes the browser sign-in uses. Login and callback are
-// unauthenticated by necessity: they are how a browser stops being anonymous.
+// Login and callback are unauthenticated by necessity: they are how a browser stops being anonymous.
 const (
 	PathGitHubLogin    = "/auth/github/login"
 	PathGitHubCallback = "/auth/github/callback"
 )
 
-// stateCookie holds the CSRF state across the round trip to GitHub. It is
-// SameSite=Lax rather than Strict because the browser arrives back here from
-// github.com, and a Strict cookie is not sent on a cross-site navigation --
-// every sign-in would fail with a state mismatch.
+// stateCookie holds the CSRF state across the round trip to GitHub; SameSite=Lax survives the return from github.com.
 const stateCookie = "ci_oauth_state"
 
 const stateTTL = 10 * time.Minute
 
-// OAuthOptions is the GitHub App's own OAuth client. A GitHub App is an OAuth
-// provider in its own right, so signing operators in needs no second App: the
-// client ID and secret are on the App's settings page.
+// OAuthOptions is the GitHub App's own OAuth client.
 type OAuthOptions struct {
 	ClientID     string
 	ClientSecret string
 	// RedirectURL must match the callback URL registered on the App.
 	RedirectURL string
-	// AuthorizeURL, TokenURL and APIBaseURL default to github.com and
-	// api.github.com. They exist so the flow can be pointed at a test server.
+	// AuthorizeURL, TokenURL and APIBaseURL default to github.com and api.github.com, to point the flow at a test server.
 	AuthorizeURL string
 	TokenURL     string
 	APIBaseURL   string
@@ -74,16 +67,14 @@ func (a *Auth) githubLogin(w http.ResponseWriter, r *http.Request) {
 	q.Set("client_id", a.oauth.ClientID)
 	q.Set("redirect_uri", a.oauth.RedirectURL)
 	q.Set("state", state)
-	// No scopes: the only thing this flow needs to learn is which account is
-	// signing in, and an unscoped user-to-server token already answers that.
-	// Asking for more would be asking for access nothing here uses.
+	// No scopes: this flow only needs to learn which account is signing in, which an unscoped token already answers.
 	q.Set("scope", "")
 	http.Redirect(w, r, a.oauth.AuthorizeURL+"?"+q.Encode(), http.StatusFound)
 }
 
-// githubCallback finishes the flow: verify the state, exchange the code for a
-// user token, ask GitHub who it belongs to, and mint a session if that account
-// is on the admin list.
+// githubCallback finishes the flow. It verify the state, exchange the code for
+// a user token, ask GitHub. Who it belongs to, and mint a session if that
+// account is on the admin list.
 func (a *Auth) githubCallback(w http.ResponseWriter, r *http.Request) {
 	// The state cookie is single-use whatever happens next, so a failed attempt
 	// cannot be retried with the same value.
@@ -127,9 +118,7 @@ func (a *Auth) githubCallback(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if !a.admins.Contains(login) {
-		// Say who was refused. A sign-in that fails without naming the account
-		// is indistinguishable from a broken deployment, and the operator is
-		// usually one typo away from the answer.
+		// Say who was refused: an unnamed failure looks like a broken deployment, and the fix is often one typo away.
 		a.log.Warn("refused a dashboard sign-in", "login", login, "admins", a.admins.String())
 		a.fail(w, http.StatusForbidden, fmt.Sprintf(
 			"%s is not an administrator of this instance. Add the account to CIPLATFORM_ADMIN_LOGINS "+
@@ -162,8 +151,7 @@ func (a *Auth) exchangeCode(ctx context.Context, code string) (string, error) {
 		return "", err
 	}
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	// Without this GitHub answers form-encoded, which is a different parse for
-	// no benefit.
+	// Without this GitHub answers form-encoded, a different parse for no benefit.
 	req.Header.Set("Accept", "application/json")
 
 	resp, err := a.http.Do(req)
@@ -182,8 +170,6 @@ func (a *Auth) exchangeCode(ctx context.Context, code string) (string, error) {
 	if err := json.Unmarshal(body, &tr); err != nil {
 		return "", fmt.Errorf("token endpoint answered unparseable JSON: %w", err)
 	}
-	// GitHub reports a refused exchange as 200 with an error field, so the
-	// status code alone is not the answer.
 	if tr.Error != "" {
 		return "", fmt.Errorf("%s: %s", tr.Error, tr.ErrorDescription)
 	}

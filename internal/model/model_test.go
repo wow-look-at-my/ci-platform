@@ -10,8 +10,7 @@ import (
 )
 
 func TestAggregate_ZeroWorkIsNeverSuccess(t *testing.T) {
-	// A required check satisfied by a job that ran nothing is the lie this
-	// whole type exists to prevent.
+	// A required check satisfied by a job that ran nothing is the lie this whole type exists to prevent.
 	assert.Equal(t, ConclusionNeutral, Aggregate(nil))
 	assert.Equal(t, ConclusionNeutral, Aggregate([]Conclusion{}))
 }

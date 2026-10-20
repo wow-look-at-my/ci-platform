@@ -1,6 +1,7 @@
 package demoseed
 
-// The five runs the demo shows, one function each. What each one is for is in docs/demo.md.
+// Those runs the demo shows, one function each. What each is for is in
+// docs/demo.md.
 
 import (
 	"context"
@@ -10,7 +11,7 @@ import (
 	"github.com/wow-look-at-my/ci-platform/internal/store"
 )
 
-// seedGreenRun is the ordinary case: three jobs, all of which did work.
+// seedGreenRun is the ordinary case: jobs, all of which did work.
 func seedGreenRun(ctx context.Context, st store.Store, logs Logs, s *Seeded) error {
 	run := &model.Run{
 		WorkflowName: "CI", WorkflowPath: ".github/workflows/ci.yml",
@@ -98,9 +99,9 @@ func seedGreenRun(ctx context.Context, st store.Store, logs Logs, s *Seeded) err
 	return st.FinalizeArtifact(ctx, art.ID, art.SizeBytes, art.Digest)
 }
 
-// seedInfraRun is incident 1: a registry timeout is not a build failure. The
-// job carries its classification evidence, retried on its own, and the run's
-// conclusion is infra_failure rather than failure.
+// seedInfraRun is one incident: a registry timeout is not a build failure.
+// The job carries its classification evidence, retried on its own, and the
+// run's conclusion is infra_failure rather than failure.
 func seedInfraRun(ctx context.Context, st store.Store, logs Logs, s *Seeded) error {
 	run := &model.Run{
 		WorkflowName: "Release", WorkflowPath: ".github/workflows/release.yml",
@@ -199,9 +200,9 @@ func seedUserFailureRun(ctx context.Context, st store.Store, logs Logs, s *Seede
 	}})
 }
 
-// seedRequeuedRun is incident 2: the runner disappeared mid-job. The job went
-// back on the queue, kept its attempt, and finished on another runner -- it was
-// never failed and never lost.
+// seedRequeuedRun is the runner disappeared mid-job: the runner disappeared
+// mid-job. The job went back on the queue, kept its attempt, and finished on
+// another runner -- it was never failed and never lost.
 func seedRequeuedRun(ctx context.Context, st store.Store, logs Logs, s *Seeded) error {
 	run := &model.Run{
 		WorkflowName: "Nightly", WorkflowPath: ".github/workflows/nightly.yml",
@@ -256,8 +257,8 @@ func seedRequeuedRun(ctx context.Context, st store.Store, logs Logs, s *Seeded) 
 	return nil
 }
 
-// seedCancelledRun is incident 3: nothing is cancelled without a reason. The
-// actor and the sentence are stored on the run and shown wherever it appears.
+// seedCancelledRun is a later incident: nothing is cancelled without a
+// reason. The actor and the sentence are stored on the run and shown wherever it appears.
 func seedCancelledRun(ctx context.Context, st store.Store, logs Logs, s *Seeded) error {
 	reason := model.CancelReason{
 		Actor: model.CancelActorConcurrencyGroup,

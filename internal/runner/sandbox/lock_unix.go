@@ -12,8 +12,6 @@ import (
 )
 
 // fileLock is an advisory exclusive lock over the shared image-cache volume.
-// Two dockerd processes sharing one /var/lib/docker corrupt it, so concurrent
-// jobs serialize on the cache rather than quietly racing.
 type fileLock struct {
 	f *os.File
 }
