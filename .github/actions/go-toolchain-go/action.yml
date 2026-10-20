@@ -18,12 +18,10 @@ runs:
         mkdir -p "$RUNNER_TEMP/go-bin"
         ln -s /usr/local/bin/go-toolchain "$RUNNER_TEMP/go-bin/go"
         echo "$RUNNER_TEMP/go-bin" >> "$GITHUB_PATH"
-        # go-toolchain's go carries no go.env, so the proxy and checksum database are named here.
-        {
-          echo "GO_TOOLCHAIN_LINKED_GO=1"
-          echo "GOPROXY=https://proxy.golang.org,direct"
-          echo "GOSUMDB=sum.golang.org"
-        } >> "$GITHUB_ENV"
+        # GO_TOOLCHAIN_LINKED_GO tells go-toolchain its own go is the one on PATH. GOPROXY and
+        # GOSUMDB are deliberately not set: go-toolchain fetches modules itself and refuses to run
+        # when GOPROXY names a proxy it does not use.
+        echo "GO_TOOLCHAIN_LINKED_GO=1" >> "$GITHUB_ENV"
 
     - name: Register the APE binfmt handler
       shell: bash

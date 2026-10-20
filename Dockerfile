@@ -4,7 +4,7 @@
 FROM alpine:3.21 AS build
 ADD --chmod=755 "https://dl.pazer.build/go-toolchain?os=linux&arch=amd64" /usr/local/bin/go-toolchain
 # Docker mounts /dev/shm noexec, so an APE unpacks its loader into /tmp.
-ENV GO_TOOLCHAIN_LINKED_GO=1 GOPROXY=https://proxy.golang.org,direct GOSUMDB=sum.golang.org APE_LOADERDIR=/tmp
+ENV GO_TOOLCHAIN_LINKED_GO=1 APE_LOADERDIR=/tmp
 WORKDIR /src
 
 RUN --mount=type=cache,target=/root/go/pkg/mod \
