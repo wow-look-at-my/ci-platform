@@ -81,25 +81,23 @@ jobs:
     runs-on: ${{ github.event.repository.visibility == 'public' && 'ubuntu-latest' || vars.CI_RUNNER || 'ubuntu-latest' }}
     steps:
       - uses: actions/checkout@v4
-      - uses: ./.github/actions/go-toolchain-go
-      - run: go test ./test/conformance/... -count=1
+      # These three jobs ran `go test` through the composite action's `go` symlink, and go-toolchain's linked go never returned. Every one of them stopped straight after its first build-cache fetch and sat until the runner killed it six hours later. The org's go-toolchain action is the entry point that runs the suite and the analyzers, and it is what the `test` job already uses.
+      - uses: wow-look-at-my/go-toolchain@lkgb
 
   # One test per incident in docs/incidents.md.
   chaos:
     runs-on: ${{ github.event.repository.visibility == 'public' && 'ubuntu-latest' || vars.CI_RUNNER || 'ubuntu-latest' }}
     steps:
       - uses: actions/checkout@v4
-      - uses: ./.github/actions/go-toolchain-go
-      - env:
+      - uses: wow-look-at-my/go-toolchain@lkgb
+        env:
           CIPLATFORM_TEST_DOCKER: "1"
-        run: go test ./test/chaos/... -count=1 -timeout 20m
 
   # Runs real workflows through a real control plane and a real runner, using unmodified actions/checkout, actions/cache, and actions/upload-artifact.
   e2e:
     runs-on: ${{ github.event.repository.visibility == 'public' && 'ubuntu-latest' || vars.CI_RUNNER || 'ubuntu-latest' }}
     steps:
       - uses: actions/checkout@v4
-      - uses: ./.github/actions/go-toolchain-go
-      - env:
+      - uses: wow-look-at-my/go-toolchain@lkgb
+        env:
           CIPLATFORM_TEST_DOCKER: "1"
-        run: go test ./test/e2e/... -count=1 -timeout 30m
