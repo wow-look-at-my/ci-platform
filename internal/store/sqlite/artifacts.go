@@ -3,7 +3,6 @@ package sqlite
 import (
 	"context"
 	"database/sql"
-	"embed"
 	"fmt"
 	"log/slog"
 	"time"

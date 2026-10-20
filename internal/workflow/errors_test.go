@@ -218,9 +218,7 @@ func TestRetryBackoffNoneAcceptsZeroDurations(t *testing.T) {
 }
 
 func TestSelfReferentialCycleReportsItsPath(t *testing.T) {
-	src := fx("errors_221.yml") +
-		"  a:\n    runs-on: x\n    needs: [b]\n    steps:\n      - run: y\n" +
-		"  b:\n    runs-on: x\n    needs: [a]\n    steps:\n      - run: y\n"
+	src := fx("errors_221.yml")
 	_, err := Parse("ci.yml", []byte(src))
 	require.ErrorContains(t, err, "forms a cycle: a -> b -> a")
 }
