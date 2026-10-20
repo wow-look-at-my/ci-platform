@@ -5,6 +5,8 @@ FROM alpine:3.21 AS build
 ADD --chmod=755 "https://dl.pazer.build/go-toolchain?os=linux&arch=amd64" /usr/local/bin/go-toolchain
 # The binary is the go command when it is named go; go-toolchain has no "go" subcommand of its own.
 RUN ln -s /usr/local/bin/go-toolchain /usr/local/bin/go
+# go-toolchain resolves some modules through git and fetches over TLS, so the build stage needs both.
+RUN apk add --no-cache git ca-certificates
 # Docker mounts /dev/shm noexec, so an APE unpacks its loader into /tmp.
 ENV GO_TOOLCHAIN_LINKED_GO=1 APE_LOADERDIR=/tmp
 WORKDIR /src
